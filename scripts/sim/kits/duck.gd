@@ -19,6 +19,11 @@ var mobbing_armed := false
 func setup(actor: Node) -> void:
 	actor.primary_timer = 0.0
 
+func reset_for_respawn(_actor: Node) -> void:
+	chain_index = 0
+	nest_channel = 0.0
+	mobbing_armed = false
+
 func tick(actor: Node, delta: float) -> void:
 	if actor.input_frame == null:
 		return

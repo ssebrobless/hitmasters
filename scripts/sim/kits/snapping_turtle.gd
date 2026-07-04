@@ -16,6 +16,10 @@ func setup(actor: Node) -> void:
 	actor.q_timer = 0.0
 	actor.e_timer = 0.0
 
+func reset_for_respawn(_actor: Node) -> void:
+	primary_windup_remaining = 0.0
+	grab_armed = false
+
 func tick(actor: Node, delta: float) -> void:
 	# The landing of an already-started windup happens regardless of stuns.
 	if primary_windup_remaining > 0.0:

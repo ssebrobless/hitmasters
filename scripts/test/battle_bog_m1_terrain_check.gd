@@ -2,6 +2,7 @@ extends SceneTree
 
 const SimConstants := preload("res://scripts/sim/sim_constants.gd")
 const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
+const EnvironmentProfileScript := preload("res://scripts/sim/environment_profile.gd")
 
 func _initialize() -> void:
 	var terrain := TerrainMapScript.new()
@@ -13,18 +14,27 @@ func _initialize() -> void:
 	var cores_in_habitat := blue_habitat.has_point(terrain.blue_core_position) and red_habitat.has_point(terrain.red_core_position)
 	var center_zone := terrain.get_zone_at(Vector2.ZERO)
 	var shallow_zone := terrain.get_zone_at(Vector2(12.0 * unit, -13.0 * unit))
+	var shallow_land_profile := terrain.get_environment_profile_for_zone(TerrainMapScript.SHALLOW, ["land_walker"])
+	var shallow_comfort_profile := terrain.get_environment_profile_for_zone(TerrainMapScript.SHALLOW, ["semi_aquatic"])
+	var deep_land_profile := EnvironmentProfileScript.for_zone(TerrainMapScript.WATER, ["land_walker"])
+	var habitat_profile := terrain.get_environment_profile_for_zone(TerrainMapScript.HABITAT_BLUE)
+	var profiles_ok := float(shallow_land_profile["speed_mult"]) < 1.0 \
+		and float(shallow_comfort_profile["speed_mult"]) > 1.0 \
+		and bool(deep_land_profile["wrong_terrain_now"]) \
+		and String(habitat_profile["danger"]) == EnvironmentProfileScript.DANGER_SAFE
 
 	terrain.configure("1v1")
 	var duel_units := terrain.arena_rect.size / unit
 
-	var passed := arena_units == Vector2(240.0, 135.0) and duel_units == Vector2(150.0, 84.0) and cores_in_habitat and center_zone == TerrainMapScript.WATER and shallow_zone == TerrainMapScript.SHALLOW
-	print("terrain_3v3_units=%sx%s terrain_1v1_units=%sx%s cores_in_habitat=%s center=%s shallow=%s" % [
+	var passed := arena_units == Vector2(240.0, 135.0) and duel_units == Vector2(150.0, 84.0) and cores_in_habitat and center_zone == TerrainMapScript.WATER and shallow_zone == TerrainMapScript.SHALLOW and profiles_ok
+	print("terrain_3v3_units=%sx%s terrain_1v1_units=%sx%s cores_in_habitat=%s center=%s shallow=%s profiles_ok=%s" % [
 		str(arena_units.x),
 		str(arena_units.y),
 		str(duel_units.x),
 		str(duel_units.y),
 		str(cores_in_habitat),
 		center_zone,
-		shallow_zone
+		shallow_zone,
+		str(profiles_ok)
 	])
 	quit(0 if passed else 1)

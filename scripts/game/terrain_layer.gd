@@ -43,6 +43,11 @@ func _draw_zone_detail(zone: String, rect: Rect2) -> void:
 			for i in int(rect.get_area() / 11000.0) + 1:
 				var speck := Vector2(rng.randf_range(rect.position.x, rect.end.x), rng.randf_range(rect.position.y, rect.end.y))
 				draw_circle(speck, rng.randf_range(2.0, 5.0), Color(0.24, 0.38, 0.3, 0.7))
+			for i in int(rect.get_area() / 18000.0) + 1:
+				var ripple := Vector2(rng.randf_range(rect.position.x + 8.0, rect.end.x - 8.0), rng.randf_range(rect.position.y + 8.0, rect.end.y - 8.0))
+				var width := rng.randf_range(8.0, 18.0)
+				draw_line(ripple + Vector2(-width * 0.5, 0.0), ripple + Vector2(width * 0.5, 0.0), Color(0.48, 0.68, 0.56, 0.34), 1.4)
+				draw_line(ripple + Vector2(-width * 0.35, 4.0), ripple + Vector2(width * 0.35, 4.0), Color(0.34, 0.5, 0.42, 0.28), 1.0)
 			for i in int(rect.get_area() / 30000.0) + 1:
 				var reed := Vector2(rng.randf_range(rect.position.x + 6.0, rect.end.x - 6.0), rng.randf_range(rect.position.y + 6.0, rect.end.y - 6.0))
 				draw_line(reed, reed + Vector2(-1.0, -7.0), Color(0.28, 0.42, 0.2), 2.0)
@@ -79,6 +84,7 @@ func _draw_zone_edge(zone: String, rect: Rect2) -> void:
 			draw_rect(rect.grow(-3.0), Color(0.04, 0.16, 0.22, 0.45), false, 1.5)
 		TerrainMapScript.SHALLOW:
 			_draw_stippled_rect(rect.grow(-2.0), Color(0.44, 0.56, 0.42, 0.55), 18.0)
+			draw_rect(rect.grow(-5.0), Color(0.32, 0.48, 0.38, 0.22), false, 1.5)
 		TerrainMapScript.COVER:
 			draw_rect(rect.grow(2.0), Color(0.03, 0.055, 0.03, 0.85), false, 3.0)
 		TerrainMapScript.HABITAT_BLUE, TerrainMapScript.HABITAT_RED:

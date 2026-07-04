@@ -1,0 +1,126 @@
+extends SceneTree
+
+const MAIN_MENU_SCENE := "res://scenes/MainMenu.tscn"
+const CHARACTER_SELECT_SCENE := "res://scenes/CharacterSelect.tscn"
+const ARENA_SCENE := "res://scenes/Arena.tscn"
+
+func _initialize() -> void:
+	_run.call_deferred()
+
+func _run() -> void:
+	var failures: Array[String] = []
+	var main_ok: bool = await _check_main_menu(failures)
+	var select_ok: bool = await _check_character_select(failures)
+	var arena_1v1_ok: bool = await _check_arena_mode("1v1", 3, 3, failures)
+	var arena_3v3_ok: bool = await _check_arena_mode("3v3", 0, 5, failures)
+	var hero_lab_ok: bool = await _check_arena_mode("Hero Lab", 0, 1, failures)
+	var passed := main_ok and select_ok and arena_1v1_ok and arena_3v3_ok and hero_lab_ok
+
+	print("scene_boot main=%s select=%s arena_1v1=%s arena_3v3=%s hero_lab=%s" % [
+		str(main_ok),
+		str(select_ok),
+		str(arena_1v1_ok),
+		str(arena_3v3_ok),
+		str(hero_lab_ok)
+	])
+	for failure in failures:
+		push_error(failure)
+	quit(0 if passed else 1)
+
+func _check_main_menu(failures: Array[String]) -> bool:
+	var scene: Node = await _boot_scene(MAIN_MENU_SCENE, failures)
+	if scene == null:
+		return false
+	var ok := _node_exists(scene, "Panel/VBox/OneVOneButton", failures) and _node_exists(scene, "Panel/VBox/ThreeVThreeButton", failures) and _node_exists(scene, "Panel/VBox/HeroLabButton", failures)
+	if not ok:
+		failures.append("MainMenu booted but expected mode buttons were missing.")
+	return ok
+
+func _check_character_select(failures: Array[String]) -> bool:
+	var config := get_root().get_node_or_null("GameConfig")
+	if config != null:
+		config.selected_mode = "1v1"
+		config.set_selected_creature("snapping_turtle")
+
+	var catalog := get_root().get_node_or_null("CreatureCatalog")
+	if catalog != null and not catalog.load_catalog():
+		failures.append("CreatureCatalog failed to load before CharacterSelect boot.")
+		return false
+
+	var scene: Node = await _boot_scene(CHARACTER_SELECT_SCENE, failures)
+	if scene == null:
+		return false
+
+	var hero_list := scene.get_node_or_null("Root/Content/HeroScroll/HeroList")
+	var start_button := scene.get_node_or_null("Root/Footer/StartButton")
+	var back_button := scene.get_node_or_null("Root/Footer/BackButton")
+	var has_selectables := false
+	if hero_list != null:
+		for child in hero_list.get_children():
+			if child is Button and bool(child.get_meta("selectable", false)):
+				has_selectables = true
+				break
+
+	var ok := hero_list != null and start_button != null and back_button != null and has_selectables
+	if not ok:
+		failures.append("CharacterSelect expected hero list, footer buttons, and at least one selectable creature; hero_list=%s start=%s back=%s selectable=%s" % [
+			str(hero_list != null),
+			str(start_button != null),
+			str(back_button != null),
+			str(has_selectables)
+		])
+	return ok
+
+func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_count: int, failures: Array[String]) -> bool:
+	var config := get_root().get_node_or_null("GameConfig")
+	if config != null:
+		config.selected_mode = mode
+		config.set_selected_creature("snapping_turtle")
+		if config.has_method("set_selected_squad_ids"):
+			var squad_ids: Array[String] = ["snapping_turtle", "chorus_frog", "mink"]
+			config.set_selected_squad_ids(squad_ids)
+
+	var scene: Node = await _boot_scene(ARENA_SCENE, failures)
+	if scene == null:
+		return false
+
+	var squad: Array = scene.get("player_squad")
+	var bots: Array = scene.get("bots")
+	var cores: Dictionary = scene.get("cores")
+	var huts: Array = scene.get("huts")
+	var player: Node = scene.get("player")
+	var camera: Camera2D = scene.get("camera")
+	var status_label: Label = scene.get("status_label")
+
+	var ok := squad.size() == expected_squad_size and bots.size() == expected_bot_count and cores.size() == 2 and huts.size() > 0 and player != null and camera != null and status_label != null
+	if not ok:
+		failures.append("Arena %s expected squad=%d bots=%d cores=2 huts>0 player/camera/status; got squad=%d bots=%d cores=%d huts=%d player=%s camera=%s status=%s" % [
+			mode,
+			expected_squad_size,
+			expected_bot_count,
+			squad.size(),
+			bots.size(),
+			cores.size(),
+			huts.size(),
+			str(player != null),
+			str(camera != null),
+			str(status_label != null)
+		])
+	return ok
+
+func _boot_scene(scene_path: String, failures: Array[String]) -> Node:
+	var error := change_scene_to_file(scene_path)
+	if error != OK:
+		failures.append("failed to change scene to %s: error=%d" % [scene_path, error])
+		return null
+	await process_frame
+	await process_frame
+	if current_scene == null:
+		failures.append("scene %s did not become current_scene after two frames." % scene_path)
+	return current_scene
+
+func _node_exists(root: Node, path: NodePath, failures: Array[String]) -> bool:
+	if root.get_node_or_null(path) != null:
+		return true
+	failures.append("missing node %s under %s" % [str(path), root.name])
+	return false

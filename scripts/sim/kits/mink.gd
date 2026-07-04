@@ -16,6 +16,11 @@ var choke_cooldown_on_release := 0.0
 func setup(actor: Node) -> void:
 	actor.primary_timer = 0.0
 
+func reset_for_respawn(_actor: Node) -> void:
+	choke_active = false
+	choke_latch_active = false
+	choke_cooldown_on_release = 0.0
+
 func tick(actor: Node, _delta: float) -> void:
 	_update_choke_release_cooldown(actor)
 	if actor.input_frame == null:

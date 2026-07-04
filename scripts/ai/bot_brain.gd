@@ -7,6 +7,7 @@ const MinkHook := preload("res://scripts/ai/bot_kit_hooks/mink_bot.gd")
 const BeaverHook := preload("res://scripts/ai/bot_kit_hooks/beaver_bot.gd")
 const OwlHook := preload("res://scripts/ai/bot_kit_hooks/owl_bot.gd")
 const DuckHook := preload("res://scripts/ai/bot_kit_hooks/duck_bot.gd")
+const TargetFilter := preload("res://scripts/sim/combat/target_filter.gd")
 
 const FIGHT_SCAN_RANGE := 620.0
 const RETREAT_HEALTH_RATIO := 0.28
@@ -49,7 +50,7 @@ func build_frame(actor: Node) -> Resource:
 	return frame
 
 func _choose_intent(actor: Node) -> Dictionary:
-	var close_threat: Node = actor.arena.get_closest_enemy(actor, RETREAT_THREAT_RANGE)
+	var close_threat: Node = _closest_live_enemy(actor, RETREAT_THREAT_RANGE)
 	if _health_ratio(actor) <= RETREAT_HEALTH_RATIO and close_threat != null:
 		return {
 			"mode": "retreat",
@@ -62,7 +63,7 @@ func _choose_intent(actor: Node) -> Dictionary:
 		return defense
 
 	var objective: Node = _objective_target(actor)
-	var enemy: Node = actor.arena.get_closest_enemy(actor, FIGHT_SCAN_RANGE)
+	var enemy: Node = _closest_live_enemy(actor, FIGHT_SCAN_RANGE)
 	if enemy != null and not _is_hut(actor, enemy):
 		return {"mode": "fight", "target": enemy}
 
@@ -132,15 +133,33 @@ func _closest_enemy_near_point(actor: Node, point: Vector2, radius: float) -> No
 	var closest: Node = null
 	var closest_distance: float = radius
 	for entity in actor.arena.entities:
-		if not _valid_target(entity) or entity.team == actor.team:
-			continue
-		if entity.has_method("is_stealthed") and entity.is_stealthed():
+		if not TargetFilter.is_live_damage_target(actor, entity, {"require_damage_api": false}):
 			continue
 		var distance: float = entity.global_position.distance_to(point)
 		if distance < closest_distance:
 			closest = entity
 			closest_distance = distance
 	return closest
+
+func _closest_live_enemy(actor: Node, max_distance: float) -> Node:
+	var closest: Node = null
+	var closest_distance: float = max_distance
+	if actor.arena == null:
+		return null
+	if _has_property(actor.arena, "entities"):
+		for entity in actor.arena.entities:
+			if not TargetFilter.is_live_damage_target(actor, entity, {"require_damage_api": false}):
+				continue
+			var distance: float = actor.global_position.distance_to(entity.global_position)
+			if distance < closest_distance:
+				closest = entity
+				closest_distance = distance
+		return closest
+	if actor.arena.has_method("get_closest_enemy"):
+		var candidate: Node = actor.arena.get_closest_enemy(actor, max_distance)
+		if TargetFilter.is_live_damage_target(actor, candidate, {"require_damage_api": false}):
+			return candidate
+	return null
 
 func _retreat_point(actor: Node) -> Vector2:
 	var best_point: Vector2 = actor.global_position
@@ -162,13 +181,12 @@ func _aim_point(actor: Node, target: Node, fallback: Vector2, mode: String) -> V
 	return fallback
 
 func _valid_target(target: Node) -> bool:
-	if target == null or not is_instance_valid(target):
-		return false
-	if target.has_method("is_alive") and not target.is_alive():
-		return false
-	if float(target.health) <= 0.0:
-		return false
-	return true
+	return TargetFilter.is_live_damage_target(null, target, {
+		"ignore_team": true,
+		"require_damage_api": false,
+		"allow_self": true,
+		"allow_stealthed": true
+	})
 
 func _health_ratio(target: Node) -> float:
 	var max_health := float(target.max_health)

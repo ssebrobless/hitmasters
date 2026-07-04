@@ -22,8 +22,13 @@ const FAMILY_ORDER := ["amphibian", "reptile", "bird", "mammal", "crawly"]
 var creatures: Array[Dictionary] = []
 var selectable_indices: Array[int] = []
 var selected_index := 0
+var selected_squad_ids: Array[String] = []
+var active_squad_slot := 0
 
 @onready var mode_label: Label = $Root/Header/ModeLabel
+@onready var squad_panel: VBoxContainer = $Root/Header/SquadPanel
+@onready var squad_hint: Label = $Root/Header/SquadPanel/SquadHint
+@onready var squad_slots: HBoxContainer = $Root/Header/SquadPanel/SquadSlots
 @onready var hero_list: VBoxContainer = $Root/Content/HeroScroll/HeroList
 @onready var preview: Control = $Root/Content/Details/HeroPreview
 @onready var hero_name: Label = $Root/Content/Details/HeroName
@@ -39,9 +44,18 @@ func _ready() -> void:
 	_build_creature_buttons()
 	start_button.pressed.connect(_start_match)
 	back_button.pressed.connect(_go_back)
-	mode_label.text = "Mode: %s" % GameConfig.selected_mode
+	for slot_index in squad_slots.get_child_count():
+		var slot_button := squad_slots.get_child(slot_index) as Button
+		if slot_button != null:
+			slot_button.pressed.connect(_set_active_squad_slot.bind(slot_index))
+	_setup_mode_ui()
 
 	var selected_id := GameConfig.selected_creature_id
+	if _is_trio_mode():
+		selected_squad_ids = GameConfig.get_selected_squad_ids()
+		active_squad_slot = clampi(active_squad_slot, 0, selected_squad_ids.size() - 1)
+		selected_id = selected_squad_ids[active_squad_slot]
+
 	for i in creatures.size():
 		if creatures[i].get("id", "") == selected_id and _is_selectable(creatures[i]):
 			selected_index = i
@@ -106,7 +120,10 @@ func _select_creature(index: int) -> void:
 		return
 
 	var creature_id := String(creature.get("id", "snapping_turtle"))
-	GameConfig.set_selected_creature(creature_id)
+	if _is_trio_mode():
+		_assign_trio_slot(creature_id)
+	else:
+		GameConfig.set_selected_creature(creature_id)
 	preview.set_creature(creature_id, 0)
 
 	hero_name.text = creature.get("name", "Unknown")
@@ -138,6 +155,78 @@ func _select_creature(index: int) -> void:
 	counterplay_label.text = "Passives: %s" % ("None" if passive_lines.is_empty() else " / ".join(passive_lines))
 
 	_refresh_button_states()
+	_refresh_squad_display()
+
+func _setup_mode_ui() -> void:
+	var mode_text := "1v1 Trio" if _is_trio_mode() else GameConfig.selected_mode
+	mode_label.text = "Mode: %s" % mode_text
+	squad_panel.visible = _is_trio_mode()
+	start_button.text = "Start Trio Match" if _is_trio_mode() else "Start Match"
+	if _is_trio_mode():
+		selected_squad_ids = GameConfig.get_selected_squad_ids()
+		squad_hint.text = "Pick a slot, then pick a playable creature. Slot 1 starts active; 1/2/3 swap during the match."
+	else:
+		selected_squad_ids.clear()
+
+func _is_trio_mode() -> bool:
+	return GameConfig.selected_mode == "1v1"
+
+func _set_active_squad_slot(slot_index: int) -> void:
+	if not _is_trio_mode():
+		return
+	active_squad_slot = clampi(slot_index, 0, 2)
+	if active_squad_slot < selected_squad_ids.size():
+		var creature_id := selected_squad_ids[active_squad_slot]
+		var index := _find_creature_index(creature_id)
+		if index >= 0:
+			_select_creature(index)
+			return
+	_refresh_squad_display()
+	_refresh_button_states()
+
+func _assign_trio_slot(creature_id: String) -> void:
+	if not SLICE_CREATURE_IDS.has(creature_id):
+		return
+	selected_squad_ids = GameConfig.get_selected_squad_ids()
+	active_squad_slot = clampi(active_squad_slot, 0, 2)
+	while selected_squad_ids.size() < 3:
+		selected_squad_ids.append(SLICE_CREATURE_IDS[selected_squad_ids.size()])
+
+	var existing_slot := selected_squad_ids.find(creature_id)
+	if existing_slot >= 0 and existing_slot != active_squad_slot:
+		selected_squad_ids[existing_slot] = selected_squad_ids[active_squad_slot]
+	selected_squad_ids[active_squad_slot] = creature_id
+	GameConfig.set_selected_squad_ids(selected_squad_ids)
+	selected_squad_ids = GameConfig.get_selected_squad_ids()
+
+func _refresh_squad_display() -> void:
+	if not _is_trio_mode():
+		return
+	selected_squad_ids = GameConfig.get_selected_squad_ids()
+	for slot_index in squad_slots.get_child_count():
+		var button := squad_slots.get_child(slot_index) as Button
+		if button == null:
+			continue
+		var creature_id := selected_squad_ids[slot_index] if slot_index < selected_squad_ids.size() else ""
+		var prefix := "Slot %d" % (slot_index + 1)
+		if slot_index == 0:
+			prefix = "Slot 1 start"
+		if slot_index == active_squad_slot:
+			prefix = "> %s" % prefix
+		button.text = "%s\n%s" % [prefix, _get_creature_name(creature_id)]
+		button.modulate = Color(1.0, 0.95, 0.64, 1.0) if slot_index == active_squad_slot else Color(1.0, 1.0, 1.0, 1.0)
+
+func _find_creature_index(creature_id: String) -> int:
+	for i in creatures.size():
+		if String(creatures[i].get("id", "")) == creature_id:
+			return i
+	return -1
+
+func _get_creature_name(creature_id: String) -> String:
+	var index := _find_creature_index(creature_id)
+	if index >= 0:
+		return String(creatures[index].get("name", creature_id))
+	return creature_id.capitalize()
 
 func _group_by_family() -> Dictionary:
 	var grouped := {}
@@ -156,7 +245,12 @@ func _refresh_button_states() -> void:
 		var button := child as Button
 		if button == null or not bool(button.get_meta("selectable", false)):
 			continue
-		button.disabled = int(button.get_meta("creature_index", -1)) == selected_index
+		if _is_trio_mode():
+			button.disabled = false
+			var creature_id := String(creatures[int(button.get_meta("creature_index", -1))].get("id", ""))
+			button.modulate = Color(0.88, 1.0, 0.84, 1.0) if selected_squad_ids.has(creature_id) else Color(1.0, 1.0, 1.0, 1.0)
+		else:
+			button.disabled = int(button.get_meta("creature_index", -1)) == selected_index
 
 func _get_speed_text(stats: Dictionary) -> String:
 	if stats.has("speed"):

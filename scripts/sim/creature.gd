@@ -4,6 +4,7 @@ const SimConstants := preload("res://scripts/sim/sim_constants.gd")
 const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 const CreatureStateScript := preload("res://scripts/sim/creature_state.gd")
 const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
+const EnvironmentProfileScript := preload("res://scripts/sim/environment_profile.gd")
 const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
 const VisualStyle := preload("res://scripts/visual/visual_style.gd")
 const TurtleKitScript := preload("res://scripts/sim/kits/snapping_turtle.gd")
@@ -13,12 +14,12 @@ const BeaverKitScript := preload("res://scripts/sim/kits/beaver.gd")
 const OwlKitScript := preload("res://scripts/sim/kits/owl.gd")
 const DuckKitScript := preload("res://scripts/sim/kits/duck.gd")
 
-const WATER_SPEED_MULTIPLIER := 1.15
 const WRONG_TERRAIN_GRACE_SEC := 3.0
 const WRONG_TERRAIN_EARLY_DPS := 0.02
 const WRONG_TERRAIN_LATE_DPS := 0.05
 const TAKEOFF_DISTANCE_UNITS := 2.0
 const FLIGHT_GROUNDED_LOCKOUT_SEC := 3.0
+const TERRAIN_SPEED_LERP_RATE := 9.0
 
 var arena: Node = null
 var terrain_map: RefCounted = null
@@ -33,6 +34,11 @@ var max_health := 1.0
 var health := 1.0
 var body_radius := 8.0
 var base_speed_px := 0.0
+var terrain_speed_px := 0.0
+var terrain_speed_target_px := 0.0
+var current_terrain_zone := TerrainMapScript.LAND
+var previous_terrain_zone := TerrainMapScript.LAND
+var current_environment_profile: Dictionary = {}
 var swim_time_max := 0.0
 var swim_time_remaining := 0.0
 var wrong_terrain_seconds := 0.0
@@ -68,6 +74,7 @@ var anim_attack_reach := 0.0
 var anim_attack_aim := Vector2.RIGHT
 var anim_windup_timer := 0.0
 var anim_windup_duration := 0.001
+var last_move_displacement_px := 0.0
 var stealth_timer := 0.0
 var low_window_timer := 0.0
 var respawn_timer := 0.0
@@ -91,6 +98,7 @@ func apply_creature(next_creature_id: String) -> void:
 	base_speed_px = _speed_px_for_ground()
 	swim_time_max = _numeric_stat("swim_time_sec", 0.0)
 	swim_time_remaining = swim_time_max
+	_reset_terrain_profile()
 	flight_time_max = _numeric_stat("flight_time_sec", 0.0)
 	flight_time_remaining = flight_time_max
 	state = CreatureStateScript.State.AIRBORNE if has_movement("always_flying") else CreatureStateScript.State.NORMAL
@@ -126,11 +134,13 @@ func _process(delta: float) -> void:
 
 func tick_sim(delta: float) -> void:
 	if not alive:
-		# Interim respawn (fixed timer) until M5 replaces this with habitat
-		# stock selection per decision #6.
-		respawn_timer = maxf(respawn_timer - delta, 0.0)
-		if respawn_timer <= 0.0:
-			_respawn()
+		if arena != null and arena.has_method("uses_stock_respawn") and arena.uses_stock_respawn(self):
+			if arena.tick_stock_respawn(self, delta):
+				_respawn()
+		else:
+			respawn_timer = maxf(respawn_timer - delta, 0.0)
+			if respawn_timer <= 0.0:
+				_respawn()
 		return
 
 	_tick_timers(delta)
@@ -140,6 +150,7 @@ func tick_sim(delta: float) -> void:
 	_update_flight(delta)
 	_update_terrain(delta)
 	_move_from_input(delta)
+	_update_takeoff_charge_from_displacement(last_move_displacement_px)
 	_tick_latch(delta)
 	if kit != null and kit.has_method("tick"):
 		kit.tick(self, delta)
@@ -280,14 +291,9 @@ func get_current_zone() -> String:
 	return TerrainMapScript.LAND
 
 func get_speed_px() -> float:
-	var zone := get_current_zone()
 	if is_airborne():
 		return _speed_px_for_flight()
-	if zone == TerrainMapScript.WATER:
-		if _is_water_boosted():
-			return _speed_px_for_water() * WATER_SPEED_MULTIPLIER
-		return _speed_px_for_ground()
-	return _speed_px_for_ground()
+	return terrain_speed_px if terrain_speed_px > 0.0 else _terrain_target_speed_px(get_current_zone())
 
 func get_swim_ratio() -> float:
 	if swim_time_max <= 0.0:
@@ -300,6 +306,8 @@ func get_flight_ratio() -> float:
 	return clampf(flight_time_remaining / flight_time_max, 0.0, 1.0)
 
 func _move_from_input(delta: float) -> void:
+	var start_position := global_position
+	last_move_displacement_px = 0.0
 	if state == CreatureStateScript.State.PERCHED:
 		velocity = Vector2.ZERO
 		if input_frame != null and input_frame.aim != Vector2.ZERO:
@@ -322,22 +330,30 @@ func _move_from_input(delta: float) -> void:
 			global_position = arena.clamp_to_arena(global_position)
 		elif arena.has_method("resolve_body_position"):
 			global_position = arena.resolve_body_position(global_position, body_radius)
+	last_move_displacement_px = global_position.distance_to(start_position)
 
 func _update_terrain(delta: float) -> void:
 	var zone := get_current_zone()
-	if zone == TerrainMapScript.WATER and not is_airborne():
+	previous_terrain_zone = current_terrain_zone
+	current_terrain_zone = zone
+	current_environment_profile = _environment_profile_for_zone(zone)
+	terrain_speed_target_px = _terrain_target_speed_px(zone)
+	terrain_speed_px = lerpf(terrain_speed_px if terrain_speed_px > 0.0 else terrain_speed_target_px, terrain_speed_target_px, clampf(delta * TERRAIN_SPEED_LERP_RATE, 0.0, 1.0))
+
+	if not is_airborne() and bool(current_environment_profile.get("drains_swim", false)):
 		if _has_limited_swim_time():
 			swim_time_remaining = maxf(swim_time_remaining - delta, 0.0)
-		if _is_wrong_terrain():
-			wrong_terrain_seconds += delta
-			var rate := WRONG_TERRAIN_LATE_DPS if wrong_terrain_seconds > WRONG_TERRAIN_GRACE_SEC else WRONG_TERRAIN_EARLY_DPS
-			take_damage(max_health * rate * delta)
-		else:
-			wrong_terrain_seconds = 0.0
-	else:
+
+	if not is_airborne() and _is_wrong_terrain():
+		wrong_terrain_seconds += delta
+		var rate := WRONG_TERRAIN_LATE_DPS if wrong_terrain_seconds > WRONG_TERRAIN_GRACE_SEC else WRONG_TERRAIN_EARLY_DPS
+		take_damage(max_health * rate * delta)
+	elif bool(current_environment_profile.get("restores_swim", true)):
 		wrong_terrain_seconds = 0.0
 		if swim_time_max > 0.0:
 			swim_time_remaining = minf(swim_time_remaining + delta, swim_time_max)
+	else:
+		wrong_terrain_seconds = 0.0
 
 func _update_flight(delta: float) -> void:
 	if has_movement("always_flying"):
@@ -364,12 +380,22 @@ func _update_flight(delta: float) -> void:
 		takeoff_distance_px = 0.0
 		return
 
-	if input_frame.is_pressed(InputFrameScript.BUTTON_FLIGHT_TOGGLE) and input_frame.move.length() > 0.0:
-		takeoff_distance_px += input_frame.move.normalized().length() * get_speed_px() * delta
-		if takeoff_distance_px >= TAKEOFF_DISTANCE_UNITS * SimConstants.UNIT_PX:
-			state = CreatureStateScript.State.AIRBORNE
-			takeoff_distance_px = 0.0
-	else:
+	if not input_frame.is_pressed(InputFrameScript.BUTTON_FLIGHT_TOGGLE) or input_frame.move.length() <= 0.0:
+		takeoff_distance_px = 0.0
+
+func _update_takeoff_charge_from_displacement(displacement_px: float) -> void:
+	if state == CreatureStateScript.State.PERCHED or is_airborne() or flight_time_max <= 0.0 or not has_movement("flight"):
+		takeoff_distance_px = 0.0
+		return
+	if flight_grounded_timer > 0.0 or input_frame == null:
+		takeoff_distance_px = 0.0
+		return
+	if not input_frame.is_pressed(InputFrameScript.BUTTON_FLIGHT_TOGGLE) or input_frame.move.length() <= 0.0:
+		takeoff_distance_px = 0.0
+		return
+	takeoff_distance_px += maxf(displacement_px, 0.0)
+	if takeoff_distance_px >= TAKEOFF_DISTANCE_UNITS * SimConstants.UNIT_PX:
+		state = CreatureStateScript.State.AIRBORNE
 		takeoff_distance_px = 0.0
 
 func get_aim_direction() -> Vector2:
@@ -492,10 +518,13 @@ func _respawn() -> void:
 	health = max_health
 	modifiers.clear()
 	healing_ticks.clear()
+	if kit != null and kit.has_method("reset_for_respawn"):
+		kit.reset_for_respawn(self)
 	swim_time_remaining = swim_time_max
 	flight_time_remaining = flight_time_max
 	flight_grounded_timer = 0.0
 	wrong_terrain_seconds = 0.0
+	_reset_terrain_profile()
 	dash_velocity = Vector2.ZERO
 	dash_timer = 0.0
 	primary_timer = 0.4
@@ -503,10 +532,14 @@ func _respawn() -> void:
 	e_timer = maxf(e_timer, 1.0)
 	state = CreatureStateScript.State.AIRBORNE if has_movement("always_flying") else CreatureStateScript.State.NORMAL
 	if arena != null:
-		if arena.has_method("get_team_spawn"):
+		if arena.has_method("get_actor_respawn_position"):
+			global_position = arena.get_actor_respawn_position(self)
+		elif arena.has_method("get_team_spawn"):
 			global_position = arena.get_team_spawn(team)
 		if arena.has_method("register_entity"):
 			arena.register_entity(self)
+		if arena.has_method("on_actor_respawned"):
+			arena.on_actor_respawned(self)
 		if arena.has_method("add_circle_telegraph"):
 			arena.add_circle_telegraph(global_position, body_radius + 26.0, Color(0.45, 0.72, 1.0, 0.75) if team == 0 else Color(1.0, 0.4, 0.35, 0.75), 0.6, 4.0, true)
 	queue_redraw()
@@ -622,17 +655,34 @@ func _make_kit() -> RefCounted:
 			return null
 
 func _is_wrong_terrain() -> bool:
-	if has_movement("aquatic") or has_movement("paddling") or has_movement("wading"):
-		return false
-	if has_movement("semi_aquatic"):
-		return swim_time_remaining <= 0.0
-	return true
+	if current_environment_profile.is_empty():
+		current_environment_profile = _environment_profile_for_zone(get_current_zone())
+	return bool(current_environment_profile.get("wrong_terrain_now", false))
 
 func _is_water_boosted() -> bool:
-	return has_movement("aquatic") or has_movement("semi_aquatic")
+	return EnvironmentProfileScript.has_deep_water_speed_bonus(movement_tags)
 
 func _has_limited_swim_time() -> bool:
-	return has_movement("semi_aquatic") and swim_time_max > 0.0
+	return EnvironmentProfileScript.has_limited_swim_time(movement_tags) and swim_time_max > 0.0
+
+func _reset_terrain_profile() -> void:
+	current_terrain_zone = get_current_zone()
+	previous_terrain_zone = current_terrain_zone
+	current_environment_profile = _environment_profile_for_zone(current_terrain_zone)
+	terrain_speed_target_px = _terrain_target_speed_px(current_terrain_zone)
+	terrain_speed_px = terrain_speed_target_px
+
+func _environment_profile_for_zone(zone: String) -> Dictionary:
+	if terrain_map != null and terrain_map.has_method("get_environment_profile_for_zone"):
+		return terrain_map.get_environment_profile_for_zone(zone, movement_tags, swim_time_remaining)
+	return EnvironmentProfileScript.for_zone(zone, movement_tags, swim_time_remaining)
+
+func _terrain_target_speed_px(zone: String) -> float:
+	var profile := _environment_profile_for_zone(zone)
+	var speed_mult := float(profile.get("speed_mult", 1.0))
+	if zone == TerrainMapScript.WATER and _is_water_boosted():
+		return _speed_px_for_water() * speed_mult
+	return _speed_px_for_ground() * speed_mult
 
 func _speed_px_for_ground() -> float:
 	if stats.has("speed"):

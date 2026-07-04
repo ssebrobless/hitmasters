@@ -23,6 +23,8 @@ const TerrainLayerScript := preload("res://scripts/game/terrain_layer.gd")
 const WaterLayerScript := preload("res://scripts/game/water_layer.gd")
 const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
 const SimConstants := preload("res://scripts/sim/sim_constants.gd")
+const TargetFilter := preload("res://scripts/sim/combat/target_filter.gd")
+const StockManagerScript := preload("res://scripts/game/stock_manager.gd")
 
 const PLAYABLE_CREATURE_POOL := ["snapping_turtle", "chorus_frog", "mink", "beaver", "owl", "duck"]
 const SQUAD_COMMAND_FARM := "farm"
@@ -52,6 +54,7 @@ var dams: Array[Node] = []
 var huts: Array[Node] = []
 var huts_lost := {0: 0, 1: 0}
 var hut_defend_hint_timer := 0.0
+var habitat_deposit_feedback_timer := 0.0
 var ui_refresh_accumulator := 0.0
 var camera: Camera2D = null
 
@@ -87,6 +90,7 @@ var help_label: Label
 var local_input: Node = LocalInputScript.new()
 var bot_brain: RefCounted = BotBrainScript.new()
 var match_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var stock_manager: RefCounted = StockManagerScript.new()
 
 func _ready() -> void:
 	_configure_mode()
@@ -126,6 +130,7 @@ func _physics_process(delta: float) -> void:
 		return
 
 	hut_defend_hint_timer = maxf(hut_defend_hint_timer - delta, 0.0)
+	habitat_deposit_feedback_timer = maxf(habitat_deposit_feedback_timer - delta, 0.0)
 	_tick_squad_command(delta)
 	if _is_1v1_trio_mode():
 		_feed_player_squad_inputs()
@@ -243,6 +248,7 @@ func _build_ui() -> void:
 
 func _spawn_match() -> void:
 	_seed_match_rng()
+	stock_manager.reset()
 
 	var blue_core = CoreScript.new()
 	add_child(blue_core)
@@ -297,7 +303,8 @@ func _spawn_bots_for_mode() -> void:
 		var red_spawn := get_team_spawn(RED)
 		var red_names := ["Red Claw", "Red Reed", "Red Fang"]
 		for i in 3:
-			_spawn_bot(RED, enemy_pool[i], red_spawn + _squad_spawn_offset(i, RED), red_names[i])
+			var bot := _spawn_bot(RED, enemy_pool[i], red_spawn + _squad_spawn_offset(i, RED), red_names[i])
+			stock_manager.register_slot(RED, i, enemy_pool[i], bot)
 	else:
 		_spawn_bot(RED, PLAYABLE_CREATURE_POOL[match_rng.randi_range(0, PLAYABLE_CREATURE_POOL.size() - 1)], get_bot_spawn(RED, "Red Rival"), "Red Rival")
 
@@ -323,6 +330,7 @@ func _spawn_player_squad() -> void:
 		member.actor_name = "Blue %d %s" % [i + 1, member.creature_data.get("name", member.creature_id)]
 		player_squad.append(member)
 		register_entity(member)
+		stock_manager.register_slot(BLUE, i, squad_ids[i], member)
 	player = player_squad[active_squad_index]
 
 func _squad_spawn_offset(index: int, team: int) -> Vector2:
@@ -352,19 +360,22 @@ func _shuffled_creature_pool(source_pool: Array) -> Array:
 		shuffled[j] = tmp
 	return shuffled
 
-func _spawn_bot(team: int, creature_id: String, spawn_position: Vector2, bot_name: String) -> void:
+func _spawn_bot(team: int, creature_id: String, spawn_position: Vector2, bot_name: String) -> Node:
 	var bot = CreatureScript.new()
 	add_child(bot)
 	bot.setup(self, team, spawn_position, creature_id, terrain_map)
 	bot.actor_name = bot_name
 	bots.append(bot)
 	register_entity(bot)
+	return bot
 
 func _feed_player_squad_inputs() -> void:
 	_select_live_active_if_needed()
 	if player != null and is_instance_valid(player) and player.is_alive():
 		var player_frame: Resource = local_input.build_frame(player.get_global_mouse_position())
 		player.set_input_frame(player_frame)
+		if player_frame.is_pressed(InputFrameScript.BUTTON_HABITAT_DEPOSIT):
+			_try_manual_habitat_deposit(player)
 		if player_frame.is_pressed(InputFrameScript.BUTTON_HUT_DEFEND) and hut_defend_hint_timer <= 0.0 and _player_near_own_hut():
 			hut_defend_hint_timer = 2.5
 			add_kill_feed("Hut defense assignment needs 3+ habitat stocks (coming with the stock system)")
@@ -501,8 +512,8 @@ func _target_radius(target: Node) -> float:
 	return 0.0
 
 func _retreat_point(actor: Node) -> Vector2:
-	var best_point := get_team_spawn(actor.team)
-	var best_distance := actor.global_position.distance_to(best_point)
+	var best_point: Vector2 = get_team_spawn(actor.team)
+	var best_distance: float = actor.global_position.distance_to(best_point)
 	for hut in huts:
 		if not _valid_target(hut) or hut.team != actor.team:
 			continue
@@ -700,9 +711,9 @@ func resolve_projectile_hits(projectile: Node) -> void:
 		return
 
 	for entity in entities:
-		if entity == null or not is_instance_valid(entity):
+		if projectile.hit_entities.has(entity):
 			continue
-		if entity.team == projectile.team or projectile.hit_entities.has(entity):
+		if not TargetFilter.is_live_damage_target(projectile, entity, {"require_damage_api": false}):
 			continue
 		if entity.global_position.distance_to(projectile.global_position) <= projectile.radius + entity.body_radius:
 			# Projectiles are RANGED (decision #1) — flying targets are hit
@@ -737,11 +748,7 @@ func get_closest_enemy(source: Node, max_distance: float) -> Node:
 	var closest: Node = null
 	var closest_distance := max_distance
 	for entity in entities:
-		if entity == source or entity == null or not is_instance_valid(entity):
-			continue
-		if entity.team == source.team:
-			continue
-		if entity.has_method("is_stealthed") and entity.is_stealthed():
+		if not TargetFilter.is_live_damage_target(source, entity, {"require_damage_api": false}):
 			continue
 		if not has_line_of_sight(source.global_position, entity.global_position, source.body_radius):
 			continue
@@ -753,7 +760,7 @@ func get_closest_enemy(source: Node, max_distance: float) -> Node:
 
 func damage_enemies_in_radius(source_team: int, center: Vector2, radius: float, damage: float, source_actor: Node = null) -> void:
 	for entity in entities:
-		if entity == null or not is_instance_valid(entity) or entity.team == source_team:
+		if not _valid_target(entity) or entity.team == source_team:
 			continue
 		if cover_blocks_point(center, entity.global_position, minf(radius, 18.0)):
 			continue
@@ -772,7 +779,7 @@ func damage_enemies_in_radius(source_team: int, center: Vector2, radius: float, 
 
 func heal_allies_in_radius(source_team: int, center: Vector2, radius: float, amount: float) -> void:
 	for entity in entities:
-		if entity == null or not is_instance_valid(entity) or entity.team != source_team:
+		if not _valid_target(entity) or entity.team != source_team:
 			continue
 		if entity.has_method("heal") and entity.global_position.distance_to(center) <= radius + entity.body_radius:
 			entity.heal(amount)
@@ -794,6 +801,54 @@ func record_death(victim: Node, killer: Node = null) -> void:
 		add_kill_feed("%s eliminated %s" % [killer.get_actor_name(), victim.get_actor_name()])
 	else:
 		add_kill_feed("%s was eliminated" % victim.get_actor_name())
+	_consume_stock_for_death(victim)
+
+func _consume_stock_for_death(victim: Node) -> void:
+	if not uses_stock_respawn(victim):
+		return
+	var respawn_duration := float(victim.get("respawn_duration") if victim.get("respawn_duration") != null else 5.0)
+	var slot: Dictionary = stock_manager.record_ko(victim, respawn_duration)
+	var remaining := int(slot.get("stocks_remaining", 0))
+	var max_stocks := int(slot.get("max_stocks", StockManagerScript.MAX_STOCKS))
+	if String(slot.get("state", "")) == StockManagerScript.STATE_EXHAUSTED:
+		add_kill_feed("%s is out of stocks" % victim.get_actor_name())
+	else:
+		add_kill_feed("%s stocks %d/%d" % [victim.get_actor_name(), remaining, max_stocks])
+	_check_stock_victory(victim.team)
+
+func uses_stock_respawn(actor: Node) -> bool:
+	return _is_1v1_trio_mode() and actor != null and stock_manager.has_actor(actor)
+
+func tick_stock_respawn(actor: Node, delta: float) -> bool:
+	if not uses_stock_respawn(actor):
+		return false
+	var slot: Dictionary = stock_manager.tick_actor_respawn(actor, delta)
+	if slot.is_empty():
+		return false
+	actor.respawn_timer = float(slot.get("respawn_timer", actor.respawn_timer))
+	return stock_manager.can_respawn(actor)
+
+func get_actor_respawn_position(actor: Node) -> Vector2:
+	if uses_stock_respawn(actor):
+		var rect: Rect2 = terrain_map.get_team_habitat_rect(actor.team)
+		if rect.size.x > 0.0 and rect.size.y > 0.0:
+			var slot: Dictionary = stock_manager.get_slot_for_actor(actor)
+			var slot_index := int(slot.get("slot_index", 1))
+			return rect.position + rect.size * 0.5 + Vector2(0.0, float(slot_index - 1) * 34.0)
+	return get_team_spawn(actor.team)
+
+func on_actor_respawned(actor: Node) -> void:
+	if uses_stock_respawn(actor):
+		stock_manager.mark_respawned(actor)
+
+func _check_stock_victory(losing_team: int) -> void:
+	if match_over or not stock_manager.team_exhausted(losing_team):
+		return
+	match_over = true
+	var winner := "Red" if losing_team == BLUE else "Blue"
+	status_label.text = "%s wins by stock elimination! Press Enter to restart or Esc for menu." % winner
+	end_summary_label.text = _get_match_summary(winner)
+	add_kill_feed("%s squad is out of stocks" % _team_name(losing_team))
 
 func _show_core_shielded(core: Node) -> void:
 	if hut_defend_hint_timer > 0.0:
@@ -1218,7 +1273,7 @@ func _draw_squad_badges() -> void:
 			continue
 		var text := _squad_badge_text(member, i)
 		var color := _squad_badge_color(member, i)
-		var position := member.global_position + Vector2(-28.0, -member.body_radius - 25.0)
+		var position: Vector2 = member.global_position + Vector2(-28.0, -member.body_radius - 25.0)
 		draw_string(ThemeDB.fallback_font, position + Vector2(1.5, 1.5), text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(0.02, 0.02, 0.02, 0.85))
 		draw_string(ThemeDB.fallback_font, position, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, color)
 
@@ -1320,7 +1375,13 @@ func _get_squad_rail_text() -> String:
 		var marker := "*" if member == player else " "
 		var hp_ratio := _health_ratio(member)
 		var state := "KO %.1fs" % member.respawn_timer if member.has_method("is_alive") and not member.is_alive() else "%d%%" % int(hp_ratio * 100.0)
-		chunks.append("%s%d %s stocks 3/3 %s" % [marker, i + 1, member.creature_data.get("name", member.creature_id), state])
+		var stocks_text := "stocks 3/3"
+		if stock_manager.has_actor(member):
+			var slot: Dictionary = stock_manager.get_slot_for_actor(member)
+			stocks_text = "stocks %d/%d" % [int(slot.get("stocks_remaining", 3)), int(slot.get("max_stocks", 3))]
+			if String(slot.get("state", "")) == StockManagerScript.STATE_EXHAUSTED:
+				state = "OUT"
+		chunks.append("%s%d %s %s %s" % [marker, i + 1, member.creature_data.get("name", member.creature_id), stocks_text, state])
 	return " | ".join(chunks)
 
 func _format_cooldown(timer: float) -> String:
@@ -1407,6 +1468,24 @@ func _player_near_own_hut() -> bool:
 			return true
 	return false
 
+func _try_manual_habitat_deposit(actor: Node) -> bool:
+	if actor == null or not is_instance_valid(actor) or habitat_deposit_feedback_timer > 0.0:
+		return false
+	habitat_deposit_feedback_timer = 1.0
+	if not _is_actor_in_home_habitat(actor):
+		add_kill_feed("U: enter home habitat to deposit")
+		return false
+	if uses_stock_respawn(actor):
+		stock_manager.record_habitat_visit(actor)
+	add_kill_feed("%s checked into habitat; food deposit buffs are pending" % actor.get_actor_name())
+	return true
+
+func _is_actor_in_home_habitat(actor: Node) -> bool:
+	var rect: Rect2 = terrain_map.get_team_habitat_rect(actor.team)
+	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
+		return false
+	return rect.grow(16.0).has_point(actor.global_position)
+
 func _team_name(team: int) -> String:
 	return "Blue" if team == BLUE else "Red"
 
@@ -1424,15 +1503,23 @@ func _input(event: InputEvent) -> void:
 			add_kill_feed("Press Esc again to leave the match")
 			var confirm_timer := get_tree().create_timer(2.0)
 			confirm_timer.timeout.connect(func() -> void: quit_confirm_timer = 0.0)
-	elif _is_1v1_trio_mode() and event is InputEventKey and event.pressed and not event.echo:
-		match event.keycode:
-			KEY_1:
-				_set_active_squad_index(0)
-			KEY_2:
-				_set_active_squad_index(1)
-			KEY_3:
-				_set_active_squad_index(2)
-			KEY_T:
-				_issue_squad_follow()
-			KEY_G:
-				_issue_squad_farm()
+	elif _is_1v1_trio_mode() and _is_pressed_non_echo_event(event):
+		if event.is_action_pressed("squad_slot_1"):
+			_set_active_squad_index(0)
+		elif event.is_action_pressed("squad_slot_2"):
+			_set_active_squad_index(1)
+		elif event.is_action_pressed("squad_slot_3"):
+			_set_active_squad_index(2)
+		elif event.is_action_pressed("squad_regroup"):
+			_issue_squad_follow()
+		elif event.is_action_pressed("squad_farm"):
+			_issue_squad_farm()
+
+func _is_pressed_non_echo_event(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return event.pressed and not event.echo
+	if event is InputEventAction:
+		return event.pressed
+	if event is InputEventMouseButton:
+		return event.pressed
+	return false

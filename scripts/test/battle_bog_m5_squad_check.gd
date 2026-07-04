@@ -1,16 +1,30 @@
 extends SceneTree
 
-const ArenaScript := preload("res://scripts/game/arena.gd")
+const ARENA_SCENE := "res://scenes/Arena.tscn"
 const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 
 func _initialize() -> void:
+	_run.call_deferred()
+
+func _run() -> void:
 	var config := get_root().get_node_or_null("GameConfig")
 	if config != null:
 		config.selected_mode = "1v1"
-		config.set_selected_squad_ids(["snapping_turtle", "chorus_frog", "mink"])
+		var squad_ids: Array[String] = ["snapping_turtle", "chorus_frog", "mink"]
+		config.set_selected_squad_ids(squad_ids)
 
-	var arena = ArenaScript.new()
-	get_root().add_child(arena)
+	var error := change_scene_to_file(ARENA_SCENE)
+	if error != OK:
+		push_error("failed to boot Arena scene for M5 squad check: error=%d" % error)
+		quit(1)
+		return
+	await process_frame
+	await process_frame
+	var arena := current_scene
+	if arena == null:
+		push_error("Arena scene did not become current_scene for M5 squad check.")
+		quit(1)
+		return
 
 	var failures: Array[String] = []
 	var spawn_ok := _check_spawn(arena, failures)

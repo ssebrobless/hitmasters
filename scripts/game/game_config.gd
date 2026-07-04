@@ -15,13 +15,14 @@ func _ready() -> void:
 			set_selected_creature(argument.trim_prefix("--creature="))
 
 func set_selected_creature(creature_id: String) -> void:
-	selected_creature_id = creature_id
-	selected_squad_ids = _build_squad_around(creature_id)
+	var playable_id := _playable_or_default(creature_id)
+	selected_creature_id = playable_id
+	selected_squad_ids = _build_squad_around(playable_id)
 
 func get_selected_squad_ids() -> Array[String]:
 	return _normalize_squad_ids(selected_squad_ids)
 
-func set_selected_squad_ids(creature_ids: Array[String]) -> void:
+func set_selected_squad_ids(creature_ids: Array) -> void:
 	selected_squad_ids = _normalize_squad_ids(creature_ids)
 	if not selected_squad_ids.is_empty():
 		selected_creature_id = selected_squad_ids[0]
@@ -37,12 +38,13 @@ func _build_squad_around(creature_id: String) -> Array[String]:
 			output.append(candidate)
 	return _normalize_squad_ids(output)
 
-func _normalize_squad_ids(creature_ids: Array[String]) -> Array[String]:
+func _normalize_squad_ids(creature_ids: Array) -> Array[String]:
 	var output: Array[String] = []
 	for creature_id in creature_ids:
-		if creature_id.is_empty() or output.has(creature_id):
+		var normalized_id := String(creature_id)
+		if normalized_id.is_empty() or output.has(normalized_id) or not PLAYABLE_SQUAD_POOL.has(normalized_id):
 			continue
-		output.append(creature_id)
+		output.append(normalized_id)
 	for fallback in DEFAULT_SQUAD_IDS:
 		if output.size() >= 3:
 			break
@@ -52,3 +54,6 @@ func _normalize_squad_ids(creature_ids: Array[String]) -> Array[String]:
 	for i in mini(output.size(), 3):
 		normalized.append(output[i])
 	return normalized
+
+func _playable_or_default(creature_id: String) -> String:
+	return creature_id if PLAYABLE_SQUAD_POOL.has(creature_id) else DEFAULT_SQUAD_IDS[0]

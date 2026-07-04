@@ -1,5 +1,7 @@
 extends RefCounted
 
+const TargetFilter := preload("res://scripts/sim/combat/target_filter.gd")
+
 static func hit(actor: Node, reach_px: float, damage: float, delivery: int, plane: int, source_ability: String) -> Array:
 	var hits := []
 	if actor.arena == null:
@@ -18,9 +20,7 @@ static func hit(actor: Node, reach_px: float, damage: float, delivery: int, plan
 			"source_ability": source_ability
 		})
 	for target in actor.arena.entities:
-		if target == actor or target == null or not is_instance_valid(target):
-			continue
-		if target.team == actor.team or not target.has_method("take_damage_event"):
+		if not TargetFilter.is_live_damage_target(actor, target):
 			continue
 		var to_target: Vector2 = target.global_position - actor.global_position
 		if to_target.length() > radius + target.body_radius:

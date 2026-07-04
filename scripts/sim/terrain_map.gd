@@ -1,6 +1,7 @@
 extends RefCounted
 
 const SimConstants := preload("res://scripts/sim/sim_constants.gd")
+const EnvironmentProfileScript := preload("res://scripts/sim/environment_profile.gd")
 
 const LAND := "land"
 const SHALLOW := "shallow"
@@ -37,6 +38,12 @@ func get_zone_at(point: Vector2) -> String:
 			if rect.has_point(point):
 				return String(layer["zone"])
 	return LAND
+
+func get_environment_profile_at(point: Vector2, movement_tags: Array = [], swim_time_remaining := -1.0) -> Dictionary:
+	return EnvironmentProfileScript.for_zone(get_zone_at(point), movement_tags, swim_time_remaining)
+
+func get_environment_profile_for_zone(zone: String, movement_tags: Array = [], swim_time_remaining := -1.0) -> Dictionary:
+	return EnvironmentProfileScript.for_zone(zone, movement_tags, swim_time_remaining)
 
 func get_rects(zone: String) -> Array:
 	for layer in zone_layers:

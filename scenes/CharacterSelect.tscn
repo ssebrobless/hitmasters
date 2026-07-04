@@ -35,6 +35,36 @@ layout_mode = 2
 text = "Mode: 1v1"
 horizontal_alignment = 1
 
+[node name="SquadPanel" type="VBoxContainer" parent="Root/Header"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SquadHint" type="Label" parent="Root/Header/SquadPanel"]
+layout_mode = 2
+text = "Pick a slot, then pick a playable creature."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="SquadSlots" type="HBoxContainer" parent="Root/Header/SquadPanel"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 10
+
+[node name="Slot1Button" type="Button" parent="Root/Header/SquadPanel/SquadSlots"]
+layout_mode = 2
+custom_minimum_size = Vector2(170, 54)
+text = "Slot 1 start"
+
+[node name="Slot2Button" type="Button" parent="Root/Header/SquadPanel/SquadSlots"]
+layout_mode = 2
+custom_minimum_size = Vector2(170, 54)
+text = "Slot 2"
+
+[node name="Slot3Button" type="Button" parent="Root/Header/SquadPanel/SquadSlots"]
+layout_mode = 2
+custom_minimum_size = Vector2(170, 54)
+text = "Slot 3"
+
 [node name="Content" type="HBoxContainer" parent="Root"]
 layout_mode = 2
 size_flags_vertical = 3
