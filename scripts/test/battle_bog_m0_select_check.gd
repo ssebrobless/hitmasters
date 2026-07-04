@@ -37,11 +37,10 @@ func _run() -> void:
 		second_selectable.pressed.emit()
 
 	var remembered: bool = config.selected_creature_id != "snapping_turtle" and not config.selected_creature_id.is_empty()
-	print("select_creatures=%d selectable=%d remembered=%s selected=%s legacy=%s" % [
+	print("select_creatures=%d selectable=%d remembered=%s selected=%s" % [
 		creature_buttons,
 		selectable_buttons,
 		str(remembered),
-		config.selected_creature_id,
-		config.selected_hero_id
+		config.selected_creature_id
 	])
 	quit(0 if creature_buttons == 21 and selectable_buttons == 6 and remembered else 1)
