@@ -14,9 +14,9 @@ const SKINS := {
 	"chorus_frog": {"base": "frog", "main": Color(0.36, 0.42, 0.2), "dark": Color(0.2, 0.25, 0.11), "belly": Color(0.6, 0.62, 0.44), "eye": Color(0.82, 0.72, 0.35), "strike": "tongue", "stripes": true, "call_sac": true},
 	"cane_toad": {"base": "frog", "main": Color(0.46, 0.36, 0.2), "dark": Color(0.28, 0.21, 0.11), "belly": Color(0.66, 0.58, 0.42), "eye": Color(0.7, 0.55, 0.2), "strike": "tongue", "warts": true},
 	"newt": {"base": "mustelid", "main": Color(0.3, 0.2, 0.13), "dark": Color(0.19, 0.12, 0.08), "accent": Color(0.92, 0.5, 0.14), "tail": "fin", "smooth": true, "spots": true},
-	"snapping_turtle": {"base": "turtle", "shell": Color(0.26, 0.3, 0.16), "rim": Color(0.18, 0.21, 0.11), "skin": Color(0.45, 0.4, 0.24), "strike": "turtle_bite", "keels": true},
+	"snapping_turtle": {"base": "turtle", "shell": Color(0.26, 0.3, 0.16), "rim": Color(0.18, 0.21, 0.11), "skin": Color(0.45, 0.4, 0.24), "keels": true, "lunge_scale": 0.2},
 	"water_snake": {"base": "serpent", "main": Color(0.36, 0.26, 0.15), "dark": Color(0.2, 0.14, 0.09), "belly": Color(0.6, 0.5, 0.34)},
-	"bog_turtle": {"base": "turtle", "shell": Color(0.26, 0.2, 0.12), "rim": Color(0.16, 0.12, 0.07), "skin": Color(0.34, 0.28, 0.18), "strike": "turtle_bite", "neck_patch": Color(0.95, 0.55, 0.12)},
+	"bog_turtle": {"base": "turtle", "shell": Color(0.26, 0.2, 0.12), "rim": Color(0.16, 0.12, 0.07), "skin": Color(0.34, 0.28, 0.18), "neck_patch": Color(0.95, 0.55, 0.12), "lunge_scale": 0.2},
 	"alligator": {"base": "croc", "main": Color(0.2, 0.26, 0.17), "dark": Color(0.12, 0.16, 0.1), "belly": Color(0.5, 0.52, 0.4)},
 	"owl": {"base": "bird", "main": Color(0.42, 0.32, 0.22), "dark": Color(0.26, 0.19, 0.13), "breast": Color(0.62, 0.54, 0.42), "beak": Color(0.75, 0.65, 0.4), "beak_len": 0.25, "tufts": true, "facial_disc": true},
 	"great_blue_heron": {"base": "bird", "main": Color(0.44, 0.5, 0.56), "dark": Color(0.26, 0.31, 0.36), "breast": Color(0.68, 0.7, 0.72), "beak": Color(0.85, 0.7, 0.3), "beak_len": 0.95, "neck": 0.7},
@@ -60,11 +60,12 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 
 	var body_offset := Vector2.ZERO
 	var strike := 0.0
+	var lunge_scale := float(skin.get("lunge_scale", 1.0))
 	if attack_t >= 0.0:
 		strike = _strike_curve(attack_t)
-		body_offset = attack_aim.normalized() * maxf(radius * 0.8, 8.0) * strike
+		body_offset = attack_aim.normalized() * maxf(radius * 0.8, 8.0) * strike * lunge_scale
 	elif windup_t >= 0.0:
-		body_offset = -forward * maxf(radius * 0.4, 6.0) * windup_t
+		body_offset = -forward * maxf(radius * 0.4, 6.0) * windup_t * lunge_scale
 
 	var rock := 0.0
 	if moving and attack_t < 0.0:
@@ -85,7 +86,7 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		"frog":
 			_base_frog(canvas, radius, rocked_forward, side, skin, walk_phase, moving)
 		"turtle":
-			_base_turtle(canvas, radius, rocked_forward, side, skin, walk_phase, moving, windup_t)
+			_base_turtle(canvas, radius, rocked_forward, side, skin, walk_phase, moving, windup_t, strike, attack_aim.normalized(), attack_reach)
 		"mustelid":
 			_base_mustelid(canvas, radius, rocked_forward, side, skin, walk_phase, moving, strike)
 		"bird":
@@ -112,8 +113,6 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		match String(skin.get("strike", "")):
 			"tongue":
 				_strike_tongue(canvas, radius, attack_aim.normalized(), attack_reach, strike)
-			"turtle_bite":
-				_strike_turtle_bite(canvas, radius, attack_aim.normalized(), attack_reach, strike, skin)
 
 	if flash_alpha > 0.0:
 		canvas.draw_circle(Vector2.ZERO, radius + 3.0, Color(1.0, 1.0, 1.0, clampf(flash_alpha, 0.0, 1.0) * 0.85))
@@ -193,7 +192,7 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 		var sac_pulse := (sin(Time.get_ticks_msec() * 0.008) * 0.5 + 0.5) * 0.35
 		canvas.draw_circle(forward * radius * 0.88, radius * (0.14 + sac_pulse * 0.14), belly)
 
-static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, windup_t: float) -> void:
+static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, windup_t: float, strike := 0.0, attack_aim := Vector2.ZERO, attack_reach := 0.0) -> void:
 	var shell_color: Color = skin.get("shell", Color(0.26, 0.3, 0.16))
 	var shell_rim: Color = skin.get("rim", shell_color.darkened(0.3))
 	var skin_color: Color = skin.get("skin", Color(0.45, 0.4, 0.24))
@@ -212,17 +211,39 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 		for claw in 3:
 			canvas.draw_line(leg_center + claw_direction.rotated((float(claw) - 1.0) * 0.35) * radius * 0.18, leg_center + claw_direction.rotated((float(claw) - 1.0) * 0.35) * radius * 0.34, Color(0.85, 0.82, 0.7), 1.5)
 
-	var head_reach := 1.05 - (0.35 * windup_t if windup_t >= 0.0 else 0.0)
-	var head_center := forward * radius * head_reach
+	# One head, three states: striking (neck extends along the attack aim),
+	# winding up (retracted under the shell), or idle. Drawn BEFORE the shell
+	# so the neck always emerges from underneath the carapace.
+	var head_direction := forward
+	var head_reach := radius * 1.05
+	var neck_width := maxf(radius * 0.3, 4.0)
+	if strike > 0.0 and attack_aim != Vector2.ZERO:
+		head_direction = attack_aim
+		head_reach = radius * 0.6 + (maxf(attack_reach, radius * 1.2) - radius * 0.6) * strike
+	elif windup_t >= 0.0:
+		head_reach = radius * (1.05 - 0.45 * windup_t)
+	var head_center := head_direction * head_reach
+	var head_side := Vector2(-head_direction.y, head_direction.x)
+	canvas.draw_colored_polygon(PackedVector2Array([
+		head_side * neck_width * 0.7,
+		head_center + head_side * neck_width * 0.45,
+		head_center - head_side * neck_width * 0.45,
+		-head_side * neck_width * 0.7
+	]), skin_dark)
 	canvas.draw_circle(head_center, radius * 0.32, skin_dark)
 	canvas.draw_circle(head_center, radius * 0.26, skin_color)
 	if skin.has("neck_patch"):
 		var patch: Color = skin["neck_patch"]
-		canvas.draw_circle(head_center + side * radius * 0.2, radius * 0.1, patch)
-		canvas.draw_circle(head_center - side * radius * 0.2, radius * 0.1, patch)
-	canvas.draw_line(head_center + forward * radius * 0.2, head_center + forward * radius * 0.4, skin_dark.darkened(0.2), 2.5)
-	canvas.draw_circle(head_center + side * radius * 0.13 + forward * radius * 0.08, maxf(radius * 0.05, 1.2), Color(0.1, 0.09, 0.05))
-	canvas.draw_circle(head_center - side * radius * 0.13 + forward * radius * 0.08, maxf(radius * 0.05, 1.2), Color(0.1, 0.09, 0.05))
+		canvas.draw_circle(head_center + head_side * radius * 0.2, radius * 0.1, patch)
+		canvas.draw_circle(head_center - head_side * radius * 0.2, radius * 0.1, patch)
+	if strike > 0.0:
+		var jaw_open := (1.0 - strike) * 0.7 + 0.15
+		canvas.draw_line(head_center, head_center + head_direction.rotated(jaw_open) * neck_width * 1.2, Color(0.95, 0.95, 0.9), 2.5)
+		canvas.draw_line(head_center, head_center + head_direction.rotated(-jaw_open) * neck_width * 1.2, Color(0.95, 0.95, 0.9), 2.5)
+	else:
+		canvas.draw_line(head_center + head_direction * radius * 0.2, head_center + head_direction * radius * 0.4, skin_dark.darkened(0.2), 2.5)
+	canvas.draw_circle(head_center + head_side * radius * 0.13 + head_direction * radius * 0.08, maxf(radius * 0.05, 1.2), Color(0.1, 0.09, 0.05))
+	canvas.draw_circle(head_center - head_side * radius * 0.13 + head_direction * radius * 0.08, maxf(radius * 0.05, 1.2), Color(0.1, 0.09, 0.05))
 
 	var shell_points := PackedVector2Array()
 	for i in 18:
@@ -607,30 +628,13 @@ static func _base_bug(canvas: CanvasItem, radius: float, forward: Vector2, side:
 
 # ---------- strike overlays ----------
 
-static func _strike_turtle_bite(canvas: CanvasItem, radius: float, aim: Vector2, reach: float, progress: float, skin: Dictionary) -> void:
-	var body: Color = skin.get("skin", Color(0.45, 0.4, 0.24))
-	var outline: Color = skin.get("rim", Color(0.18, 0.21, 0.11))
-	var side := Vector2(-aim.y, aim.x)
-	var neck_length := (radius * 0.4) + (reach - radius * 0.4) * progress
-	var neck_width := maxf(radius * 0.3, 4.0)
-	canvas.draw_colored_polygon(PackedVector2Array([
-		aim * radius * 0.5 + side * neck_width * 0.6,
-		aim * neck_length + side * neck_width * 0.42,
-		aim * neck_length - side * neck_width * 0.42,
-		aim * radius * 0.5 - side * neck_width * 0.6
-	]), body.darkened(0.12))
-	var head_center := aim * neck_length
-	canvas.draw_circle(head_center, neck_width * 0.95, outline)
-	canvas.draw_circle(head_center, neck_width * 0.75, body.darkened(0.05))
-	var jaw_open := (1.0 - progress) * 0.7 + 0.15
-	canvas.draw_line(head_center, head_center + aim.rotated(jaw_open) * neck_width * 1.2, Color(0.95, 0.95, 0.9), 2.5)
-	canvas.draw_line(head_center, head_center + aim.rotated(-jaw_open) * neck_width * 1.2, Color(0.95, 0.95, 0.9), 2.5)
-
 static func _strike_tongue(canvas: CanvasItem, radius: float, aim: Vector2, reach: float, progress: float) -> void:
-	var tongue_tip := aim * (radius * 0.5 + (reach - radius * 0.5) * progress)
+	# Originates at the mouth (front of the head, between the eyes).
+	var mouth := aim * radius * 0.72
+	var tongue_tip := aim * (radius * 0.72 + (reach - radius * 0.72) * progress)
 	var tongue_color := Color(0.98, 0.42, 0.52)
-	canvas.draw_line(aim * radius * 0.5, tongue_tip, Color(0.5, 0.14, 0.2), maxf(radius * 0.34, 6.0))
-	canvas.draw_line(aim * radius * 0.5, tongue_tip, tongue_color, maxf(radius * 0.24, 4.0))
+	canvas.draw_line(mouth, tongue_tip, Color(0.5, 0.14, 0.2), maxf(radius * 0.34, 6.0))
+	canvas.draw_line(mouth, tongue_tip, tongue_color, maxf(radius * 0.24, 4.0))
 	canvas.draw_circle(tongue_tip, maxf(radius * 0.26, 5.0), tongue_color.lightened(0.15))
 	canvas.draw_circle(tongue_tip, maxf(radius * 0.13, 2.5), Color(1.0, 0.85, 0.88))
 
