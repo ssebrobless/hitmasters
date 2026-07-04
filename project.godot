@@ -1,0 +1,25 @@
+; Engine configuration file.
+; Godot 4 project scaffold for Hitmasters.
+
+config_version=5
+
+[application]
+
+config/name="Hitmasters"
+config/features=PackedStringArray("4.6")
+run/main_scene="res://scenes/MainMenu.tscn"
+
+[autoload]
+
+GameConfig="*res://scripts/game/game_config.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0

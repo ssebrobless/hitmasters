@@ -1,0 +1,369 @@
+{
+  "version": 1,
+  "source_notes": "C:/Users/fishe/OneDrive/Documents/battlebogcharacters.txt",
+  "global_rules": {
+    "inputs": {
+      "move": "WASD",
+      "aim": "mouse",
+      "primary": "LMB",
+      "ability_1": "Q",
+      "ability_2": "E",
+      "mud_hut_defend": "F",
+      "habitat_deposit_swap": "U",
+      "context": "R",
+      "cancel_or_flight": "Space"
+    },
+    "traits": [
+      "Carnivores and omnivores heal 5% max HP over 2 seconds after killing an enemy.",
+      "Aquatic and semi-aquatic creatures gain 15% move speed in water.",
+      "Semi-aquatic creatures have limited swim time before needing air.",
+      "Birds take off by holding Space and moving 2 units.",
+      "Airborne birds pass over obstacles and enemies and avoid ground physical attacks except during low attack windows.",
+      "Mosquito swarms and fireflies are always flying but can still be hit by physical attacks."
+    ]
+  },
+  "creatures": [
+    {
+      "id": "bullfrog",
+      "name": "Bullfrog",
+      "family": "amphibian",
+      "movement": ["land_walker"],
+      "role": ["ambush_bruiser", "executor"],
+      "diet": "carnivore",
+      "footprint": {"shape": "circle", "radius_units": 0.9},
+      "stats": {"health": 850, "speed": 1.2, "regen_per_sec": 20, "primary_damage": 21, "attack_interval_sec": 1.6, "range": "2x2 directional"},
+      "primary": "Directional bite; body turns to face attack.",
+      "abilities": [
+        {"slot": "Q", "name": "Leap", "summary": "Jump 4 units while moving, or 10 units toward cursor from camouflage. Non-damaging obstacle hop.", "cooldown_sec": 5},
+        {"slot": "E", "name": "Lunge", "summary": "Lunge up to 3 units, stop on collision, deal 15 damage in 3x2 impact and knock back 1 unit.", "cooldown_sec": 3, "charges": 3}
+      ],
+      "passives": [
+        {"name": "Swallow", "summary": "Execute lower-base-HP enemies below 10% on next attack and heal 25% max HP."},
+        {"name": "Camouflage", "summary": "Standing still 3 seconds without damage/action makes bullfrog mostly invisible until action, movement, or damage."}
+      ]
+    },
+    {
+      "id": "chorus_frog",
+      "name": "Chorus Frog",
+      "family": "amphibian",
+      "movement": ["land_walker"],
+      "role": ["tempo_support", "debuffer"],
+      "diet": "carnivore",
+      "footprint": {"shape": "circle", "radius_units": 0.6},
+      "stats": {"health": 400, "speed": 2.0, "regen_per_sec": 15, "primary_damage": 15, "attack_interval_sec": 0.85, "range": "1 wide x 3 long"},
+      "primary": "Tongue poke that deals damage at the tongue tip.",
+      "abilities": [
+        {"slot": "Q", "name": "Comb Call", "summary": "Self and allies within 6 units gain 10% move speed and attack speed for 4 seconds.", "cooldown_after_sec": 6},
+        {"slot": "E", "name": "Cree", "summary": "Enemies within 8 units deal 10% less damage and move 10% slower for 6 seconds.", "cooldown_after_sec": 7}
+      ],
+      "passives": []
+    },
+    {
+      "id": "newt",
+      "name": "Newt",
+      "family": "amphibian",
+      "movement": ["ground_walker", "semi_aquatic"],
+      "role": ["punish_tank", "reflect_disruptor"],
+      "diet": "carnivore",
+      "footprint": {"shape": "circle", "radius_units": 0.5},
+      "stats": {"health": 200, "speed": 1.3, "swim_time_sec": 12, "regen_per_sec": 45, "primary_damage": 19, "attack_interval_sec": 0.95, "range": "1.5 unit alternating tail arc"},
+      "primary": "Alternating tail swing from back to front.",
+      "abilities": [
+        {"slot": "Q", "name": "Unken Reflex", "summary": "Stop, flip over, become invulnerable for 3 seconds, and force nearby enemies away.", "cooldown_after_sec": 8},
+        {"slot": "E", "name": "Toxic Secretion", "summary": "For 5 seconds, physical attackers take 60% of their dealt damage over 3 seconds.", "cooldown_after_sec": 6}
+      ],
+      "passives": [
+        {"name": "Rib Exudation", "summary": "Enemy that drops newt to 10% or lower takes 50 burst plus 60% reflected damage over 3 seconds; 10s cooldown."},
+        {"name": "Caudal Autotomy", "summary": "Would-be death instead removes tail, disables attacking, and grants 15% speed for 10 seconds; 25s cooldown."}
+      ]
+    },
+    {
+      "id": "cane_toad",
+      "name": "Cane Toad",
+      "family": "amphibian",
+      "movement": ["ground_walker"],
+      "role": ["poison_bruiser", "zone_control"],
+      "diet": "carnivore",
+      "footprint": {"shape": "circle", "radius_units": 1.0},
+      "stats": {"health": 550, "speed": 1.5, "regen_per_sec": 25, "primary_damage": 5, "primary_dps": 20, "ammo": 100, "range": "1 wide x 3 long"},
+      "primary": "Thin poison stream with lingering 2 second damage; 10 ammo per second fired.",
+      "abilities": [
+        {"slot": "Q", "name": "Toxic Skin", "summary": "For 10 seconds, physical attackers receive stackable poison up to 3 stacks, 20 damage over 3 seconds.", "cooldown_after_sec": 8},
+        {"slot": "E", "name": "Thanatosis", "summary": "Immobile for 5 seconds but can primary/Q; primary range doubles and Toxic Skin deals 5% more.", "cooldown_after_sec": 4}
+      ],
+      "passives": [{"name": "Bufotoxin", "summary": "Physical attackers receive 24 poison damage over 2 seconds, stacking up to 5."}]
+    },
+    {
+      "id": "snapping_turtle",
+      "name": "Snapping Turtle",
+      "family": "reptile",
+      "movement": ["semi_aquatic"],
+      "role": ["frontline", "hard_engage"],
+      "diet": "omnivore",
+      "footprint": {"shape": "circle", "radius_units": 1.6},
+      "stats": {"health": 1200, "speed": 0.95, "swim_time_sec": 20, "regen_per_sec": 30, "primary_damage": 100, "attack_interval_sec": 1.6, "windup_sec": 0.7, "range": "1x2"},
+      "primary": "Head retracts as 0.7s visual cue, then neck bite extends in aimed direction and stops on impact.",
+      "abilities": [
+        {"slot": "Q", "name": "Grab", "summary": "Next attack reaches 1.5 units farther; on hit latches and pulls target in front.", "cooldown_sec": 5},
+        {"slot": "E", "name": "Lingual Lure", "summary": "For 1.5s, cannot attack/ability but can move; enemies in 1.5 radius are stunned.", "cooldown_after_sec": 8}
+      ],
+      "passives": [{"name": "Protective Shell", "summary": "Take 15% less damage from all sources."}]
+    },
+    {
+      "id": "water_snake",
+      "name": "Water Snake",
+      "family": "reptile",
+      "movement": ["semi_aquatic"],
+      "role": ["latch_duelist", "execute_predator"],
+      "diet": "carnivore",
+      "footprint": {"shape": "capsule", "radius_units": 0.4, "length_units": 2.5},
+      "stats": {"health": 950, "speed": 1.6, "swim_time_sec": 22, "regen_per_sec": 40, "primary_damage": "1% target max HP per second while latched", "attack_interval_sec": 0.7, "range": "1 unit mouth contact"},
+      "primary": "Bite and bleed; holding LMB latches on hit. Lower-base-HP targets can be dragged; higher-base-HP targets drag the snake.",
+      "abilities": [
+        {"slot": "Q", "name": "Musking", "summary": "Not usable while latched. Enemies in 3 radius are forced away for 2 seconds.", "cooldown_sec": 6},
+        {"slot": "E", "name": "Slithering Retreat", "summary": "Gain 20% move speed for 5 seconds.", "cooldown_after_sec": 6}
+      ],
+      "passives": [{"name": "Ingestion", "summary": "Every 20s, eat a latched lower-base-HP target under 15% HP, killing it and healing 85% of enemy max HP."}]
+    },
+    {
+      "id": "bog_turtle",
+      "name": "Bog Turtle",
+      "family": "reptile",
+      "movement": ["ground_walker", "mounted_support"],
+      "role": ["mounted_healer", "ally_enchanter"],
+      "diet": "omnivore",
+      "footprint": {"shape": "circle", "radius_units": 0.4},
+      "stats": {"health": 150, "speed": 1.0, "regen_per_sec": 10, "primary_damage": 2, "attack_interval_sec": 1.0, "range": "1 unit"},
+      "primary": "Headbutt for 2 damage and 2 self-damage. While basking, heals ally 20 and grants stackable 2% damage for 2s.",
+      "abilities": [
+        {"slot": "Q", "name": "Endozoochory", "summary": "Launch poop to location within 6 units. On ground it becomes a flower after 2s; allies touch for 20% max HP heal.", "cooldown_sec": 5, "charges": 2},
+        {"slot": "E", "name": "Umbrella Effect", "summary": "Only while basking. Heal self for all missing HP, then heal mounted ally by that amount.", "cooldown_sec": 8, "charges": 2}
+      ],
+      "passives": [{"name": "Basking", "summary": "Press R near higher-base-HP ally to ride them. Receive ally damage at 95% reduction; ignore drowning and can be carried in flight."}]
+    },
+    {
+      "id": "alligator",
+      "name": "Alligator",
+      "family": "reptile",
+      "movement": ["semi_aquatic"],
+      "role": ["ambush_grappler", "frontline_predator"],
+      "diet": "carnivore",
+      "footprint": {"shape": "capsule", "radius_units": 0.9, "length_units": 3.0},
+      "stats": {"health": 1500, "speed": 1.3, "swim_time_sec": 20, "regen_per_sec": 20, "primary_damage": 70, "attack_interval_sec": 1.8, "range": "1 unit mouth contact"},
+      "primary": "Single-target burst bite latch; hold LMB to drag for 3 seconds before release.",
+      "abilities": [
+        {"slot": "Q", "name": "Death Roll", "summary": "If grabbed enemy is in water, roll for 5 seconds and deal 30 damage per second.", "cooldown_after_sec": 5},
+        {"slot": "E", "name": "Ambush", "summary": "Become invisible but still hittable. Stealth breaks on hit, attack, or ability. Move 30% slower.", "cooldown_after_break_sec": 9}
+      ],
+      "passives": [{"name": "Devour", "summary": "Each enemy killed heals alligator for 50% of killed enemy max HP."}]
+    },
+    {
+      "id": "owl",
+      "name": "Owl",
+      "family": "bird",
+      "movement": ["ground_walker", "flight", "perch"],
+      "role": ["aerial_assassin", "scout"],
+      "diet": "carnivore",
+      "footprint": {"shape": "circle", "radius_units": 0.6},
+      "stats": {"health": 200, "ground_speed": 0.9, "flight_speed": 2.8, "flight_time_sec": 12, "regen_per_sec": 9, "primary_damage": {"ground_peck": 20, "swoop": 50}, "attack_interval": "ground 1.1s; swoop animation plus 1s delay", "range": "1 unit impact, 6 unit swoop target radius"},
+      "primary": "Ground peck or aimed flying/perched swoop with 0.7s low counter-hit window.",
+      "abilities": [
+        {"slot": "Q", "name": "Silent Flight", "summary": "Only while flying. Invisible and silent for 10 seconds until attacked, attacking, ability use, or grounding.", "cooldown_after_sec": 5},
+        {"slot": "E", "name": "Auditory Mapping", "summary": "Reveal enemies, minions, and wildlife within 12 radius for 3 seconds.", "cooldown_after_sec": 8}
+      ],
+      "passives": [{"name": "Perch", "summary": "Stop on terrain while flying; cannot be hurt by ground attacks and gains 50% vision."}]
+    },
+    {
+      "id": "great_blue_heron",
+      "name": "Great Blue Heron",
+      "family": "bird",
+      "movement": ["ground_walker", "flight", "wading"],
+      "role": ["long_range_striker", "water_controller"],
+      "diet": "carnivore",
+      "footprint": {"shape": "circle", "radius_units": 0.9},
+      "stats": {"health": 240, "ground_speed": 0.95, "flight_speed": 2.9, "flight_time_sec": 20, "regen_per_sec": 10, "primary_damage": 55, "attack_interval_sec": 1.4, "range": "3 long x 1 wide"},
+      "primary": "Grounded spear-like beak strike. Cannot attack while flying.",
+      "abilities": [
+        {"slot": "Q", "name": "Powder Puff", "summary": "Cleanse negative effects and gain stun/disruption immunity for 2 seconds.", "cooldown_after_sec": 7},
+        {"slot": "E", "name": "Flushing", "summary": "Grounded only. Dash 2 units in aimed direction and start flying without takeoff.", "cooldown_sec": 6}
+      ],
+      "passives": [{"name": "Wading", "summary": "While grounded, can walk through water and attack enemies in water without issues."}]
+    },
+    {
+      "id": "kingfisher",
+      "name": "Kingfisher",
+      "family": "bird",
+      "movement": ["ground_walker", "flight", "burrow"],
+      "role": ["precision_diver", "mobile_skirmisher"],
+      "diet": "carnivore",
+      "footprint": {"shape": "circle", "radius_units": 0.45},
+      "stats": {"health": 160, "ground_speed": 1.1, "flight_speed": 3.0, "flight_time_sec": 8, "regen_per_sec": 5, "primary_damage": {"ground": 25, "flying": 35}, "attack_rate_per_sec": 0.85, "range": "1 unit beak"},
+      "primary": "Peck while grounded or flying; +30% damage after moving 2 units. Low impact counter-hit window applies.",
+      "abilities": [
+        {"slot": "Q", "name": "Hover", "summary": "Enter idle airborne state for up to 4 seconds; movement transitions into free flight.", "cooldown_after_sec": 4},
+        {"slot": "E", "name": "Nest Chamber", "summary": "Burrow underground for 7 seconds, untargetable and immune; exits grounded.", "cooldown_after_sec": 6}
+      ],
+      "passives": [{"name": "Plunge", "summary": "Can attack and damage characters in water."}]
+    },
+    {
+      "id": "duck",
+      "name": "Duck",
+      "family": "bird",
+      "movement": ["ground_walker", "flight", "paddling"],
+      "role": ["pet_summoner", "sustain_skirmisher"],
+      "diet": "omnivore",
+      "footprint": {"shape": "circle", "radius_units": 0.6, "duckling_radius_units": 0.3},
+      "stats": {"health": 200, "ground_speed": 0.97, "swim_speed": 1.0, "flight_time_sec": 15, "regen_per_sec": 8, "duckling_regen_per_sec": 5, "primary_damage": {"wing": 10, "bite": 15}, "attack_interval_sec": 0.85, "range": "1.5 unit wing arc or 1 unit bite"},
+      "primary": "Cannot attack while flying. Alternates right wing, left wing, front bite.",
+      "abilities": [
+        {"slot": "Q", "name": "Nesting", "summary": "Idle 4s to place nest with up to 4 eggs that hatch into 80 HP ducklings.", "cooldown_after_hatch_sec": 25},
+        {"slot": "E", "name": "Mobbing", "summary": "Next landed primary gives ducklings 85% damage reduction and 20% speed/attack speed for 6s.", "cooldown_after_sec": 10}
+      ],
+      "passives": [{"name": "Paddling", "summary": "Duck and ducklings safely traverse water."}]
+    },
+    {
+      "id": "water_shrew",
+      "name": "Water Shrew",
+      "family": "mammal",
+      "movement": ["semi_aquatic"],
+      "role": ["speed_debuffer", "tiny_assassin"],
+      "diet": "carnivore",
+      "footprint": {"shape": "circle", "radius_units": 0.35},
+      "stats": {"health": 95, "ground_speed": 1.6, "swim_time_sec": 8, "regen_per_sec": 5, "primary_damage": 8, "attack_interval_sec": 0.6, "range": "1 unit"},
+      "primary": "Bite applies 3% move slow, 2% damage decrease, and 2% increased damage taken for 2s, up to 3 stacks.",
+      "abilities": [
+        {"slot": "Q", "name": "Water Walk", "summary": "Gain 35% speed for 4s and run on water while moving. Idling drops into water and ends effect.", "cooldown_after_sec": 7},
+        {"slot": "E", "name": "Proenkephalin A", "summary": "Next landed basic prevents movement and ability use for 1s; target can still attack.", "cooldown_on_hit_sec": 3, "charges": 2}
+      ],
+      "passives": [{"name": "Aquatic Locomotion", "summary": "Can swim and gains swim speed boost."}]
+    },
+    {
+      "id": "beaver",
+      "name": "Beaver",
+      "family": "mammal",
+      "movement": ["semi_aquatic", "builder"],
+      "role": ["builder_frontline", "team_defense"],
+      "diet": "herbivore",
+      "footprint": {"shape": "circle", "radius_units": 1.1},
+      "stats": {"health": 875, "speed": 1.0, "swim_time_sec": 12, "regen_per_sec": 15, "primary_damage": 50, "attack_rate_per_sec": 0.88, "range": "1 unit"},
+      "primary": "Directional chomp.",
+      "abilities": [
+        {"slot": "Q", "name": "Tail Slap", "summary": "Allies within 8 units gain 15% damage reduction for 4s. Repairs nearby dams by 20% current health.", "cooldown_after_sec": 6},
+        {"slot": "E", "name": "Dam", "summary": "Place rotatable 200 HP wall within 4 units. Blocks physical/ground attacks. Max 3 placed.", "charges": 3}
+      ],
+      "passives": [{"name": "Gnawing", "summary": "Basic attacks on trees heal 5% per bite."}]
+    },
+    {
+      "id": "otter",
+      "name": "Otter",
+      "family": "mammal",
+      "movement": ["semi_aquatic", "pack"],
+      "role": ["pack_latcher", "skirmisher"],
+      "diet": "carnivore",
+      "footprint": {"shape": "circle", "radius_units": 0.6},
+      "stats": {"health": 300, "ground_speed": 1.5, "swim_time_sec": 13, "regen_per_sec": 18, "primary_damage": 25, "range": "1 unit"},
+      "primary": "Bite and latch up to 2 seconds before being thrown off.",
+      "abilities": [
+        {"slot": "Q", "name": "Tail Whip", "summary": "Alternating back-to-front tail arc hits multiple targets and knocks back 1.5 units.", "cooldown_sec": 5},
+        {"slot": "E", "name": "Gang Up", "summary": "Next hit makes all otters latch to the target, deal damage, and immobilize for 2s."}
+      ],
+      "passives": [{"name": "Pack of 3", "summary": "Player controls leader plus 2 followers. Control swaps to unlatched otter after latch. Latched otters take 20% less damage and slow target 25% each."}]
+    },
+    {
+      "id": "mink",
+      "name": "Mink",
+      "family": "mammal",
+      "movement": ["land_walker"],
+      "role": ["anti_tank_assassin", "latch_finisher"],
+      "diet": "carnivore",
+      "footprint": {"shape": "circle", "radius_units": 0.55},
+      "stats": {"health": 300, "speed": 1.8, "regen_per_sec": 20, "primary_damage": 20, "attack_interval_sec": 0.9, "range": "1 unit"},
+      "primary": "Directional bite.",
+      "abilities": [
+        {"slot": "Q", "name": "Choke", "summary": "Dash 2 units; on contact deal 20 and latch to neck. If 10s countdown completes, target dies.", "cooldown": "after release, equal to latch duration"},
+        {"slot": "E", "name": "Scent Marking", "summary": "Allies in 4 radius take 10% less and deal 5% more for 6s; enemies have healing reduced 40% for 6s.", "cooldown_after_sec": 8}
+      ],
+      "passives": [{"name": "Fearless", "summary": "Higher-base-HP targets deal 15% less to mink and take 12% more from mink."}]
+    },
+    {
+      "id": "leech",
+      "name": "Leech",
+      "family": "crawly",
+      "movement": ["aquatic", "ground_slow"],
+      "role": ["resource_swarm", "water_artillery"],
+      "diet": "carnivore",
+      "footprint": {"shape": "circle", "radius_units": 0.3, "note": "per leech; cluster visual scales with count"},
+      "stats": {"health": "20 leeches", "ground_speed": 0.7, "swim_speed": 1.8, "swim_time_sec": "unlimited", "regen": "1 leech per 4s", "primary_damage": "10 DPS while attached", "attack_interval_sec": 0.7, "range": "0.8 unit projectile travels 7 units"},
+      "primary": "Fire a leech projectile that sticks for 3 seconds. Multiple leeches stack.",
+      "abilities": [
+        {"slot": "Q", "name": "Copulation", "summary": "Idle up to 5 seconds and spawn 1 leech per second unless max count is reached.", "cooldown_after_sec": 7},
+        {"slot": "E", "name": "Sensory Crypt", "summary": "Water only. Send a leech to every target in same water body; latches 6s and reveals enemies. Costs 1 body-leech per target hit.", "cooldown_sec": 14}
+      ],
+      "passives": [{"name": "Cluster", "summary": "The 20 leeches are both health and ability/attack resource. Each hit removes one leech."}]
+    },
+    {
+      "id": "crayfish",
+      "name": "Crayfish",
+      "family": "crawly",
+      "movement": ["ground_walker"],
+      "role": ["defensive_duelist", "survivor"],
+      "diet": "omnivore",
+      "footprint": {"shape": "circle", "radius_units": 0.7},
+      "stats": {"health": 250, "ground_speed": 1.2, "regen_per_sec": 30, "primary_damage": 20, "attack_rate_per_sec": 0.85, "range": "1.5 units"},
+      "primary": "Alternating right/left claw pinch.",
+      "abilities": [
+        {"slot": "Q", "name": "Caridoid Escape", "summary": "Backward dash 3 units. If target is within 1 unit in facing direction, smack for 20.", "cooldown_sec": 5, "charges": 3},
+        {"slot": "E", "name": "Meral Display", "summary": "Claws-up stance for up to 10s: forward/back only, +30% size, +5% speed, 30% DR.", "cooldown_after_sec": 7}
+      ],
+      "passives": [{"name": "Molting", "summary": "Every 30s alive grants 2% DR up to 5 stacks after a brief vulnerable molt window."}]
+    },
+    {
+      "id": "mosquito_swarm",
+      "name": "Mosquito Swarm",
+      "family": "crawly",
+      "movement": ["always_flying"],
+      "role": ["aoe_harasser", "blood_drain"],
+      "diet": "carnivore",
+      "footprint": {"shape": "circle", "radius_units": 0.9, "note": "scales slightly with current health per Unswattable"},
+      "stats": {"health": 110, "flight_speed": 1.7, "flight_time_sec": "unlimited", "regen_per_sec": 20, "primary_damage": "15 DPS AOE", "attack_interval_sec": 1.1, "range": "7 unit projectile plus 3 radius AOE"},
+      "primary": "Slow projectile expands into 3 radius mosquito AOE for 3s on max range, target, or object hit; slows 5%.",
+      "abilities": [
+        {"slot": "Q", "name": "Breeding Grounds", "summary": "For 6 seconds, leave a trail of AOE mosquitos behind while moving. Trail lingers 3 seconds after the duration ends.", "cooldown_after_trail_ends_sec": 10},
+        {"slot": "E", "name": "Deposit", "summary": "Within 1 unit of an ally, deposit stored blood to heal them; 50 burst at full blood meter, scaled down by amount available. Blood meter (separate from hunger) fills from primary AOE, Breeding Grounds, and Unswattable contact damage. Depositing does not drain hunger.", "cooldown_sec": 3}
+      ],
+      "passives": [{"name": "Unswattable", "summary": "Moves through units/objects, still takes physical hits, direct ranged attacks have 9% miss chance, contact deals 10 DPS, fills hunger and blood meter. Hitbox shrinks/grows slightly with current health."}]
+    },
+    {
+      "id": "wolf_spider",
+      "name": "Wolf Spider",
+      "family": "crawly",
+      "movement": ["ground_walker", "burrow"],
+      "role": ["burrow_ambusher", "trap_summoner"],
+      "diet": "carnivore",
+      "footprint": {"shape": "circle", "radius_units": 0.6},
+      "stats": {"health": 170, "speed": 1.5, "regen_per_sec": 15, "primary_damage": 20, "attack_interval_sec": 0.7, "range": "2 unit lunge plus 1 unit bite"},
+      "primary": "Lunge 2 units and bite. Holding click latches up to 3s, applying ramping slow.",
+      "abilities": [
+        {"slot": "Q", "name": "Silk-lined Burrows", "summary": "Create hidden burrows, enter/exit, charge targets within 4 units, and maintain up to 4 burrows.", "cooldown_sec": 10, "charges": 3},
+        {"slot": "E", "name": "Epigamic Carrying", "summary": "Carry 12 eggs; after 10s hatch spiderlings that rush enemies. Burrow hatch stores trap until triggered.", "cooldown_after_hatch_sec": 20}
+      ],
+      "passives": [{"name": "Simple Eyes", "summary": "Sees 20 units in facing direction with full clarity day or night."}]
+    },
+    {
+      "id": "firefly",
+      "name": "Firefly",
+      "family": "crawly",
+      "movement": ["always_flying"],
+      "role": ["aura_healer", "reveal_support", "trap_debuffer"],
+      "diet": "nectarivore",
+      "footprint": {"shape": "circle", "radius_units": 0.3},
+      "stats": {"health": 30, "flight_speed": 0.88, "flight_time_sec": "unlimited", "regen": "1 HP per 4s", "primary_damage": 3, "attack_rate_per_sec": 1.3, "range": "10 unit projectile"},
+      "primary": "Slow firefly projectile follows hit target for 2s and reveals them.",
+      "abilities": [
+        {"slot": "Q", "name": "Flash-Train", "summary": "Glow radius increases to 7, healing improves 15%, allies gain 5% speed. Lasts 8s.", "cooldown_after_sec": 10},
+        {"slot": "E", "name": "Glowworms", "summary": "Place glowworm mine. On hit, explodes into 3 radius 4s slow field with 40% slow and 10% vulnerability.", "cooldown_sec": 10, "charges": 3}
+      ],
+      "passives": [{"name": "Bioluminescence", "summary": "Constant 4 radius light. Allies in radius receive 20 HP/sec."}]
+    }
+  ]
+}
