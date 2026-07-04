@@ -4,6 +4,8 @@ class_name Player
 signal hero_changed(hero_id: String)
 
 const VisualStyle := preload("res://scripts/visual/visual_style.gd")
+const LocalInputScript := preload("res://scripts/ui/local_input.gd")
+const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 
 const HERO_ORDER := [
 	"iron_vanguard",
@@ -35,6 +37,8 @@ var actor_name := "You"
 var alive := true
 var respawn_timer := 0.0
 var respawn_duration := 4.0
+var local_input: Node = LocalInputScript.new()
+var input_frame: Resource = null
 
 func setup(player_arena: Node, player_team: int, spawn_position: Vector2, hero_id: String) -> void:
 	arena = player_arena
@@ -56,6 +60,7 @@ func _physics_process(delta: float) -> void:
 	dash_timer = maxf(dash_timer - delta, 0.0)
 	ability_timer = maxf(ability_timer - delta, 0.0)
 	dash_time = maxf(dash_time - delta, 0.0)
+	input_frame = local_input.build_frame(get_global_mouse_position())
 
 	_handle_hero_hotkeys()
 	_handle_movement(delta)
@@ -100,34 +105,21 @@ func heal(amount: float) -> void:
 		health = minf(health + amount, max_health)
 
 func _handle_hero_hotkeys() -> void:
-	for i in HERO_ORDER.size():
-		if Input.is_key_pressed(KEY_1 + i):
-			if hero_index != i:
-				hero_index = i
-				apply_hero(HERO_ORDER[hero_index])
-			return
+	if input_frame == null:
+		return
+	var slot: int = input_frame.legacy_hero_slot
+	if slot >= 0 and slot < HERO_ORDER.size() and hero_index != slot:
+		hero_index = slot
+		apply_hero(HERO_ORDER[hero_index])
 
 func _handle_movement(delta: float) -> void:
 	if dash_time > 0.0:
 		velocity = dash_velocity
 	else:
-		var input_vector := Vector2.ZERO
-		input_vector.x = Input.get_axis("ui_left", "ui_right")
-		input_vector.y = Input.get_axis("ui_up", "ui_down")
-
-		if Input.is_key_pressed(KEY_A):
-			input_vector.x -= 1.0
-		if Input.is_key_pressed(KEY_D):
-			input_vector.x += 1.0
-		if Input.is_key_pressed(KEY_W):
-			input_vector.y -= 1.0
-		if Input.is_key_pressed(KEY_S):
-			input_vector.y += 1.0
-
-		input_vector = input_vector.normalized()
+		var input_vector: Vector2 = input_frame.move.normalized() if input_frame != null else Vector2.ZERO
 		velocity = input_vector * speed
 
-		if Input.is_key_pressed(KEY_SHIFT) and dash_timer <= 0.0 and input_vector != Vector2.ZERO:
+		if input_frame != null and input_frame.is_pressed(InputFrameScript.BUTTON_FLIGHT_TOGGLE) and dash_timer <= 0.0 and input_vector != Vector2.ZERO:
 			dash_velocity = input_vector * 850.0
 			dash_time = 0.14
 			dash_timer = dash_cooldown
@@ -140,12 +132,12 @@ func _handle_combat() -> void:
 	if arena == null:
 		return
 
-	var aim := (get_global_mouse_position() - global_position).normalized()
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and primary_timer <= 0.0:
+	var aim: Vector2 = (input_frame.aim - global_position).normalized() if input_frame != null else Vector2.RIGHT
+	if input_frame != null and input_frame.is_pressed(InputFrameScript.BUTTON_PRIMARY) and primary_timer <= 0.0:
 		_fire_primary(aim)
 		primary_timer = primary_cooldown
 
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and ability_timer <= 0.0:
+	if input_frame != null and input_frame.is_pressed(InputFrameScript.BUTTON_ABILITY_Q) and ability_timer <= 0.0:
 		_use_ability(aim)
 		ability_timer = ability_cooldown
 

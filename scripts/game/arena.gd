@@ -134,10 +134,6 @@ func _configure_mode() -> void:
 
 func _process(delta: float) -> void:
 	if match_over:
-		if Input.is_key_pressed(KEY_ENTER):
-			get_tree().reload_current_scene()
-		if Input.is_key_pressed(KEY_ESCAPE):
-			get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 		return
 
 	elapsed += delta
@@ -207,7 +203,7 @@ func _build_ui() -> void:
 	kill_feed_label = Label.new()
 	end_summary_label = Label.new()
 	help_label = Label.new()
-	help_label.text = "WASD move | mouse aim | LMB primary | RMB ability | Shift dash | 1-6 swap hero | Esc menu"
+	help_label.text = "WASD move | mouse aim | LMB primary | Q ability | Space dash | 1-6 swap hero | Esc menu"
 
 	root.add_child(status_label)
 	root.add_child(core_label)
@@ -756,5 +752,7 @@ func _team_name(team: int) -> String:
 	return "Blue" if team == BLUE else "Red"
 
 func _input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel"):
+	if match_over and event.is_action_pressed("ui_accept"):
+		get_tree().reload_current_scene()
+	elif event.is_action_pressed("ui_cancel"):
 		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
