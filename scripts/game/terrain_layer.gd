@@ -1,0 +1,87 @@
+extends Node2D
+
+# Static terrain: drawn ONCE. Godot caches the draw command list, so this
+# node costs nothing per frame after the first draw. Animated water lives
+# on water_layer.gd. Never call queue_redraw() here after setup.
+
+const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
+
+var terrain_map: RefCounted = null
+var arena_rect := Rect2()
+
+func setup(next_terrain_map: RefCounted) -> void:
+	terrain_map = next_terrain_map
+	arena_rect = terrain_map.arena_rect
+	z_index = -10
+	queue_redraw()
+
+func _draw() -> void:
+	if terrain_map == null:
+		return
+	for layer in terrain_map.zone_layers:
+		var zone := String(layer["zone"])
+		for rect: Rect2 in layer["rects"]:
+			draw_rect(rect, _terrain_color(zone))
+			_draw_zone_detail(zone, rect)
+	draw_rect(arena_rect, Color(0.28, 0.33, 0.24), false, 6.0)
+
+func _draw_zone_detail(zone: String, rect: Rect2) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(Vector2i(int(rect.position.x), int(rect.position.y)))
+	match zone:
+		TerrainMapScript.LAND:
+			for i in int(rect.get_area() / 9000.0):
+				var spot := Vector2(rng.randf_range(rect.position.x, rect.end.x), rng.randf_range(rect.position.y, rect.end.y))
+				var tone := rng.randf_range(-0.02, 0.03)
+				draw_circle(spot, rng.randf_range(6.0, 18.0), Color(0.16 + tone, 0.2 + tone * 1.4, 0.11 + tone))
+			for i in int(rect.get_area() / 26000.0):
+				var tuft := Vector2(rng.randf_range(rect.position.x, rect.end.x), rng.randf_range(rect.position.y, rect.end.y))
+				draw_line(tuft, tuft + Vector2(-1.5, -4.0), Color(0.24, 0.32, 0.16), 1.5)
+				draw_line(tuft + Vector2(2.5, 0.0), tuft + Vector2(3.5, -4.5), Color(0.22, 0.3, 0.15), 1.5)
+		TerrainMapScript.SHALLOW:
+			for i in int(rect.get_area() / 11000.0) + 1:
+				var speck := Vector2(rng.randf_range(rect.position.x, rect.end.x), rng.randf_range(rect.position.y, rect.end.y))
+				draw_circle(speck, rng.randf_range(2.0, 5.0), Color(0.24, 0.38, 0.3, 0.7))
+			for i in int(rect.get_area() / 30000.0) + 1:
+				var reed := Vector2(rng.randf_range(rect.position.x + 6.0, rect.end.x - 6.0), rng.randf_range(rect.position.y + 6.0, rect.end.y - 6.0))
+				draw_line(reed, reed + Vector2(-1.0, -7.0), Color(0.28, 0.42, 0.2), 2.0)
+				draw_line(reed + Vector2(3.0, 0.0), reed + Vector2(4.0, -6.0), Color(0.25, 0.38, 0.18), 2.0)
+		TerrainMapScript.COVER:
+			draw_rect(rect, Color(0.1, 0.16, 0.09))
+			for i in maxi(int(rect.get_area() / 2600.0), 3):
+				var bush := Vector2(rng.randf_range(rect.position.x + 8.0, rect.end.x - 8.0), rng.randf_range(rect.position.y + 8.0, rect.end.y - 8.0))
+				draw_circle(bush, rng.randf_range(7.0, 13.0), Color(0.14 + rng.randf() * 0.04, 0.24 + rng.randf() * 0.05, 0.12))
+				draw_circle(bush + Vector2(-2.0, -3.0), rng.randf_range(3.0, 6.0), Color(0.2, 0.32, 0.16))
+			draw_rect(rect, Color(0.05, 0.09, 0.05), false, 2.0)
+		TerrainMapScript.HABITAT_BLUE, TerrainMapScript.HABITAT_RED:
+			var team_tint := Color(0.3, 0.55, 0.85, 0.5) if zone == TerrainMapScript.HABITAT_BLUE else Color(0.85, 0.4, 0.35, 0.5)
+			draw_rect(rect, team_tint, false, 4.0)
+			var post_gap := 28.0
+			var x := rect.position.x
+			while x <= rect.end.x:
+				draw_rect(Rect2(Vector2(x - 2.0, rect.position.y - 5.0), Vector2(4.0, 8.0)), Color(0.32, 0.24, 0.14))
+				draw_rect(Rect2(Vector2(x - 2.0, rect.end.y - 3.0), Vector2(4.0, 8.0)), Color(0.32, 0.24, 0.14))
+				x += post_gap
+			var y := rect.position.y
+			while y <= rect.end.y:
+				draw_rect(Rect2(Vector2(rect.position.x - 5.0, y - 2.0), Vector2(8.0, 4.0)), Color(0.32, 0.24, 0.14))
+				draw_rect(Rect2(Vector2(rect.end.x - 3.0, y - 2.0), Vector2(8.0, 4.0)), Color(0.32, 0.24, 0.14))
+				y += post_gap
+			for i in 7:
+				var patch := Vector2(rng.randf_range(rect.position.x + 12.0, rect.end.x - 12.0), rng.randf_range(rect.position.y + 12.0, rect.end.y - 12.0))
+				draw_circle(patch, rng.randf_range(6.0, 12.0), Color(0.2, 0.19, 0.1, 0.55))
+
+func _terrain_color(zone: String) -> Color:
+	match zone:
+		TerrainMapScript.HABITAT_BLUE:
+			return Color(0.13, 0.17, 0.13)
+		TerrainMapScript.HABITAT_RED:
+			return Color(0.17, 0.14, 0.11)
+		TerrainMapScript.WATER:
+			return Color(0.1, 0.26, 0.34)
+		TerrainMapScript.SHALLOW:
+			return Color(0.16, 0.3, 0.26)
+		TerrainMapScript.COVER:
+			return Color(0.1, 0.16, 0.09)
+		_:
+			return Color(0.15, 0.19, 0.1)

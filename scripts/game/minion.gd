@@ -27,6 +27,8 @@ var body_radius := 13.0
 var march_target := Vector2.ZERO
 var leash_hut: Node = null
 var defender_slot := 0
+var target_refresh_timer := 0.0
+var cached_target: Node = null
 
 func setup(minion_arena: Node, minion_team: int, spawn_position: Vector2, minion_kind := "lane", lane_target := Vector2.ZERO, hut: Node = null, slot := 0) -> void:
 	arena = minion_arena
@@ -64,7 +66,14 @@ func _physics_process(delta: float) -> void:
 		return
 
 	attack_timer = maxf(attack_timer - delta, 0.0)
-	var target: Node = arena.get_closest_enemy(self, AGGRO_RANGE) if arena != null else null
+	# Re-query targets on a timer, not every frame — O(n) scans are the cost.
+	target_refresh_timer -= delta
+	if target_refresh_timer <= 0.0:
+		cached_target = arena.get_closest_enemy(self, AGGRO_RANGE) if arena != null else null
+		target_refresh_timer = 0.2 + float(get_instance_id() % 7) * 0.015
+	if cached_target != null and (not is_instance_valid(cached_target) or (cached_target.has_method("is_alive") and not cached_target.is_alive())):
+		cached_target = null
+	var target: Node = cached_target
 
 	# Defenders stay home: drop distant targets and walk back when leashed out.
 	if leash_hut != null and is_instance_valid(leash_hut):
@@ -72,7 +81,7 @@ func _physics_process(delta: float) -> void:
 		if from_home > LEASH_RANGE:
 			target = null
 			_move_toward_point(leash_hut.global_position)
-			queue_redraw()
+			_request_redraw()
 			return
 
 	if target == null:
@@ -82,7 +91,7 @@ func _physics_process(delta: float) -> void:
 			_move_toward_point(leash_hut.global_position)
 		else:
 			velocity = Vector2.ZERO
-		queue_redraw()
+		_request_redraw()
 		return
 
 	var to_target: Vector2 = target.global_position - global_position
@@ -94,7 +103,7 @@ func _physics_process(delta: float) -> void:
 			attack_timer = attack_cooldown
 	else:
 		_move_toward_point(target.global_position)
-	queue_redraw()
+	_request_redraw()
 
 func _attack(target: Node) -> void:
 	if kind == "pebble":
@@ -131,6 +140,10 @@ func _move_toward_point(point: Vector2) -> void:
 
 func _is_enemy_core(target: Node) -> bool:
 	return arena != null and target == arena.get_enemy_core(team)
+
+func _request_redraw() -> void:
+	if arena == null or not arena.has_method("is_near_view") or arena.is_near_view(global_position):
+		queue_redraw()
 
 func take_damage(amount: float, _source_team: int = -1, _source_actor: Node = null) -> void:
 	if health <= 0.0:

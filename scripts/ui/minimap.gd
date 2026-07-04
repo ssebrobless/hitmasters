@@ -5,9 +5,14 @@ const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
 const MAP_WIDTH := 232.0
 
 var arena: Node = null
+var redraw_accumulator := 0.0
 
-func _process(_delta: float) -> void:
-	queue_redraw()
+func _process(delta: float) -> void:
+	# 8 Hz is plenty for a minimap.
+	redraw_accumulator += delta
+	if redraw_accumulator >= 0.125:
+		redraw_accumulator = 0.0
+		queue_redraw()
 
 func _draw() -> void:
 	if arena == null or not is_instance_valid(arena):

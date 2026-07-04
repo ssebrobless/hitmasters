@@ -119,7 +119,8 @@ func _process(delta: float) -> void:
 	anim_windup_timer = maxf(anim_windup_timer - delta, 0.0)
 	if velocity.length() > 4.0:
 		anim_walk_phase += delta * clampf(velocity.length() / 26.0, 3.0, 11.0)
-	queue_redraw()
+	if arena == null or not arena.has_method("is_near_view") or arena.is_near_view(global_position):
+		queue_redraw()
 
 func tick_sim(delta: float) -> void:
 	if not alive:
@@ -135,7 +136,6 @@ func tick_sim(delta: float) -> void:
 	_tick_latch(delta)
 	if kit != null and kit.has_method("tick"):
 		kit.tick(self, delta)
-	queue_redraw()
 
 func take_damage(amount: float, _source_team: int = -1, _source_actor: Node = null) -> void:
 	var event := DamageEventScript.new()
@@ -525,10 +525,10 @@ func _passive_percent(passive_name: String, fallback: float) -> float:
 			return _first_percent(String(passive.get("summary", "")), fallback)
 	return fallback
 
+static var _percent_regex: RegEx = RegEx.create_from_string("(\\d+(?:\\.\\d+)?)%")
+
 func _first_percent(text: String, fallback: float) -> float:
-	var regex := RegEx.new()
-	regex.compile("(\\d+(?:\\.\\d+)?)%")
-	var result := regex.search(text)
+	var result := _percent_regex.search(text)
 	if result == null:
 		return fallback
 	return float(result.get_string(1)) / 100.0

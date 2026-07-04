@@ -25,6 +25,8 @@ const BotBrainScript := preload("res://scripts/ai/bot_brain.gd")
 const MinimapScript := preload("res://scripts/ui/minimap.gd")
 const MudHutScript := preload("res://scripts/game/mud_hut.gd")
 const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
+const TerrainLayerScript := preload("res://scripts/game/terrain_layer.gd")
+const WaterLayerScript := preload("res://scripts/game/water_layer.gd")
 
 var entities: Array[Node] = []
 var minions: Array[Node] = []
@@ -40,6 +42,7 @@ var dams: Array[Node] = []
 var huts: Array[Node] = []
 var huts_lost := {0: 0, 1: 0}
 var hut_defend_hint_timer := 0.0
+var ui_refresh_accumulator := 0.0
 var camera: Camera2D = null
 
 const CAMERA_LEAD_DEADZONE := 70.0
@@ -88,6 +91,12 @@ var bot_brain: RefCounted = BotBrainScript.new()
 
 func _ready() -> void:
 	_configure_mode()
+	var terrain_layer = TerrainLayerScript.new()
+	add_child(terrain_layer)
+	terrain_layer.setup(terrain_map)
+	var water_layer = WaterLayerScript.new()
+	add_child(water_layer)
+	water_layer.setup(terrain_map)
 	_build_ui()
 	_setup_crosshair_cursor()
 	_spawn_match()
@@ -145,7 +154,10 @@ func _physics_process(delta: float) -> void:
 		spawn_wave()
 		wave_timer = wave_interval
 
-	_update_ui()
+	ui_refresh_accumulator += delta
+	if ui_refresh_accumulator >= 0.2:
+		ui_refresh_accumulator = 0.0
+		_update_ui()
 
 func _process(delta: float) -> void:
 	_update_camera_lead(delta)
@@ -164,89 +176,11 @@ func _update_camera_lead(delta: float) -> void:
 	camera.offset = camera.offset.lerp(lead, minf(delta * 7.0, 1.0))
 
 func _draw() -> void:
-	_draw_terrain()
-	draw_rect(arena_rect, Color(0.28, 0.33, 0.24), false, 6.0)
 	_draw_objective()
 	_draw_telegraphs()
 
 	draw_string(ThemeDB.fallback_font, blue_core_position + Vector2(-42.0, -110.0), "BLUE HABITAT", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, Color(0.45, 0.72, 1.0))
 	draw_string(ThemeDB.fallback_font, red_core_position + Vector2(-42.0, -110.0), "RED HABITAT", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, Color(1.0, 0.45, 0.4))
-
-func _draw_terrain() -> void:
-	for layer in terrain_map.zone_layers:
-		var zone := String(layer["zone"])
-		for rect: Rect2 in layer["rects"]:
-			draw_rect(rect, _terrain_color(zone))
-			_draw_zone_detail(zone, rect)
-
-func _draw_zone_detail(zone: String, rect: Rect2) -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash(Vector2i(int(rect.position.x), int(rect.position.y)))
-	match zone:
-		TerrainMapScript.LAND:
-			for i in int(rect.get_area() / 9000.0):
-				var spot := Vector2(rng.randf_range(rect.position.x, rect.end.x), rng.randf_range(rect.position.y, rect.end.y))
-				var tone := rng.randf_range(-0.02, 0.03)
-				draw_circle(spot, rng.randf_range(6.0, 18.0), Color(0.16 + tone, 0.2 + tone * 1.4, 0.11 + tone))
-			for i in int(rect.get_area() / 26000.0):
-				var tuft := Vector2(rng.randf_range(rect.position.x, rect.end.x), rng.randf_range(rect.position.y, rect.end.y))
-				draw_line(tuft, tuft + Vector2(-1.5, -4.0), Color(0.24, 0.32, 0.16), 1.5)
-				draw_line(tuft + Vector2(2.5, 0.0), tuft + Vector2(3.5, -4.5), Color(0.22, 0.3, 0.15), 1.5)
-		TerrainMapScript.WATER:
-			var phase := elapsed * 0.9
-			for i in int(rect.get_area() / 14000.0) + 2:
-				var ripple_origin := Vector2(rng.randf_range(rect.position.x + 10.0, rect.end.x - 10.0), rng.randf_range(rect.position.y + 6.0, rect.end.y - 6.0))
-				var drift := fmod(phase * 14.0 + rng.randf() * 60.0, 60.0) - 30.0
-				var ripple := ripple_origin + Vector2(0.0, drift)
-				if rect.grow(-4.0).has_point(ripple):
-					draw_line(ripple + Vector2(-7.0, 0.0), ripple + Vector2(7.0, 0.0), Color(0.32, 0.55, 0.62, 0.5), 1.5)
-		TerrainMapScript.SHALLOW:
-			for i in int(rect.get_area() / 11000.0) + 1:
-				var speck := Vector2(rng.randf_range(rect.position.x, rect.end.x), rng.randf_range(rect.position.y, rect.end.y))
-				draw_circle(speck, rng.randf_range(2.0, 5.0), Color(0.24, 0.38, 0.3, 0.7))
-			for i in int(rect.get_area() / 30000.0) + 1:
-				var reed := Vector2(rng.randf_range(rect.position.x + 6.0, rect.end.x - 6.0), rng.randf_range(rect.position.y + 6.0, rect.end.y - 6.0))
-				draw_line(reed, reed + Vector2(-1.0, -7.0), Color(0.28, 0.42, 0.2), 2.0)
-				draw_line(reed + Vector2(3.0, 0.0), reed + Vector2(4.0, -6.0), Color(0.25, 0.38, 0.18), 2.0)
-		TerrainMapScript.COVER:
-			draw_rect(rect, Color(0.1, 0.16, 0.09))
-			for i in maxi(int(rect.get_area() / 2600.0), 3):
-				var bush := Vector2(rng.randf_range(rect.position.x + 8.0, rect.end.x - 8.0), rng.randf_range(rect.position.y + 8.0, rect.end.y - 8.0))
-				draw_circle(bush, rng.randf_range(7.0, 13.0), Color(0.14 + rng.randf() * 0.04, 0.24 + rng.randf() * 0.05, 0.12))
-				draw_circle(bush + Vector2(-2.0, -3.0), rng.randf_range(3.0, 6.0), Color(0.2, 0.32, 0.16))
-			draw_rect(rect, Color(0.05, 0.09, 0.05), false, 2.0)
-		TerrainMapScript.HABITAT_BLUE, TerrainMapScript.HABITAT_RED:
-			var team_tint := Color(0.3, 0.55, 0.85, 0.5) if zone == TerrainMapScript.HABITAT_BLUE else Color(0.85, 0.4, 0.35, 0.5)
-			draw_rect(rect, team_tint, false, 4.0)
-			var post_gap := 28.0
-			var x := rect.position.x
-			while x <= rect.end.x:
-				draw_rect(Rect2(Vector2(x - 2.0, rect.position.y - 5.0), Vector2(4.0, 8.0)), Color(0.32, 0.24, 0.14))
-				draw_rect(Rect2(Vector2(x - 2.0, rect.end.y - 3.0), Vector2(4.0, 8.0)), Color(0.32, 0.24, 0.14))
-				x += post_gap
-			var y := rect.position.y
-			while y <= rect.end.y:
-				draw_rect(Rect2(Vector2(rect.position.x - 5.0, y - 2.0), Vector2(8.0, 4.0)), Color(0.32, 0.24, 0.14))
-				draw_rect(Rect2(Vector2(rect.end.x - 3.0, y - 2.0), Vector2(8.0, 4.0)), Color(0.32, 0.24, 0.14))
-				y += post_gap
-			for i in 7:
-				var patch := Vector2(rng.randf_range(rect.position.x + 12.0, rect.end.x - 12.0), rng.randf_range(rect.position.y + 12.0, rect.end.y - 12.0))
-				draw_circle(patch, rng.randf_range(6.0, 12.0), Color(0.2, 0.19, 0.1, 0.55))
-
-func _terrain_color(zone: String) -> Color:
-	match zone:
-		TerrainMapScript.HABITAT_BLUE:
-			return Color(0.13, 0.17, 0.13)
-		TerrainMapScript.HABITAT_RED:
-			return Color(0.17, 0.14, 0.11)
-		TerrainMapScript.WATER:
-			return Color(0.1, 0.26, 0.34)
-		TerrainMapScript.SHALLOW:
-			return Color(0.16, 0.3, 0.26)
-		TerrainMapScript.COVER:
-			return Color(0.1, 0.16, 0.09)
-		_:
-			return Color(0.15, 0.19, 0.1)
 
 func _setup_crosshair_cursor() -> void:
 	var size := 25
@@ -637,6 +571,13 @@ func get_bot_spawn(team: int, bot_name: String) -> Vector2:
 func get_terrain_zone(point: Vector2) -> String:
 	return terrain_map.get_zone_at(point)
 
+func is_near_view(point: Vector2) -> bool:
+	# True when a point is close enough to the player's camera view that its
+	# node should bother redrawing. Generous margin for the cursor-led camera.
+	if player == null or not is_instance_valid(player):
+		return true
+	return point.distance_squared_to(player.global_position) < 810000.0  # 900px
+
 func is_inside_arena(point: Vector2) -> bool:
 	return arena_rect.has_point(point)
 
@@ -697,14 +638,38 @@ func has_line_of_sight(from: Vector2, to: Vector2, radius := 4.0) -> bool:
 	return not cover_blocks_point(from, to, radius)
 
 func cover_blocks_point(from: Vector2, to: Vector2, radius := 4.0) -> bool:
-	var distance := from.distance_to(to)
-	var steps := maxi(1, ceili(distance / 20.0))
-	for i in range(steps + 1):
-		var point := from.lerp(to, float(i) / float(steps))
-		for cover in cover_rects:
-			if cover.grow(radius).has_point(point):
-				return true
+	for cover: Rect2 in cover_rects:
+		if _segment_intersects_rect(from, to, cover.grow(radius)):
+			return true
 	return false
+
+# Exact segment-vs-AABB slab test — replaces the old 20px point-stepping walk.
+static func _segment_intersects_rect(a: Vector2, b: Vector2, rect: Rect2) -> bool:
+	if rect.has_point(a) or rect.has_point(b):
+		return true
+	var d := b - a
+	var t_min := 0.0
+	var t_max := 1.0
+	for axis in 2:
+		var delta := d.x if axis == 0 else d.y
+		var origin := a.x if axis == 0 else a.y
+		var low := rect.position.x if axis == 0 else rect.position.y
+		var high := rect.end.x if axis == 0 else rect.end.y
+		if absf(delta) < 0.0001:
+			if origin < low or origin > high:
+				return false
+		else:
+			var t1 := (low - origin) / delta
+			var t2 := (high - origin) / delta
+			if t1 > t2:
+				var swap := t1
+				t1 = t2
+				t2 = swap
+			t_min = maxf(t_min, t1)
+			t_max = minf(t_max, t2)
+			if t_min > t_max:
+				return false
+	return true
 
 func projectile_crosses_cover(from: Vector2, to: Vector2, radius: float) -> bool:
 	return cover_blocks_point(from, to, radius)

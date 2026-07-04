@@ -1,5 +1,8 @@
 extends RefCounted
 
+static var _number_regex: RegEx = RegEx.create_from_string("(\\d+(?:\\.\\d+)?)")
+static var _percent_regex: RegEx = RegEx.create_from_string("(\\d+(?:\\.\\d+)?)%")
+
 static func ability(creature_data: Dictionary, slot: String) -> Dictionary:
 	for entry: Dictionary in creature_data.get("abilities", []):
 		if String(entry.get("slot", "")) == slot:
@@ -13,25 +16,19 @@ static func cooldown_seconds(ability_data: Dictionary) -> float:
 	return first_seconds(String(ability_data.get("summary", "")), 0.0)
 
 static func first_number(text: String, fallback: float) -> float:
-	var regex := RegEx.new()
-	regex.compile("(\\d+(?:\\.\\d+)?)")
-	var result := regex.search(text)
+	var result := _number_regex.search(text)
 	if result == null:
 		return fallback
 	return float(result.get_string(1))
 
 static func nth_number(text: String, index: int, fallback: float) -> float:
-	var regex := RegEx.new()
-	regex.compile("(\\d+(?:\\.\\d+)?)")
-	var results := regex.search_all(text)
+	var results := _number_regex.search_all(text)
 	if index < 0 or index >= results.size():
 		return fallback
 	return float(results[index].get_string(1))
 
 static func first_percent(text: String, fallback: float) -> float:
-	var regex := RegEx.new()
-	regex.compile("(\\d+(?:\\.\\d+)?)%")
-	var result := regex.search(text)
+	var result := _percent_regex.search(text)
 	if result == null:
 		return fallback
 	return float(result.get_string(1)) / 100.0
