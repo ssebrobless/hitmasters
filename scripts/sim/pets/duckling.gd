@@ -109,6 +109,8 @@ func _find_enemy() -> Node:
 			continue
 		if entity.has_method("is_alive") and not entity.is_alive():
 			continue
+		if entity.has_method("is_stealthed") and entity.is_stealthed():
+			continue
 		var distance: float = global_position.distance_to(entity.global_position)
 		if distance < closest_distance:
 			closest = entity

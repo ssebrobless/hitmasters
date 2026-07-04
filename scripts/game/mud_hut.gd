@@ -51,9 +51,13 @@ func take_damage_event(event: Resource) -> void:
 	take_damage(event.amount, -1, event.source_actor)
 
 func _destroyed() -> void:
+	# Orphaned defenders join the push down this hut's lane instead of
+	# idling at the rubble forever.
 	for defender in defenders:
 		if defender != null and is_instance_valid(defender):
 			defender.leash_hut = null
+			defender.kind = "lane"
+			defender.march_target = Vector2(-global_position.x, global_position.y)
 	if arena != null:
 		arena.unregister_entity(self)
 		if arena.has_method("on_hut_destroyed"):

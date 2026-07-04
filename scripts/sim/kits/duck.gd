@@ -23,6 +23,9 @@ func tick(actor: Node, delta: float) -> void:
 	if actor.input_frame == null:
 		return
 	_prune()
+	if not actor.can_act():
+		nest_channel = 0.0
+		return
 
 	# Nesting: channel while standing still; hatch ducklings on completion.
 	if nest_channel > 0.0:

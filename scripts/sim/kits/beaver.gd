@@ -24,6 +24,8 @@ func tick(actor: Node, _delta: float) -> void:
 	if actor.input_frame == null:
 		return
 	_prune_dams()
+	if not actor.can_act():
+		return
 
 	# R toggles dam placement orientation.
 	var context_pressed: bool = actor.input_frame.is_pressed(InputFrameScript.BUTTON_CONTEXT_ACTION)
@@ -45,7 +47,7 @@ func tick(actor: Node, _delta: float) -> void:
 		Aura.apply(actor, radius_units * SimConstants.UNIT_PX, duration, {"damage_taken_mult": dr}, {}, "Tail Slap")
 		for dam in dams:
 			if dam != null and is_instance_valid(dam) and dam.global_position.distance_to(actor.global_position) <= radius_units * SimConstants.UNIT_PX:
-				dam.repair(dam.max_health * 0.2)
+				dam.repair(dam.health * 0.2)
 		actor.q_timer = KitHelpers.cooldown_seconds(q)
 
 	if actor.input_frame.is_pressed(InputFrameScript.BUTTON_ABILITY_E) and actor.e_timer <= 0.0 and dams.size() < MAX_DAMS:
@@ -66,7 +68,7 @@ func _place_dam(actor: Node) -> void:
 	var size := Vector2(thickness, length) if wall_vertical else Vector2(length, thickness)
 	var rect := Rect2(place_point - size * 0.5, size)
 	var e := KitHelpers.ability(actor.creature_data, "E")
-	var dam_health := KitHelpers.nth_number(String(e.get("summary", "")), 1, 200.0)
+	var dam_health := KitHelpers.first_number(String(e.get("summary", "")), 200.0)
 	var dam = DamScript.new()
 	actor.arena.add_child(dam)
 	dam.setup(actor.arena, actor.team, rect, dam_health)

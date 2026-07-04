@@ -34,6 +34,8 @@ func repair(amount: float) -> void:
 	queue_redraw()
 
 func take_damage(amount: float, _source_team: int = -1, _source_actor: Node = null) -> void:
+	if health <= 0.0:
+		return
 	health -= amount
 	queue_redraw()
 	if health <= 0.0:

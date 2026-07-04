@@ -19,6 +19,8 @@ func setup(actor: Node) -> void:
 func tick(actor: Node, _delta: float) -> void:
 	if actor.input_frame == null:
 		return
+	if not actor.can_act():
+		return
 
 	# R: perch on cover while flying; R again to resume flight.
 	var context_pressed: bool = actor.input_frame.is_pressed(InputFrameScript.BUTTON_CONTEXT_ACTION)

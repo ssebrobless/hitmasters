@@ -27,6 +27,7 @@ const MudHutScript := preload("res://scripts/game/mud_hut.gd")
 const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 const TerrainLayerScript := preload("res://scripts/game/terrain_layer.gd")
 const WaterLayerScript := preload("res://scripts/game/water_layer.gd")
+const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
 
 var entities: Array[Node] = []
 var minions: Array[Node] = []
@@ -88,6 +89,7 @@ var end_summary_label: Label
 var help_label: Label
 var local_input: Node = LocalInputScript.new()
 var bot_brain: RefCounted = BotBrainScript.new()
+var match_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
 	_configure_mode()
@@ -142,14 +144,13 @@ func _physics_process(delta: float) -> void:
 			hut_defend_hint_timer = 2.5
 			add_kill_feed("Hut defense assignment needs 3+ habitat stocks (coming with the stock system)")
 	for bot in bots:
-		if bot != null and is_instance_valid(bot):
+		if bot != null and is_instance_valid(bot) and bot.is_alive():
 			bot.set_input_frame(bot_brain.build_frame(bot))
 
 	elapsed += delta
 	wave_timer -= delta
 	_tick_telegraphs(delta)
 	_tick_kill_feed(delta)
-	_tick_objective(delta)
 	if wave_timer <= 0.0:
 		spawn_wave()
 		wave_timer = wave_interval
@@ -176,7 +177,8 @@ func _update_camera_lead(delta: float) -> void:
 	camera.offset = camera.offset.lerp(lead, minf(delta * 7.0, 1.0))
 
 func _draw() -> void:
-	_draw_objective()
+	# Shrine/Surge objective removed: it was a Hitmasters holdover absent
+	# from every Battle Bog design doc; mid-map belongs to contested water.
 	_draw_telegraphs()
 
 	draw_string(ThemeDB.fallback_font, blue_core_position + Vector2(-42.0, -110.0), "BLUE HABITAT", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, Color(0.45, 0.72, 1.0))
@@ -247,6 +249,8 @@ func _build_ui() -> void:
 	canvas.add_child(minimap)
 
 func _spawn_match() -> void:
+	_seed_match_rng()
+
 	var blue_core = CoreScript.new()
 	add_child(blue_core)
 	blue_core.setup(BLUE, blue_core_position)
@@ -284,14 +288,30 @@ func _spawn_match() -> void:
 	_update_ui()
 
 func _spawn_bots_for_mode() -> void:
+	var pool := ["snapping_turtle", "chorus_frog", "mink", "beaver", "owl", "duck"]
 	if GameConfig.selected_mode == "3v3":
-		_spawn_bot(BLUE, "chorus_frog", get_bot_spawn(BLUE, "Blue Guard"), "Blue Guard")
-		_spawn_bot(BLUE, "beaver", get_bot_spawn(BLUE, "Blue Ward"), "Blue Ward")
-		_spawn_bot(RED, "snapping_turtle", get_bot_spawn(RED, "Red Blade"), "Red Blade")
-		_spawn_bot(RED, "duck", get_bot_spawn(RED, "Red Scope"), "Red Scope")
-		_spawn_bot(RED, "mink", get_bot_spawn(RED, "Red Chorus"), "Red Chorus")
+		var ally_pool := _shuffled_creature_pool(pool)
+		ally_pool.erase(GameConfig.selected_creature_id)
+		var enemy_pool := _shuffled_creature_pool(pool)
+		_spawn_bot(BLUE, ally_pool[0], get_bot_spawn(BLUE, "Blue Guard"), "Blue Guard")
+		_spawn_bot(BLUE, ally_pool[1], get_bot_spawn(BLUE, "Blue Ward"), "Blue Ward")
+		_spawn_bot(RED, enemy_pool[0], get_bot_spawn(RED, "Red Blade"), "Red Blade")
+		_spawn_bot(RED, enemy_pool[1], get_bot_spawn(RED, "Red Scope"), "Red Scope")
+		_spawn_bot(RED, enemy_pool[2], get_bot_spawn(RED, "Red Chorus"), "Red Chorus")
 	else:
-		_spawn_bot(RED, "mink", get_bot_spawn(RED, "Red Rival"), "Red Rival")
+		_spawn_bot(RED, pool[match_rng.randi_range(0, pool.size() - 1)], get_bot_spawn(RED, "Red Rival"), "Red Rival")
+
+func _seed_match_rng() -> void:
+	match_rng.seed = int(("%s:%s" % [GameConfig.selected_mode, GameConfig.selected_creature_id]).hash())
+
+func _shuffled_creature_pool(source_pool: Array) -> Array:
+	var shuffled := source_pool.duplicate()
+	for i in range(shuffled.size() - 1, 0, -1):
+		var j := match_rng.randi_range(0, i)
+		var tmp = shuffled[i]
+		shuffled[i] = shuffled[j]
+		shuffled[j] = tmp
+	return shuffled
 
 func _spawn_bot(team: int, creature_id: String, spawn_position: Vector2, bot_name: String) -> void:
 	var bot = CreatureScript.new()
@@ -424,7 +444,14 @@ func resolve_projectile_hits(projectile: Node) -> void:
 		if entity.team == projectile.team or projectile.hit_entities.has(entity):
 			continue
 		if entity.global_position.distance_to(projectile.global_position) <= projectile.radius + entity.body_radius:
-			entity.take_damage(projectile.damage, projectile.team, projectile.source_actor)
+			# Projectiles are RANGED (decision #1) — flying targets are hit
+			# normally and heavy shots can spike birds (decision #20).
+			if entity.has_method("take_damage_event"):
+				var event := DamageEventScript.new()
+				event.setup(projectile.damage, DamageEventScript.DELIVERY_RANGED, DamageEventScript.PLANE_GROUND, projectile.source_actor, "projectile")
+				entity.take_damage_event(event)
+			else:
+				entity.take_damage(projectile.damage, projectile.team, projectile.source_actor)
 			projectile.hit_entities.append(entity)
 			if not projectile.pierce:
 				projectile.queue_free()
@@ -537,8 +564,8 @@ func record_objective_capture(team: int) -> void:
 	add_kill_feed("%s captured the Shrine" % _team_name(team))
 	add_circle_telegraph(objective_position, objective_radius + 34.0, Color(0.45, 0.72, 1.0, 0.8) if team == BLUE else Color(1.0, 0.28, 0.25, 0.8), 0.8, 5.0, true)
 
-func get_core_damage_multiplier(team: int) -> float:
-	return SURGE_CORE_DAMAGE_MULTIPLIER if float(surge_timers.get(team, 0.0)) > 0.0 else 1.0
+func get_core_damage_multiplier(_team: int) -> float:
+	return 1.0
 
 func get_objective_position() -> Vector2:
 	return objective_position
@@ -976,7 +1003,7 @@ func _update_ui() -> void:
 	var creature_name: String = player.creature_data.get("name", "Unknown") if player != null else "Unknown"
 	if not match_over:
 		status_label.text = "%s | %s | Creature: %s | Bots: %d | Next wave: %ds" % [GameConfig.selected_mode, _format_match_time(elapsed), creature_name, bots.size(), ceili(wave_timer)]
-	core_label.text = "Blue Core %d / %d    Red Core %d / %d    %s" % [blue_core.health, blue_core.max_health, red_core.health, red_core.max_health, _get_objective_text()]
+	core_label.text = "Blue Core %d / %d    Red Core %d / %d" % [blue_core.health, blue_core.max_health, red_core.health, red_core.max_health]
 	cooldown_label.text = _get_cooldown_text()
 	scoreboard_label.text = _get_scoreboard_text()
 	kill_feed_label.text = _get_kill_feed_text()
@@ -1029,11 +1056,9 @@ func _get_scoreboard_text() -> String:
 	var blue: Dictionary = team_stats[BLUE]
 	var red: Dictionary = team_stats[RED]
 	var lines := [
-		"Score  Blue %dK/%dD/%dDmg/%dObj    Red %dK/%dD/%dDmg/%dObj" % [
+		"Score  Blue %dK/%dD/%dDmg    Red %dK/%dD/%dDmg" % [
 			blue["kills"], blue["deaths"], int(blue["core_damage"]),
-			blue["objectives"],
 			red["kills"], red["deaths"], int(red["core_damage"]),
-			red["objectives"]
 		],
 		"Players"
 	]
@@ -1054,15 +1079,13 @@ func _get_scoreboard_text() -> String:
 func _get_match_summary(winner: String) -> String:
 	var blue: Dictionary = team_stats[BLUE]
 	var red: Dictionary = team_stats[RED]
-	return "Match Summary: %s victory at %s | Blue %dK %dDmg %dObj | Red %dK %dDmg %dObj" % [
+	return "Match Summary: %s victory at %s | Blue %dK %dDmg | Red %dK %dDmg" % [
 		winner,
 		_format_match_time(elapsed),
 		blue["kills"],
 		int(blue["core_damage"]),
-		blue["objectives"],
 		red["kills"],
 		int(red["core_damage"]),
-		red["objectives"]
 	]
 
 func _format_match_time(seconds: float) -> String:
@@ -1145,19 +1168,7 @@ func _draw_objective() -> void:
 		draw_string(ThemeDB.fallback_font, objective_position + Vector2(-56.0, objective_radius + 26.0), "Shrine %ds" % ceili(objective_respawn_timer), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, Color(0.72, 0.72, 0.72))
 
 func _get_objective_text() -> String:
-	var blue_surge: float = float(surge_timers[BLUE])
-	var red_surge: float = float(surge_timers[RED])
-	if blue_surge > 0.0:
-		return "Shrine: Blue Surge %.0fs" % ceili(blue_surge)
-	if red_surge > 0.0:
-		return "Shrine: Red Surge %.0fs" % ceili(red_surge)
-	if not objective_active:
-		return "Shrine respawns %.0fs" % ceili(objective_respawn_timer)
-	if objective_capture > 0.05:
-		return "Shrine Blue %d%%" % int(objective_capture * 100.0)
-	if objective_capture < -0.05:
-		return "Shrine Red %d%%" % int(absf(objective_capture) * 100.0)
-	return "Shrine active"
+	return ""
 
 func _player_near_own_hut() -> bool:
 	if player == null or not is_instance_valid(player):
@@ -1170,8 +1181,17 @@ func _player_near_own_hut() -> bool:
 func _team_name(team: int) -> String:
 	return "Blue" if team == BLUE else "Red"
 
+var quit_confirm_timer := 0.0
+
 func _input(event: InputEvent) -> void:
 	if match_over and event.is_action_pressed("ui_accept"):
 		get_tree().reload_current_scene()
 	elif event.is_action_pressed("ui_cancel"):
-		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+		# No accidental mid-match exits: Esc must be pressed twice within 2s.
+		if match_over or quit_confirm_timer > 0.0:
+			get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+		else:
+			quit_confirm_timer = 2.0
+			add_kill_feed("Press Esc again to leave the match")
+			var confirm_timer := get_tree().create_timer(2.0)
+			confirm_timer.timeout.connect(func() -> void: quit_confirm_timer = 0.0)

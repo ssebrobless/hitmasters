@@ -13,6 +13,8 @@ func setup(actor: Node) -> void:
 func tick(actor: Node, _delta: float) -> void:
 	if actor.input_frame == null:
 		return
+	if not actor.can_act():
+		return
 	if actor.input_frame.is_pressed(InputFrameScript.BUTTON_PRIMARY) and actor.primary_timer <= 0.0:
 		var range_units := KitHelpers.range_units(actor.stats, 1.0)
 		Projectile.instant_line(actor, range_units * SimConstants.UNIT_PX, float(actor.stats.get("primary_damage", 0.0)), DamageEventScript.DELIVERY_RANGED, DamageEventScript.PLANE_GROUND, "Tongue Poke")
@@ -30,6 +32,6 @@ func tick(actor: Node, _delta: float) -> void:
 		var summary := String(e.get("summary", ""))
 		var radius_units := KitHelpers.first_number(summary, 0.0)
 		var debuff := 1.0 - KitHelpers.first_percent(summary, 0.0)
-		var duration := KitHelpers.nth_number(summary, 2, 0.0)
+		var duration := KitHelpers.nth_number(summary, 3, 6.0)
 		Aura.apply(actor, radius_units * SimConstants.UNIT_PX, duration, {}, {"damage_dealt_mult": debuff, "move_speed_mult": debuff}, "Cree")
 		actor.e_timer = KitHelpers.cooldown_seconds(e)

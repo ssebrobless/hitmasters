@@ -124,6 +124,17 @@ func _march(_delta: float) -> void:
 	var destination := march_target
 	if arena != null and arena.has_method("get_lane_destination"):
 		destination = arena.get_lane_destination(team, march_target)
+	# When the lane is clear the destination becomes the enemy core: attack
+	# it on arrival instead of idling next to it.
+	var enemy_core: Node = arena.get_enemy_core(team) if arena != null else null
+	if enemy_core != null and destination.distance_to(enemy_core.global_position) < 1.0:
+		var core_distance: float = global_position.distance_to(enemy_core.global_position)
+		if core_distance <= attack_range + enemy_core.radius:
+			velocity = Vector2.ZERO
+			if attack_timer <= 0.0:
+				_attack(enemy_core)
+				attack_timer = attack_cooldown
+			return
 	if global_position.distance_to(destination) < 40.0:
 		velocity = Vector2.ZERO
 		return

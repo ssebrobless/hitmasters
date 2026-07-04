@@ -158,6 +158,10 @@ func break_stealth() -> void:
 func is_stealthed() -> bool:
 	return stealth_timer > 0.0
 
+func can_act() -> bool:
+	# Stun/self-lock modifiers (e.g. Lingual Lure) zero out can_act_mult.
+	return alive and _modifier_value("can_act_mult", 1.0) > 0.5
+
 func open_low_window(duration: float) -> void:
 	low_window_timer = duration
 
@@ -349,6 +353,7 @@ func _update_flight(delta: float) -> void:
 		if flight_time_max > 0.0 and flight_time_remaining <= 0.0:
 			state = CreatureStateScript.State.NORMAL
 			flight_grounded_timer = FLIGHT_GROUNDED_LOCKOUT_SEC
+			break_stealth()
 		return
 
 	if flight_time_max <= 0.0 or not has_movement("flight"):
@@ -392,6 +397,12 @@ func break_latch(_reason: String) -> void:
 		release_latch("self_displacement")
 
 func attach_to_victim(victim: Node, duration: float, source_ability: String, execute_after := 0.0) -> void:
+	# One latch at a time: starting a new one cleanly releases the old, and
+	# stealing a victim releases their previous attacker.
+	if latch_victim != null:
+		release_latch("relatch")
+	if victim.latched_attacker != null and is_instance_valid(victim.latched_attacker) and victim.latched_attacker != self:
+		victim.latched_attacker.release_latch("victim_stolen")
 	latch_victim = victim
 	latch_timer = duration
 	latch_source = source_ability
@@ -540,7 +551,13 @@ func _tick_latch(delta: float) -> void:
 	elif latched_attacker != null and is_instance_valid(latched_attacker):
 		latch_timer = maxf(latch_timer - delta, 0.0)
 		if latch_timer <= 0.0:
-			latched_attacker.release_latch("timeout")
+			# Only release if the attacker is still latched to US — otherwise
+			# our stale timer would cut an unrelated newer latch.
+			if latched_attacker.latch_victim == self:
+				latched_attacker.release_latch("timeout")
+			else:
+				latched_attacker = null
+				latch_move_multiplier = 1.0
 
 func _modified_incoming_damage(event: Resource) -> float:
 	var amount: float = event.amount
