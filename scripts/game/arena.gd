@@ -78,6 +78,7 @@ var bot_brain: RefCounted = BotBrainScript.new()
 func _ready() -> void:
 	_configure_mode()
 	_build_ui()
+	_setup_crosshair_cursor()
 	_spawn_match()
 
 func _configure_mode() -> void:
@@ -217,6 +218,33 @@ func _terrain_color(zone: String) -> Color:
 			return Color(0.1, 0.16, 0.09)
 		_:
 			return Color(0.15, 0.19, 0.1)
+
+func _setup_crosshair_cursor() -> void:
+	var size := 25
+	var center := size / 2
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var white := Color(1.0, 1.0, 1.0, 0.95)
+	var dark := Color(0.05, 0.05, 0.05, 0.9)
+	# Four cross ticks with a gap around the center, dark-edged for contrast.
+	for offset in range(4, 11):
+		for axis in 2:
+			for direction in [-1, 1]:
+				var x := center + (offset * direction if axis == 0 else 0)
+				var y := center + (offset * direction if axis == 1 else 0)
+				img.set_pixel(x, y, white)
+				if axis == 0:
+					img.set_pixel(x, y - 1, dark)
+					img.set_pixel(x, y + 1, dark)
+				else:
+					img.set_pixel(x - 1, y, dark)
+					img.set_pixel(x + 1, y, dark)
+	# Center dot.
+	img.set_pixel(center, center, white)
+	Input.set_custom_mouse_cursor(ImageTexture.create_from_image(img), Input.CURSOR_ARROW, Vector2(center, center))
+
+func _exit_tree() -> void:
+	Input.set_custom_mouse_cursor(null)
 
 func _build_ui() -> void:
 	var canvas := CanvasLayer.new()

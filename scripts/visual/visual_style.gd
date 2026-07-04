@@ -18,7 +18,7 @@ const SKINS := {
 	"water_snake": {"base": "serpent", "main": Color(0.36, 0.26, 0.15), "dark": Color(0.2, 0.14, 0.09), "belly": Color(0.6, 0.5, 0.34)},
 	"bog_turtle": {"base": "turtle", "shell": Color(0.26, 0.2, 0.12), "rim": Color(0.16, 0.12, 0.07), "skin": Color(0.34, 0.28, 0.18), "neck_patch": Color(0.95, 0.55, 0.12), "lunge_scale": 0.2},
 	"alligator": {"base": "croc", "main": Color(0.2, 0.26, 0.17), "dark": Color(0.12, 0.16, 0.1), "belly": Color(0.5, 0.52, 0.4)},
-	"owl": {"base": "bird", "main": Color(0.42, 0.32, 0.22), "dark": Color(0.26, 0.19, 0.13), "breast": Color(0.62, 0.54, 0.42), "beak": Color(0.75, 0.65, 0.4), "beak_len": 0.25, "tufts": true, "facial_disc": true},
+	"owl": {"base": "bird", "main": Color(0.42, 0.32, 0.22), "dark": Color(0.26, 0.19, 0.13), "breast": Color(0.62, 0.54, 0.42), "beak": Color(0.75, 0.65, 0.4), "beak_len": 0.25, "tufts": true, "facial_disc": true, "head_scale": 1.45, "barred": true},
 	"great_blue_heron": {"base": "bird", "main": Color(0.44, 0.5, 0.56), "dark": Color(0.26, 0.31, 0.36), "breast": Color(0.68, 0.7, 0.72), "beak": Color(0.85, 0.7, 0.3), "beak_len": 0.95, "neck": 0.7},
 	"kingfisher": {"base": "bird", "main": Color(0.14, 0.44, 0.68), "dark": Color(0.08, 0.26, 0.42), "breast": Color(0.85, 0.5, 0.2), "beak": Color(0.15, 0.13, 0.12), "beak_len": 0.7},
 	"duck": {"base": "bird", "main": Color(0.4, 0.32, 0.24), "dark": Color(0.24, 0.19, 0.14), "breast": Color(0.55, 0.45, 0.36), "beak": Color(0.85, 0.72, 0.2), "beak_len": 0.45, "flat_bill": true, "head_color": Color(0.1, 0.38, 0.2)},
@@ -272,14 +272,14 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 
 	var spine: Array[Vector2] = []
 	var segment_radii: Array[float] = []
-	for i in 5:
-		var t := float(i) / 4.0
+	for i in 7:
+		var t := float(i) / 6.0
 		var along := lerpf(-1.35, 1.15, t) * radius * stretch
 		var wiggle := 0.0
 		if moving and strike <= 0.0:
-			wiggle = sin(walk_phase * 1.4 - t * 2.6) * radius * 0.16 * (1.0 - t * 0.4)
+			wiggle = sin(walk_phase * 1.2 - t * 2.2) * radius * 0.07 * (1.0 - t * 0.5)
 		spine.append(forward * along + side * wiggle)
-		segment_radii.append(radius * lerpf(0.4, 0.52, sin(t * PI)) * bulk)
+		segment_radii.append(radius * lerpf(0.42, 0.5, sin(t * PI)) * bulk)
 
 	var tail_style := String(skin.get("tail", "bushy"))
 	var tail_direction := (-forward).rotated(sin(walk_phase * 1.4 + 1.8) * 0.3 if moving else 0.12)
@@ -313,20 +313,18 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			var paw_t := [0.22, 0.36, 0.72, 0.86][paw_index] as float
 			var paw_side := 1.0 if paw_index % 2 == 0 else -1.0
 			var paw_step := sin(walk_phase * 1.4 + PI * float(paw_index)) * radius * 0.14
-			canvas.draw_circle(spine[1].lerp(spine[3], paw_t) + side * paw_side * radius * 0.5 * bulk + forward * paw_step, radius * 0.13, fur_dark)
+			canvas.draw_circle(spine[2].lerp(spine[5], paw_t) + side * paw_side * radius * 0.5 * bulk + forward * paw_step, radius * 0.13, fur_dark)
 
-	for i in 5:
+	for i in 7:
 		canvas.draw_circle(spine[i], segment_radii[i] + 2.0, fur_dark)
-	for i in 5:
+	for i in 7:
 		canvas.draw_circle(spine[i], segment_radii[i], fur)
-	if not bool(skin.get("smooth", false)):
-		canvas.draw_line(spine[0], spine[4], fur.lightened(0.12), maxf(radius * 0.14, 2.0))
 	if bool(skin.get("spots", false)):
 		var accent: Color = skin.get("accent", Color(0.9, 0.5, 0.15))
-		for i in 4:
+		for i in 6:
 			canvas.draw_circle(spine[i] + side * (radius * 0.18 if i % 2 == 0 else radius * -0.18), maxf(radius * 0.08, 1.5), accent)
 
-	var head: Vector2 = spine[4]
+	var head: Vector2 = spine[6]
 	if not bool(skin.get("smooth", false)):
 		canvas.draw_circle(head + side * radius * 0.28 - forward * radius * 0.1, radius * 0.14, fur_dark)
 		canvas.draw_circle(head - side * radius * 0.28 - forward * radius * 0.1, radius * 0.14, fur_dark)
@@ -390,6 +388,10 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 		body_points.append(forward * cos(body_angle) * radius * 0.8 + side * sin(body_angle) * radius * 0.62)
 	canvas.draw_colored_polygon(body_points, main)
 	canvas.draw_circle(forward * radius * 0.3, radius * 0.34, breast)
+	if bool(skin.get("barred", false)):
+		for bar: float in [-0.45, -0.15, 0.15]:
+			canvas.draw_line(forward * radius * bar - side * radius * 0.4, forward * radius * (bar - 0.12), dark.lightened(0.05), 1.5)
+			canvas.draw_line(forward * radius * bar + side * radius * 0.4, forward * radius * (bar - 0.12), dark.lightened(0.05), 1.5)
 
 	# Legs when grounded.
 	if not airborne and moving:
@@ -398,12 +400,14 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 			canvas.draw_line(side * leg_side * radius * 0.2, side * leg_side * radius * 0.24 + forward * leg_step - forward * radius * 0.05, beak.darkened(0.2), 1.5)
 
 	# Head (long neck for heron), beak, eyes.
+	var head_scale := float(skin.get("head_scale", 1.0))
 	var head_center := forward * radius * (0.75 + neck * 0.55)
 	if neck > 0.0:
 		canvas.draw_line(forward * radius * 0.5, head_center, main, maxf(radius * 0.2, 2.5))
-	canvas.draw_circle(head_center, radius * 0.3, head_color)
+	canvas.draw_circle(head_center, radius * 0.3 * head_scale, head_color)
 	if bool(skin.get("facial_disc", false)):
-		canvas.draw_arc(head_center, radius * 0.26, 0.0, TAU, 20, breast, 2.0)
+		canvas.draw_circle(head_center, radius * 0.26 * head_scale, breast)
+		canvas.draw_arc(head_center, radius * 0.26 * head_scale, 0.0, TAU, 20, dark, 1.5)
 	if bool(skin.get("tufts", false)):
 		for tuft_side: float in [-1.0, 1.0]:
 			canvas.draw_line(head_center + side * tuft_side * radius * 0.18 - forward * radius * 0.1, head_center + side * tuft_side * radius * 0.32 - forward * radius * 0.26, dark, 2.0)
@@ -420,8 +424,14 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 			head_center + forward * radius * (0.16 + beak_len),
 			head_center + forward * radius * 0.16 - side * radius * 0.1
 		]), beak)
-	canvas.draw_circle(head_center + side * radius * 0.14 + forward * radius * 0.06, maxf(radius * 0.06, 1.2), Color(0.95, 0.85, 0.3) if bool(skin.get("facial_disc", false)) else Color(0.08, 0.06, 0.05))
-	canvas.draw_circle(head_center - side * radius * 0.14 + forward * radius * 0.06, maxf(radius * 0.06, 1.2), Color(0.95, 0.85, 0.3) if bool(skin.get("facial_disc", false)) else Color(0.08, 0.06, 0.05))
+	var has_disc := bool(skin.get("facial_disc", false))
+	var eye_offset := radius * 0.14 * head_scale
+	var eye_size := maxf(radius * (0.11 if has_disc else 0.06), 1.2)
+	canvas.draw_circle(head_center + side * eye_offset + forward * radius * 0.06, eye_size, Color(0.95, 0.85, 0.3) if has_disc else Color(0.08, 0.06, 0.05))
+	canvas.draw_circle(head_center - side * eye_offset + forward * radius * 0.06, eye_size, Color(0.95, 0.85, 0.3) if has_disc else Color(0.08, 0.06, 0.05))
+	if has_disc:
+		canvas.draw_circle(head_center + side * eye_offset + forward * radius * 0.08, maxf(eye_size * 0.45, 1.0), Color(0.06, 0.05, 0.04))
+		canvas.draw_circle(head_center - side * eye_offset + forward * radius * 0.08, maxf(eye_size * 0.45, 1.0), Color(0.06, 0.05, 0.04))
 
 static func _base_serpent(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool) -> void:
 	var main: Color = skin.get("main", Color(0.36, 0.26, 0.15))
@@ -641,14 +651,15 @@ static func _strike_tongue(canvas: CanvasItem, radius: float, aim: Vector2, reac
 # ---------- non-creature drawing ----------
 
 static func draw_aim_indicator(canvas: CanvasItem, radius: float, facing: Vector2) -> void:
+	# Subtle chevron just off the body edge — orientation cue, not an arrow.
 	var forward := facing.normalized()
 	if forward == Vector2.ZERO:
 		forward = Vector2.RIGHT
-	var start := forward * (radius + 5.0)
-	var end := forward * (radius + 26.0)
-	canvas.draw_line(start, end, Color(1.0, 0.95, 0.55, 0.9), 3.0)
-	canvas.draw_line(end, end - forward * 6.0 + Vector2(-forward.y, forward.x) * 4.0, Color(1.0, 0.95, 0.55, 0.9), 2.0)
-	canvas.draw_line(end, end - forward * 6.0 - Vector2(-forward.y, forward.x) * 4.0, Color(1.0, 0.95, 0.55, 0.9), 2.0)
+	var side := Vector2(-forward.y, forward.x)
+	var tip := forward * (radius + 9.0)
+	var faint := Color(1.0, 1.0, 1.0, 0.32)
+	canvas.draw_line(tip, tip - forward * 5.0 + side * 4.0, faint, 1.5)
+	canvas.draw_line(tip, tip - forward * 5.0 - side * 4.0, faint, 1.5)
 
 static func draw_pixel_minion(canvas: CanvasItem, team: int, pixel_size := 4.0, alpha := 1.0) -> void:
 	var team_col := _with_alpha(team_color(team), alpha)
