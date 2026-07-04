@@ -20,6 +20,7 @@ const MinionScript := preload("res://scripts/game/minion.gd")
 const PlayerScript := preload("res://scripts/game/player.gd")
 const BotPlayerScript := preload("res://scripts/game/bot_player.gd")
 const ProjectileScript := preload("res://scripts/game/projectile.gd")
+const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
 
 var heroes_by_id: Dictionary = {}
 var entities: Array[Node] = []
@@ -44,6 +45,7 @@ var surge_timers := {
 	BLUE: 0.0,
 	RED: 0.0
 }
+var terrain_map: RefCounted = TerrainMapScript.new()
 var arena_rect := ARENA_RECT
 var cover_rects: Array = []
 var wave_interval := WAVE_INTERVAL
@@ -76,59 +78,31 @@ func _ready() -> void:
 	_spawn_match()
 
 func _configure_mode() -> void:
+	terrain_map.configure(GameConfig.selected_mode)
+	arena_rect = terrain_map.arena_rect
+	cover_rects = terrain_map.get_cover_rects()
+	wave_minion_offsets = terrain_map.wave_minion_offsets
+	blue_core_position = terrain_map.blue_core_position
+	red_core_position = terrain_map.red_core_position
+	blue_minion_spawn = terrain_map.blue_minion_spawn
+	red_minion_spawn = terrain_map.red_minion_spawn
+	team_spawns = terrain_map.team_spawns
+	bot_spawns = terrain_map.bot_spawns
+	objective_position = terrain_map.objective_position
+	objective_radius = terrain_map.objective_radius
+
 	if GameConfig.selected_mode == "1v1" or GameConfig.selected_mode == "Hero Lab":
-		arena_rect = Rect2(Vector2(-820.0, -460.0), Vector2(1640.0, 920.0))
-		cover_rects = [
-			Rect2(Vector2(-110.0, -190.0), Vector2(95.0, 80.0)),
-			Rect2(Vector2(30.0, 115.0), Vector2(95.0, 80.0)),
-			Rect2(Vector2(-42.0, -34.0), Vector2(84.0, 68.0))
-		]
 		wave_interval = 18.0
-		wave_minion_offsets = [Vector2(0.0, -32.0), Vector2(0.0, 32.0)]
-		blue_core_position = Vector2(-660.0, 0.0)
-		red_core_position = Vector2(660.0, 0.0)
-		blue_minion_spawn = Vector2(-525.0, 0.0)
-		red_minion_spawn = Vector2(525.0, 0.0)
-		team_spawns = {
-			BLUE: Vector2(-520.0, 145.0),
-			RED: Vector2(520.0, -145.0)
-		}
-		bot_spawns = {
-			"Red Rival": Vector2(520.0, -145.0)
-		}
-		objective_position = Vector2(0.0, 0.0)
-		objective_radius = 92.0
 		objective_capture_seconds = 3.2
 		objective_respawn_seconds = 34.0
 		surge_seconds = 18.0
-		camera_zoom = Vector2(1.08, 1.08)
+		camera_zoom = Vector2(1.42, 1.42)
 	else:
-		arena_rect = ARENA_RECT
-		cover_rects = COVER_RECTS.duplicate()
 		wave_interval = WAVE_INTERVAL
-		wave_minion_offsets = [Vector2(0.0, -46.0), Vector2(0.0, 0.0), Vector2(0.0, 46.0)]
-		blue_core_position = Vector2(-910.0, 0.0)
-		red_core_position = Vector2(910.0, 0.0)
-		blue_minion_spawn = Vector2(-760.0, 0.0)
-		red_minion_spawn = Vector2(760.0, 0.0)
-		team_spawns = {
-			BLUE: Vector2(-720.0, 180.0),
-			RED: Vector2(720.0, -180.0)
-		}
-		bot_spawns = {
-			"Blue Guard": Vector2(-700.0, -160.0),
-			"Blue Ward": Vector2(-740.0, 60.0),
-			"Red Blade": Vector2(700.0, -150.0),
-			"Red Scope": Vector2(740.0, 55.0),
-			"Red Chorus": Vector2(700.0, 185.0),
-			"Red Rival": Vector2(700.0, -180.0)
-		}
-		objective_position = OBJECTIVE_POSITION
-		objective_radius = OBJECTIVE_RADIUS
 		objective_capture_seconds = OBJECTIVE_CAPTURE_SECONDS
 		objective_respawn_seconds = OBJECTIVE_RESPAWN_SECONDS
 		surge_seconds = SURGE_SECONDS
-		camera_zoom = Vector2(0.9, 0.9)
+		camera_zoom = Vector2(1.08, 1.08)
 
 	wave_timer = 2.0
 
@@ -149,7 +123,7 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _draw() -> void:
-	draw_rect(arena_rect, Color(0.08, 0.1, 0.11))
+	_draw_terrain()
 	draw_rect(arena_rect, Color(0.22, 0.28, 0.31), false, 5.0)
 
 	for x in range(int(arena_rect.position.x), int(arena_rect.end.x), 80):
@@ -157,16 +131,12 @@ func _draw() -> void:
 	for y in range(int(arena_rect.position.y), int(arena_rect.end.y), 80):
 		draw_line(Vector2(arena_rect.position.x, y), Vector2(arena_rect.end.x, y), Color(0.1, 0.13, 0.14), 1.0)
 
-	draw_rect(Rect2(Vector2(arena_rect.position.x, -120.0), Vector2(arena_rect.size.x, 240.0)), Color(0.12, 0.15, 0.16))
-	draw_rect(Rect2(blue_core_position - Vector2(150.0, 190.0), Vector2(330.0, 380.0)), Color(0.07, 0.13, 0.19))
-	draw_rect(Rect2(red_core_position - Vector2(180.0, 190.0), Vector2(330.0, 380.0)), Color(0.18, 0.08, 0.08))
 	draw_line(Vector2(arena_rect.position.x, 0.0), Vector2(arena_rect.end.x, 0.0), Color(0.32, 0.36, 0.37), 2.0)
 	draw_line(Vector2(blue_minion_spawn.x, -90.0), Vector2(red_minion_spawn.x, -90.0), Color(0.22, 0.26, 0.27), 1.0)
 	draw_line(Vector2(blue_minion_spawn.x, 90.0), Vector2(red_minion_spawn.x, 90.0), Color(0.22, 0.26, 0.27), 1.0)
 	_draw_objective()
 
 	for cover in cover_rects:
-		draw_rect(cover, Color(0.18, 0.22, 0.24))
 		draw_rect(cover.grow(-2.0), Color(0.28, 0.33, 0.35), false, 2.0)
 		draw_line(cover.position + Vector2(8.0, 8.0), cover.end - Vector2(8.0, 8.0), Color(0.12, 0.15, 0.16), 2.0)
 
@@ -174,6 +144,27 @@ func _draw() -> void:
 
 	draw_string(ThemeDB.fallback_font, blue_core_position + Vector2(-110.0, -150.0), "BLUE CORE", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 18, Color(0.45, 0.72, 1.0))
 	draw_string(ThemeDB.fallback_font, red_core_position + Vector2(-15.0, -150.0), "RED CORE", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 18, Color(1.0, 0.45, 0.4))
+
+func _draw_terrain() -> void:
+	for layer in terrain_map.zone_layers:
+		var zone := String(layer["zone"])
+		for rect: Rect2 in layer["rects"]:
+			draw_rect(rect, _terrain_color(zone))
+
+func _terrain_color(zone: String) -> Color:
+	match zone:
+		TerrainMapScript.HABITAT_BLUE:
+			return Color(0.07, 0.13, 0.19)
+		TerrainMapScript.HABITAT_RED:
+			return Color(0.18, 0.08, 0.08)
+		TerrainMapScript.WATER:
+			return Color(0.07, 0.19, 0.25)
+		TerrainMapScript.SHALLOW:
+			return Color(0.13, 0.21, 0.18)
+		TerrainMapScript.COVER:
+			return Color(0.18, 0.22, 0.24)
+		_:
+			return Color(0.08, 0.1, 0.11)
 
 func _load_hero_data() -> void:
 	var file := FileAccess.open("res://data/heroes.json", FileAccess.READ)
@@ -443,6 +434,9 @@ func get_bot_spawn(team: int, bot_name: String) -> Vector2:
 
 func get_hero_data(hero_id: String) -> Dictionary:
 	return heroes_by_id.get(hero_id, heroes_by_id.get("burst_rifle", {}))
+
+func get_terrain_zone(point: Vector2) -> String:
+	return terrain_map.get_zone_at(point)
 
 func is_inside_arena(point: Vector2) -> bool:
 	return arena_rect.has_point(point)
