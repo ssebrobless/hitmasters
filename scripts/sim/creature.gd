@@ -5,6 +5,7 @@ const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 const CreatureStateScript := preload("res://scripts/sim/creature_state.gd")
 const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
 const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
+const VisualStyle := preload("res://scripts/visual/visual_style.gd")
 const TurtleKitScript := preload("res://scripts/sim/kits/snapping_turtle.gd")
 const FrogKitScript := preload("res://scripts/sim/kits/chorus_frog.gd")
 const MinkKitScript := preload("res://scripts/sim/kits/mink.gd")
@@ -55,6 +56,8 @@ var latch_source := ""
 var latch_execute_timer := 0.0
 var latch_move_multiplier := 1.0
 var last_aim_direction := Vector2.RIGHT
+var render_flash_timer := 0.0
+var render_shake_timer := 0.0
 
 func setup(creature_arena: Node, creature_team: int, spawn_position: Vector2, next_creature_id: String, next_terrain_map: RefCounted = null) -> void:
 	arena = creature_arena
@@ -97,6 +100,13 @@ func set_input_frame(next_frame: Resource) -> void:
 func _physics_process(delta: float) -> void:
 	tick_sim(delta)
 
+func _process(delta: float) -> void:
+	var had_render_feedback := render_flash_timer > 0.0 or render_shake_timer > 0.0
+	render_flash_timer = maxf(render_flash_timer - delta, 0.0)
+	render_shake_timer = maxf(render_shake_timer - delta, 0.0)
+	if had_render_feedback:
+		queue_redraw()
+
 func tick_sim(delta: float) -> void:
 	if not alive:
 		return
@@ -121,6 +131,15 @@ func take_damage_event(event: Resource) -> void:
 		return
 	var amount: float = _modified_incoming_damage(event)
 	health = maxf(health - amount, 0.0)
+	if event.source_actor != null or String(event.source_ability) != "":
+		emit_vfx_event("hit_landed", {
+			"source": event.source_actor,
+			"target": self,
+			"amount": amount,
+			"heavy": amount >= 50.0,
+			"position": global_position,
+			"source_ability": event.source_ability
+		})
 	if health <= 0.0:
 		if event.source_actor != null and is_instance_valid(event.source_actor) and event.source_actor.has_method("on_kill"):
 			event.source_actor.on_kill(self)
@@ -133,7 +152,28 @@ func take_damage_event(event: Resource) -> void:
 
 func heal(amount: float) -> void:
 	if alive:
+		var before := health
 		health = minf(health + amount * _modifier_value("healing_received_mult", 1.0), max_health)
+		var healed := health - before
+		if healed > 0.0:
+			emit_vfx_event("heal_tick", {
+				"target": self,
+				"amount": healed,
+				"position": global_position
+			})
+
+func emit_vfx_event(event_type: String, payload: Dictionary = {}) -> void:
+	if arena == null or not arena.has_method("record_vfx_event"):
+		return
+	var event := payload.duplicate()
+	event["type"] = event_type
+	arena.record_vfx_event(event)
+
+func apply_render_hit_feedback(amount: float) -> void:
+	render_flash_timer = 0.1
+	if amount >= 50.0:
+		render_shake_timer = 0.1
+	queue_redraw()
 
 func is_alive() -> bool:
 	return alive
@@ -267,6 +307,13 @@ func attach_to_victim(victim: Node, duration: float, source_ability: String, exe
 	latch_source = source_ability
 	latch_execute_timer = execute_after
 	state = CreatureStateScript.State.LATCHED
+	emit_vfx_event("latch_started", {
+		"attacker": self,
+		"victim": victim,
+		"duration": duration,
+		"execute_after": execute_after,
+		"source_ability": source_ability
+	})
 
 func receive_latch(attacker: Node, duration: float, source_ability: String) -> void:
 	latched_attacker = attacker
@@ -275,6 +322,20 @@ func receive_latch(attacker: Node, duration: float, source_ability: String) -> v
 	latch_move_multiplier = 0.65
 
 func release_latch(_reason: String) -> void:
+	if latch_victim != null:
+		emit_vfx_event("latch_ended", {
+			"attacker": self,
+			"victim": latch_victim,
+			"reason": _reason,
+			"source_ability": latch_source
+		})
+	elif latched_attacker != null:
+		emit_vfx_event("latch_ended", {
+			"attacker": latched_attacker,
+			"victim": self,
+			"reason": _reason,
+			"source_ability": latch_source
+		})
 	if latch_victim != null and is_instance_valid(latch_victim) and latch_victim.latched_attacker == self:
 		latch_victim.latched_attacker = null
 		latch_victim.latch_move_multiplier = 1.0
@@ -454,10 +515,15 @@ func _catalog() -> Node:
 func _draw() -> void:
 	if not alive:
 		return
-	var color := Color(0.25, 0.65, 1.0) if team == 0 else Color(1.0, 0.28, 0.25)
-	var fill := color.lightened(0.25) if is_airborne() else color
-	draw_circle(Vector2.ZERO, body_radius, Color(0.03, 0.035, 0.045))
-	draw_circle(Vector2.ZERO, maxf(body_radius - 3.0, 2.0), fill)
+	var shake_offset := Vector2.ZERO
+	if render_shake_timer > 0.0:
+		var shake_phase := render_shake_timer * 120.0
+		shake_offset = Vector2(sin(shake_phase), cos(shake_phase * 1.37)) * 2.0
+	draw_set_transform(shake_offset, 0.0, Vector2.ONE)
+	VisualStyle.draw_battle_creature(self, creature_id, team, body_radius, last_aim_direction, render_flash_timer / 0.1, 1.0, is_airborne())
+	if arena != null and arena.get("player") == self:
+		VisualStyle.draw_aim_indicator(self, body_radius, last_aim_direction)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	draw_rect(Rect2(Vector2(-body_radius, -body_radius - 12.0), Vector2(body_radius * 2.0, 5.0)), Color(0.08, 0.08, 0.08))
 	draw_rect(Rect2(Vector2(-body_radius, -body_radius - 12.0), Vector2(body_radius * 2.0 * (health / max_health), 5.0)), Color(0.3, 1.0, 0.45))
 	if swim_time_max > 0.0:

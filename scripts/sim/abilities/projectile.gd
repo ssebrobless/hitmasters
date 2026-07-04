@@ -5,6 +5,14 @@ static func instant_line(actor: Node, range_px: float, damage: float, delivery: 
 	if actor.arena == null:
 		return hits
 	var aim: Vector2 = actor.get_aim_direction()
+	if actor.has_method("emit_vfx_event"):
+		actor.emit_vfx_event("projectile_tracer", {
+			"actor": actor,
+			"from": actor.global_position,
+			"to": actor.global_position + aim * range_px,
+			"duration": 0.18,
+			"source_ability": source_ability
+		})
 	for target in actor.arena.entities:
 		if target == actor or target == null or not is_instance_valid(target):
 			continue

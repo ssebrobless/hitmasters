@@ -26,6 +26,19 @@ func tick(actor: Node, delta: float) -> void:
 		return
 	if actor.input_frame.is_pressed(preload("res://scripts/sim/input_frame.gd").BUTTON_PRIMARY) and actor.primary_timer <= 0.0:
 		primary_windup_remaining = float(actor.stats.get("windup_sec", 0.0))
+		if primary_windup_remaining > 0.0 and actor.has_method("emit_vfx_event"):
+			var reach_units := KitHelpers.range_units(actor.stats, 1.0)
+			if grab_armed:
+				var grab := KitHelpers.ability(actor.creature_data, "Q")
+				reach_units += KitHelpers.first_number(String(grab.get("summary", "")), 0.0)
+			actor.emit_vfx_event("windup_started", {
+				"actor": actor,
+				"position": actor.global_position,
+				"aim": actor.get_aim_direction(),
+				"reach_px": reach_units * SimConstants.UNIT_PX,
+				"duration": primary_windup_remaining,
+				"source_ability": "Bite"
+			})
 		if primary_windup_remaining <= 0.0:
 			_land_bite(actor)
 	if actor.input_frame.is_pressed(preload("res://scripts/sim/input_frame.gd").BUTTON_ABILITY_Q) and actor.q_timer <= 0.0:

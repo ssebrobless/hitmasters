@@ -21,9 +21,41 @@ static func draw_pixel_creature(canvas: CanvasItem, creature_id: String, team: i
 	_draw_cells(canvas, _highlight_cells(creature_id), pixel_size, bright_col)
 	_draw_cells(canvas, [Vector2i(2, 3), Vector2i(5, 3)], pixel_size, team_col)
 
+static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: int, radius: float, facing: Vector2, flash_alpha := 0.0, alpha := 1.0, airborne := false) -> void:
+	var forward := facing.normalized()
+	if forward == Vector2.ZERO:
+		forward = Vector2.RIGHT
+	var side := Vector2(-forward.y, forward.x)
+	var outline := _with_alpha(team_color(team), alpha)
+	var body := _with_alpha(creature_color(creature_id).lightened(0.18) if airborne else creature_color(creature_id), alpha)
+	var shadow := _with_alpha(Color(0.02, 0.025, 0.03), alpha)
+	if creature_id == "snapping_turtle":
+		_draw_turtle(canvas, radius, forward, side, shadow, outline, body)
+	elif creature_id == "mink":
+		_draw_mink(canvas, radius, forward, side, shadow, outline, body)
+	elif creature_id == "chorus_frog":
+		_draw_frog(canvas, radius, forward, side, shadow, outline, body)
+	else:
+		canvas.draw_circle(Vector2.ZERO, radius + 4.0, shadow)
+		canvas.draw_circle(Vector2.ZERO, radius + 2.0, outline)
+		canvas.draw_circle(Vector2.ZERO, radius, body)
+	if flash_alpha > 0.0:
+		var flash := Color(1.0, 1.0, 1.0, clampf(flash_alpha, 0.0, 1.0) * 0.85)
+		canvas.draw_circle(Vector2.ZERO, radius + 3.0, flash)
+
+static func draw_aim_indicator(canvas: CanvasItem, radius: float, facing: Vector2) -> void:
+	var forward := facing.normalized()
+	if forward == Vector2.ZERO:
+		forward = Vector2.RIGHT
+	var start := forward * (radius + 5.0)
+	var end := forward * (radius + 26.0)
+	canvas.draw_line(start, end, Color(1.0, 0.95, 0.55, 0.9), 3.0)
+	canvas.draw_line(end, end - forward * 6.0 + Vector2(-forward.y, forward.x) * 4.0, Color(1.0, 0.95, 0.55, 0.9), 2.0)
+	canvas.draw_line(end, end - forward * 6.0 - Vector2(-forward.y, forward.x) * 4.0, Color(1.0, 0.95, 0.55, 0.9), 2.0)
+
 static func draw_pixel_minion(canvas: CanvasItem, team: int, pixel_size := 4.0, alpha := 1.0) -> void:
 	var team_col := _with_alpha(team_color(team), alpha)
-	var dark_col := _with_alpha(Color(0.04, 0.045, 0.05), alpha)
+	var dark_col := _with_alpha(team_col.darkened(0.2), alpha)
 	var body_cells := [
 		Vector2i(2, 1), Vector2i(3, 1),
 		Vector2i(1, 2), Vector2i(2, 2), Vector2i(3, 2), Vector2i(4, 2),
@@ -39,6 +71,47 @@ static func draw_pixel_minion(canvas: CanvasItem, team: int, pixel_size := 4.0, 
 	_draw_cells(canvas, outline_cells, pixel_size, dark_col, Vector2(3.0, 3.0))
 	_draw_cells(canvas, body_cells, pixel_size, team_col, Vector2(3.0, 3.0))
 	_draw_cells(canvas, [Vector2i(4, 1), Vector2i(5, 1)], pixel_size, _with_alpha(Color(0.85, 0.9, 0.95), alpha), Vector2(3.0, 3.0))
+
+static func _draw_turtle(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, shadow: Color, outline: Color, body: Color) -> void:
+	var shell := [
+		Vector2(-1.12, 0.0), Vector2(-0.86, -0.5), Vector2(-0.26, -0.73), Vector2(0.48, -0.64),
+		Vector2(0.86, -0.34), Vector2(1.18, -0.22), Vector2(1.32, 0.0), Vector2(1.18, 0.22),
+		Vector2(0.86, 0.34), Vector2(0.48, 0.64), Vector2(-0.26, 0.73), Vector2(-0.86, 0.5)
+	]
+	_draw_shape(canvas, shell, radius + 4.0, forward, side, shadow)
+	_draw_shape(canvas, shell, radius + 2.0, forward, side, outline)
+	_draw_shape(canvas, shell, radius, forward, side, body)
+	canvas.draw_line(_orient(Vector2(-0.55, -0.38), radius, forward, side), _orient(Vector2(0.62, -0.26), radius, forward, side), body.lightened(0.28), 2.0)
+	canvas.draw_line(_orient(Vector2(-0.62, 0.32), radius, forward, side), _orient(Vector2(0.48, 0.25), radius, forward, side), body.darkened(0.18), 2.0)
+
+static func _draw_mink(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, shadow: Color, outline: Color, body: Color) -> void:
+	var body_shape := [
+		Vector2(-1.48, -0.18), Vector2(-1.12, -0.42), Vector2(0.58, -0.46), Vector2(1.22, -0.28),
+		Vector2(1.48, -0.08), Vector2(1.28, 0.24), Vector2(0.32, 0.42), Vector2(-1.28, 0.34),
+		Vector2(-1.72, 0.08)
+	]
+	_draw_shape(canvas, body_shape, radius + 4.0, forward, side, shadow)
+	_draw_shape(canvas, body_shape, radius + 2.0, forward, side, outline)
+	_draw_shape(canvas, body_shape, radius, forward, side, body)
+	canvas.draw_line(_orient(Vector2(-1.32, 0.12), radius, forward, side), _orient(Vector2(-1.88, 0.44), radius, forward, side), outline, 3.0)
+	canvas.draw_circle(_orient(Vector2(1.02, -0.1), radius, forward, side), maxf(radius * 0.12, 1.5), Color(0.95, 0.96, 0.85))
+
+static func _draw_frog(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, shadow: Color, outline: Color, body: Color) -> void:
+	canvas.draw_circle(Vector2.ZERO, radius + 4.0, shadow)
+	canvas.draw_circle(Vector2.ZERO, radius + 2.0, outline)
+	canvas.draw_circle(Vector2.ZERO, radius, body)
+	canvas.draw_circle(_orient(Vector2(0.58, 0.0), radius, forward, side), radius * 0.42, body.lightened(0.22))
+	canvas.draw_circle(_orient(Vector2(0.38, -0.45), radius, forward, side), maxf(radius * 0.18, 1.5), Color(0.95, 0.96, 0.85))
+	canvas.draw_circle(_orient(Vector2(0.38, 0.45), radius, forward, side), maxf(radius * 0.18, 1.5), Color(0.95, 0.96, 0.85))
+
+static func _draw_shape(canvas: CanvasItem, local_points: Array, radius: float, forward: Vector2, side: Vector2, color: Color) -> void:
+	var points := PackedVector2Array()
+	for point: Vector2 in local_points:
+		points.append(_orient(point, radius, forward, side))
+	canvas.draw_colored_polygon(points, color)
+
+static func _orient(point: Vector2, radius: float, forward: Vector2, side: Vector2) -> Vector2:
+	return forward * point.x * radius + side * point.y * radius
 
 static func draw_pixel_core(canvas: CanvasItem, team: int, pixel_size := 8.0, alpha := 1.0) -> void:
 	var team_col := _with_alpha(team_color(team), alpha)

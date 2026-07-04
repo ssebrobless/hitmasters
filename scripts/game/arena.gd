@@ -32,6 +32,7 @@ var wave_timer := 2.0
 var elapsed := 0.0
 var match_over := false
 var telegraphs: Array[Dictionary] = []
+var vfx_events: Array[Dictionary] = []
 var actor_stats: Dictionary = {}
 var team_stats := {
 	BLUE: {"kills": 0, "deaths": 0, "core_damage": 0.0, "objectives": 0},
@@ -299,6 +300,13 @@ func add_circle_telegraph(center: Vector2, radius: float, color: Color, duration
 		"filled": filled
 	})
 
+func record_vfx_event(event: Dictionary) -> void:
+	vfx_events.append(event.duplicate())
+	if vfx_events.size() > 240:
+		vfx_events.pop_front()
+	_spawn_vfx_for_event(event)
+	queue_redraw()
+
 func resolve_projectile_hits(projectile: Node) -> void:
 	if projectile_crosses_cover(projectile.previous_position, projectile.global_position, projectile.radius):
 		projectile.queue_free()
@@ -517,6 +525,10 @@ func _body_step_hits_cover(from: Vector2, direction: Vector2, radius: float) -> 
 
 func _tick_telegraphs(delta: float) -> void:
 	for i in range(telegraphs.size() - 1, -1, -1):
+		var telegraph := telegraphs[i]
+		if _telegraph_lost_anchor(telegraph):
+			telegraphs.remove_at(i)
+			continue
 		telegraphs[i]["remaining"] = float(telegraphs[i]["remaining"]) - delta
 		if float(telegraphs[i]["remaining"]) <= 0.0:
 			telegraphs.remove_at(i)
@@ -532,6 +544,27 @@ func _draw_telegraphs() -> void:
 		match String(telegraph.get("type", "")):
 			"line":
 				draw_line(telegraph["from"], telegraph["to"], color, float(telegraph.get("width", 4.0)))
+			"windup":
+				_draw_windup_telegraph(telegraph, color)
+			"swing":
+				_draw_swing_telegraph(telegraph, color)
+			"dash_trail":
+				draw_line(telegraph["from"], telegraph["to"], color, float(telegraph.get("width", 7.0)))
+			"tracer":
+				draw_line(telegraph["from"], telegraph["to"], color, float(telegraph.get("width", 3.0)))
+			"aura_follow":
+				var target = telegraph.get("target", null)
+				if target != null and is_instance_valid(target):
+					var ring_radius: float = float(telegraph.get("ring_radius", 22.0))
+					draw_arc(target.global_position, ring_radius, 0.0, TAU, 32, color, float(telegraph.get("width", 3.0)))
+			"tether":
+				var attacker = telegraph.get("attacker", null)
+				var victim = telegraph.get("victim", null)
+				if attacker != null and victim != null and is_instance_valid(attacker) and is_instance_valid(victim):
+					draw_line(attacker.global_position, victim.global_position, color, float(telegraph.get("width", 4.0)))
+					_draw_latch_countdown(telegraph, attacker.global_position.lerp(victim.global_position, 0.5), color)
+			"float_text":
+				_draw_float_text(telegraph, color, fade)
 			"circle":
 				var center: Vector2 = telegraph["center"]
 				var radius: float = telegraph["radius"]
@@ -541,6 +574,185 @@ func _draw_telegraphs() -> void:
 					fill_color.a *= 0.18
 					draw_circle(center, radius, fill_color)
 				draw_arc(center, radius, 0.0, TAU, 48, color, width)
+
+func _spawn_vfx_for_event(event: Dictionary) -> void:
+	match String(event.get("type", "")):
+		"windup_started":
+			var actor = event.get("actor", null)
+			var duration: float = float(event.get("duration", 0.1))
+			telegraphs.append({
+				"type": "windup",
+				"actor": actor,
+				"aim": event.get("aim", Vector2.RIGHT),
+				"reach_px": event.get("reach_px", 24.0),
+				"color": Color(1.0, 0.78, 0.22, 0.95),
+				"duration": duration,
+				"remaining": duration
+			})
+		"attack_swung":
+			telegraphs.append({
+				"type": "swing",
+				"actor": event.get("actor", null),
+				"position": event.get("position", event.get("center", Vector2.ZERO)),
+				"aim": event.get("aim", Vector2.RIGHT),
+				"reach_px": event.get("reach_px", 24.0),
+				"color": Color(1.0, 0.93, 0.55, 0.95),
+				"duration": 0.14,
+				"remaining": 0.14
+			})
+		"hit_landed":
+			var target = event.get("target", null)
+			var amount: float = float(event.get("amount", 0.0))
+			if target != null and is_instance_valid(target) and target.has_method("apply_render_hit_feedback"):
+				target.apply_render_hit_feedback(amount)
+			telegraphs.append({
+				"type": "float_text",
+				"position": event.get("position", Vector2.ZERO),
+				"text": str(int(round(amount))),
+				"color": Color(1.0, 0.96, 0.82, 1.0),
+				"duration": 0.5,
+				"remaining": 0.5
+			})
+		"heal_tick":
+			var heal_amount: float = float(event.get("amount", 0.0))
+			telegraphs.append({
+				"type": "float_text",
+				"position": event.get("position", Vector2.ZERO),
+				"text": "+%d" % int(ceil(heal_amount)),
+				"color": Color(0.32, 1.0, 0.48, 1.0),
+				"duration": 0.5,
+				"remaining": 0.5
+			})
+		"dash_started":
+			var dash_duration: float = float(event.get("duration", 0.12))
+			telegraphs.append({
+				"type": "dash_trail",
+				"from": event.get("from", Vector2.ZERO),
+				"to": event.get("to", Vector2.ZERO),
+				"color": Color(0.65, 0.95, 1.0, 0.65),
+				"duration": maxf(dash_duration, 0.12),
+				"remaining": maxf(dash_duration, 0.12),
+				"width": 7.0
+			})
+		"projectile_tracer":
+			telegraphs.append({
+				"type": "tracer",
+				"from": event.get("from", Vector2.ZERO),
+				"to": event.get("to", Vector2.ZERO),
+				"color": Color(0.92, 0.88, 0.5, 0.85),
+				"duration": float(event.get("duration", 0.18)),
+				"remaining": float(event.get("duration", 0.18)),
+				"width": 3.0
+			})
+		"aura_applied":
+			var target = event.get("target", null)
+			var aura_duration: float = float(event.get("duration", 0.1))
+			telegraphs.append({
+				"type": "aura_follow",
+				"target": target,
+				"ring_radius": _aura_ring_radius(target),
+				"color": _aura_color(String(event.get("source_ability", "")), bool(event.get("friendly", true))),
+				"duration": aura_duration,
+				"remaining": aura_duration,
+				"width": 3.0
+			})
+		"latch_started":
+			var duration: float = float(event.get("duration", 0.1))
+			telegraphs.append({
+				"type": "tether",
+				"attacker": event.get("attacker", null),
+				"victim": event.get("victim", null),
+				"source_ability": event.get("source_ability", ""),
+				"duration": duration,
+				"remaining": duration,
+				"execute_after": event.get("execute_after", 0.0),
+				"color": Color(1.0, 0.28, 0.2, 0.9),
+				"width": 4.0
+			})
+		"latch_ended":
+			_remove_tether(event.get("attacker", null), event.get("victim", null))
+
+func _telegraph_lost_anchor(telegraph: Dictionary) -> bool:
+	match String(telegraph.get("type", "")):
+		"windup":
+			var actor = telegraph.get("actor", null)
+			return actor == null or not is_instance_valid(actor)
+		"aura_follow":
+			var target = telegraph.get("target", null)
+			return target == null or not is_instance_valid(target)
+		"tether":
+			var attacker = telegraph.get("attacker", null)
+			var victim = telegraph.get("victim", null)
+			return attacker == null or victim == null or not is_instance_valid(attacker) or not is_instance_valid(victim)
+	return false
+
+func _remove_tether(attacker: Variant, victim: Variant) -> void:
+	for i in range(telegraphs.size() - 1, -1, -1):
+		var telegraph := telegraphs[i]
+		if String(telegraph.get("type", "")) != "tether":
+			continue
+		if telegraph.get("attacker", null) == attacker and telegraph.get("victim", null) == victim:
+			telegraphs.remove_at(i)
+
+func _draw_windup_telegraph(telegraph: Dictionary, color: Color) -> void:
+	var actor = telegraph.get("actor", null)
+	if actor == null or not is_instance_valid(actor):
+		return
+	var aim: Vector2 = telegraph.get("aim", Vector2.RIGHT)
+	if aim == Vector2.ZERO:
+		aim = Vector2.RIGHT
+	var reach: float = float(telegraph.get("reach_px", 24.0))
+	_draw_cone(actor.global_position, aim.normalized(), reach, PI * 0.52, color)
+
+func _draw_swing_telegraph(telegraph: Dictionary, color: Color) -> void:
+	var actor = telegraph.get("actor", null)
+	var origin: Vector2 = actor.global_position if actor != null and is_instance_valid(actor) else telegraph.get("position", Vector2.ZERO)
+	var aim: Vector2 = telegraph.get("aim", Vector2.RIGHT)
+	if aim == Vector2.ZERO:
+		aim = Vector2.RIGHT
+	var reach: float = float(telegraph.get("reach_px", 24.0))
+	_draw_cone(origin, aim.normalized(), reach, PI * 0.7, color)
+
+func _draw_cone(origin: Vector2, aim: Vector2, reach: float, spread: float, color: Color) -> void:
+	var points := PackedVector2Array()
+	points.append(origin)
+	var steps := 10
+	for i in range(steps + 1):
+		var t := float(i) / float(steps)
+		var angle := -spread * 0.5 + spread * t
+		points.append(origin + aim.rotated(angle) * reach)
+	var fill := color
+	fill.a *= 0.2
+	draw_colored_polygon(points, fill)
+	draw_arc(origin, reach, aim.angle() - spread * 0.5, aim.angle() + spread * 0.5, 18, color, 3.0)
+
+func _draw_latch_countdown(telegraph: Dictionary, center: Vector2, color: Color) -> void:
+	var duration: float = maxf(float(telegraph.get("duration", 0.1)), 0.1)
+	var remaining: float = clampf(float(telegraph.get("remaining", 0.0)), 0.0, duration)
+	var radius := 7.0
+	draw_circle(center, radius + 2.0, Color(0.04, 0.02, 0.02, color.a))
+	draw_arc(center, radius, -PI * 0.5, -PI * 0.5 + TAU * (remaining / duration), 20, color, 3.0)
+
+func _draw_float_text(telegraph: Dictionary, color: Color, fade: float) -> void:
+	var duration: float = maxf(float(telegraph.get("duration", 0.5)), 0.01)
+	var remaining: float = float(telegraph.get("remaining", 0.0))
+	var progress := 1.0 - clampf(remaining / duration, 0.0, 1.0)
+	var position: Vector2 = telegraph.get("position", Vector2.ZERO) + Vector2(-8.0, -18.0 - progress * 20.0)
+	color.a *= fade
+	draw_string(ThemeDB.fallback_font, position + Vector2(1.0, 1.0), String(telegraph.get("text", "")), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(0.02, 0.02, 0.02, color.a))
+	draw_string(ThemeDB.fallback_font, position, String(telegraph.get("text", "")), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, color)
+
+func _aura_ring_radius(target: Variant) -> float:
+	if target != null and is_instance_valid(target) and target.get("body_radius") != null:
+		return float(target.body_radius) + 9.0
+	return 22.0
+
+func _aura_color(source_ability: String, friendly: bool) -> Color:
+	if source_ability == "Scent Marking":
+		return Color(0.95, 0.82, 0.35, 0.82)
+	if friendly:
+		return Color(0.35, 1.0, 0.55, 0.82)
+	return Color(0.82, 0.45, 1.0, 0.82)
 
 func _on_core_destroyed(core) -> void:
 	match_over = true
