@@ -985,7 +985,7 @@ func _get_cooldown_text() -> String:
 	if player == null:
 		return ""
 	if player.has_method("is_alive") and not player.is_alive():
-		return "RESPAWNING"
+		return "RESPAWNING IN %.1fs" % maxf(player.respawn_timer, 0.0)
 	return "Primary %s | Q %s | E %s | Swim %d%% | Flight %d%% | %s" % [
 		_format_cooldown(player.primary_timer),
 		_format_cooldown(player.q_timer),

@@ -70,6 +70,8 @@ var anim_windup_timer := 0.0
 var anim_windup_duration := 0.001
 var stealth_timer := 0.0
 var low_window_timer := 0.0
+var respawn_timer := 0.0
+var respawn_duration := 5.0
 
 func setup(creature_arena: Node, creature_team: int, spawn_position: Vector2, next_creature_id: String, next_terrain_map: RefCounted = null) -> void:
 	arena = creature_arena
@@ -124,6 +126,11 @@ func _process(delta: float) -> void:
 
 func tick_sim(delta: float) -> void:
 	if not alive:
+		# Interim respawn (fixed timer) until M5 replaces this with habitat
+		# stock selection per decision #6.
+		respawn_timer = maxf(respawn_timer - delta, 0.0)
+		if respawn_timer <= 0.0:
+			_respawn()
 		return
 
 	_tick_timers(delta)
@@ -191,8 +198,17 @@ func take_damage_event(event: Resource) -> void:
 			event.source_actor.on_kill(self)
 		if arena != null and arena.has_method("record_death"):
 			arena.record_death(self, event.source_actor)
+		if latch_victim != null:
+			release_latch("death")
+		if latched_attacker != null and is_instance_valid(latched_attacker):
+			latched_attacker.release_latch("victim_death")
+		break_stealth()
+		low_window_timer = 0.0
+		state = CreatureStateScript.State.NORMAL
 		alive = false
+		visible = false
 		velocity = Vector2.ZERO
+		respawn_timer = respawn_duration
 		if arena != null and arena.has_method("unregister_entity"):
 			arena.unregister_entity(self)
 
@@ -458,6 +474,31 @@ func damage_enemy_cores_line(range_px: float, damage: float, source_ability: Str
 		if along >= 0.0 and along <= range_px and absf(offset.cross(aim)) <= core.radius:
 			core.take_damage(damage, team, self)
 			arena.record_core_damage(team, damage, self)
+
+func _respawn() -> void:
+	alive = true
+	visible = true
+	health = max_health
+	modifiers.clear()
+	healing_ticks.clear()
+	swim_time_remaining = swim_time_max
+	flight_time_remaining = flight_time_max
+	flight_grounded_timer = 0.0
+	wrong_terrain_seconds = 0.0
+	dash_velocity = Vector2.ZERO
+	dash_timer = 0.0
+	primary_timer = 0.4
+	q_timer = maxf(q_timer, 1.0)
+	e_timer = maxf(e_timer, 1.0)
+	state = CreatureStateScript.State.AIRBORNE if has_movement("always_flying") else CreatureStateScript.State.NORMAL
+	if arena != null:
+		if arena.has_method("get_team_spawn"):
+			global_position = arena.get_team_spawn(team)
+		if arena.has_method("register_entity"):
+			arena.register_entity(self)
+		if arena.has_method("add_circle_telegraph"):
+			arena.add_circle_telegraph(global_position, body_radius + 26.0, Color(0.45, 0.72, 1.0, 0.75) if team == 0 else Color(1.0, 0.4, 0.35, 0.75), 0.6, 4.0, true)
+	queue_redraw()
 
 func _tick_timers(delta: float) -> void:
 	primary_timer = maxf(primary_timer - delta, 0.0)
