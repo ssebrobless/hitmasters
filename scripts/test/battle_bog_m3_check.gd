@@ -7,9 +7,9 @@ const DamScript := preload("res://scripts/game/dam.gd")
 const DucklingScript := preload("res://scripts/sim/pets/duckling.gd")
 
 func _initialize() -> void:
-	var catalog := preload("res://scripts/data/creature_catalog.gd").new()
-	catalog.name = "CreatureCatalog"
-	root.add_child(catalog)
+	var catalog := get_root().get_node_or_null("CreatureCatalog")
+	if catalog != null:
+		catalog.load_catalog()
 
 	# Kits instantiate for all six slice creatures.
 	var kits_ok := true
