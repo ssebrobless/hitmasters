@@ -2,13 +2,16 @@ extends Control
 
 const VisualStyle := preload("res://scripts/visual/visual_style.gd")
 
-var hero_id := "burst_rifle"
+var hero_id := "snapping_turtle"
 var team := 0
 
 func set_hero(next_hero_id: String, next_team := 0) -> void:
 	hero_id = next_hero_id
 	team = next_team
 	queue_redraw()
+
+func set_creature(next_creature_id: String, next_team := 0) -> void:
+	set_hero(next_creature_id, next_team)
 
 func _draw() -> void:
 	var rect := Rect2(Vector2.ZERO, size)
@@ -20,4 +23,3 @@ func _draw() -> void:
 	draw_set_transform(center, 0.0, Vector2.ONE)
 	VisualStyle.draw_pixel_hero(self, hero_id, team, 9.0)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-

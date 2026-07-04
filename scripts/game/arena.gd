@@ -17,12 +17,12 @@ const COVER_RECTS := [
 ]
 const CoreScript := preload("res://scripts/game/core.gd")
 const MinionScript := preload("res://scripts/game/minion.gd")
-const PlayerScript := preload("res://scripts/game/player.gd")
-const BotPlayerScript := preload("res://scripts/game/bot_player.gd")
+const CreatureScript := preload("res://scripts/sim/creature.gd")
 const ProjectileScript := preload("res://scripts/game/projectile.gd")
 const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
+const LocalInputScript := preload("res://scripts/ui/local_input.gd")
+const BotBrainScript := preload("res://scripts/ai/bot_brain.gd")
 
-var heroes_by_id: Dictionary = {}
 var entities: Array[Node] = []
 var minions: Array[Node] = []
 var bots: Array[Node] = []
@@ -70,10 +70,11 @@ var scoreboard_label: Label
 var kill_feed_label: Label
 var end_summary_label: Label
 var help_label: Label
+var local_input: Node = LocalInputScript.new()
+var bot_brain: RefCounted = BotBrainScript.new()
 
 func _ready() -> void:
 	_configure_mode()
-	_load_hero_data()
 	_build_ui()
 	_spawn_match()
 
@@ -106,9 +107,15 @@ func _configure_mode() -> void:
 
 	wave_timer = 2.0
 
-func _process(delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if match_over:
 		return
+
+	if player != null and is_instance_valid(player):
+		player.set_input_frame(local_input.build_frame(player.get_global_mouse_position()))
+	for bot in bots:
+		if bot != null and is_instance_valid(bot):
+			bot.set_input_frame(bot_brain.build_frame(bot))
 
 	elapsed += delta
 	wave_timer -= delta
@@ -120,6 +127,8 @@ func _process(delta: float) -> void:
 		wave_timer = wave_interval
 
 	_update_ui()
+
+func _process(_delta: float) -> void:
 	queue_redraw()
 
 func _draw() -> void:
@@ -166,16 +175,6 @@ func _terrain_color(zone: String) -> Color:
 		_:
 			return Color(0.08, 0.1, 0.11)
 
-func _load_hero_data() -> void:
-	var file := FileAccess.open("res://data/heroes.json", FileAccess.READ)
-	if file == null:
-		push_error("Missing hero data.")
-		return
-
-	var parsed: Variant = JSON.parse_string(file.get_as_text())
-	for hero: Dictionary in parsed.get("heroes", []):
-		heroes_by_id[hero.get("id", "")] = hero
-
 func _build_ui() -> void:
 	var canvas := CanvasLayer.new()
 	add_child(canvas)
@@ -194,7 +193,7 @@ func _build_ui() -> void:
 	kill_feed_label = Label.new()
 	end_summary_label = Label.new()
 	help_label = Label.new()
-	help_label.text = "WASD move | mouse aim | LMB primary | Q ability | Space dash | 1-6 swap hero | Esc menu"
+	help_label.text = "WASD move | mouse aim | LMB primary | Q / E abilities | Space flight | Esc menu"
 
 	root.add_child(status_label)
 	root.add_child(core_label)
@@ -217,10 +216,9 @@ func _spawn_match() -> void:
 	red_core.destroyed.connect(_on_core_destroyed)
 	cores[RED] = red_core
 
-	player = PlayerScript.new()
+	player = CreatureScript.new()
 	add_child(player)
-	player.setup(self, BLUE, get_team_spawn(BLUE), GameConfig.selected_hero_id)
-	player.hero_changed.connect(_on_player_hero_changed)
+	player.setup(self, BLUE, get_team_spawn(BLUE), GameConfig.selected_creature_id, terrain_map)
 	register_entity(player)
 	_spawn_bots_for_mode()
 
@@ -235,18 +233,19 @@ func _spawn_match() -> void:
 
 func _spawn_bots_for_mode() -> void:
 	if GameConfig.selected_mode == "3v3":
-		_spawn_bot(BLUE, "iron_vanguard", get_bot_spawn(BLUE, "Blue Guard"), "Blue Guard")
-		_spawn_bot(BLUE, "lifewarden", get_bot_spawn(BLUE, "Blue Ward"), "Blue Ward")
-		_spawn_bot(RED, "blinkblade", get_bot_spawn(RED, "Red Blade"), "Red Blade")
-		_spawn_bot(RED, "longshot", get_bot_spawn(RED, "Red Scope"), "Red Scope")
-		_spawn_bot(RED, "chorus", get_bot_spawn(RED, "Red Chorus"), "Red Chorus")
+		_spawn_bot(BLUE, "chorus_frog", get_bot_spawn(BLUE, "Blue Guard"), "Blue Guard")
+		_spawn_bot(BLUE, "mink", get_bot_spawn(BLUE, "Blue Ward"), "Blue Ward")
+		_spawn_bot(RED, "snapping_turtle", get_bot_spawn(RED, "Red Blade"), "Red Blade")
+		_spawn_bot(RED, "chorus_frog", get_bot_spawn(RED, "Red Scope"), "Red Scope")
+		_spawn_bot(RED, "mink", get_bot_spawn(RED, "Red Chorus"), "Red Chorus")
 	else:
-		_spawn_bot(RED, "burst_rifle", get_bot_spawn(RED, "Red Rival"), "Red Rival")
+		_spawn_bot(RED, "mink", get_bot_spawn(RED, "Red Rival"), "Red Rival")
 
-func _spawn_bot(team: int, hero_id: String, spawn_position: Vector2, bot_name: String) -> void:
-	var bot = BotPlayerScript.new()
+func _spawn_bot(team: int, creature_id: String, spawn_position: Vector2, bot_name: String) -> void:
+	var bot = CreatureScript.new()
 	add_child(bot)
-	bot.setup(self, team, spawn_position, hero_id, bot_name)
+	bot.setup(self, team, spawn_position, creature_id, terrain_map)
+	bot.actor_name = bot_name
 	bots.append(bot)
 	register_entity(bot)
 
@@ -432,9 +431,6 @@ func get_team_spawn(team: int) -> Vector2:
 func get_bot_spawn(team: int, bot_name: String) -> Vector2:
 	return bot_spawns.get(bot_name, get_team_spawn(team))
 
-func get_hero_data(hero_id: String) -> Dictionary:
-	return heroes_by_id.get(hero_id, heroes_by_id.get("burst_rifle", {}))
-
 func get_terrain_zone(point: Vector2) -> String:
 	return terrain_map.get_zone_at(point)
 
@@ -546,10 +542,6 @@ func _draw_telegraphs() -> void:
 					draw_circle(center, radius, fill_color)
 				draw_arc(center, radius, 0.0, TAU, 48, color, width)
 
-func _on_player_hero_changed(hero_id: String) -> void:
-	GameConfig.selected_hero_id = hero_id
-	_update_ui()
-
 func _on_core_destroyed(core) -> void:
 	match_over = true
 	var winner := "Red" if core.team == BLUE else "Blue"
@@ -559,9 +551,9 @@ func _on_core_destroyed(core) -> void:
 func _update_ui() -> void:
 	var blue_core = cores[BLUE]
 	var red_core = cores[RED]
-	var hero_name: String = player.hero_data.get("name", "Unknown") if player != null else "Unknown"
+	var creature_name: String = player.creature_data.get("name", "Unknown") if player != null else "Unknown"
 	if not match_over:
-		status_label.text = "%s | %s | Hero: %s | Bots: %d | Next wave: %ds" % [GameConfig.selected_mode, _format_match_time(elapsed), hero_name, bots.size(), ceili(wave_timer)]
+		status_label.text = "%s | %s | Creature: %s | Bots: %d | Next wave: %ds" % [GameConfig.selected_mode, _format_match_time(elapsed), creature_name, bots.size(), ceili(wave_timer)]
 	core_label.text = "Blue Core %d / %d    Red Core %d / %d    %s" % [blue_core.health, blue_core.max_health, red_core.health, red_core.max_health, _get_objective_text()]
 	cooldown_label.text = _get_cooldown_text()
 	scoreboard_label.text = _get_scoreboard_text()
@@ -571,11 +563,14 @@ func _get_cooldown_text() -> String:
 	if player == null:
 		return ""
 	if player.has_method("is_alive") and not player.is_alive():
-		return "RESPAWNING IN %.1fs" % player.respawn_timer
-	return "Primary %s | Dash %s | Ability %s" % [
+		return "RESPAWNING"
+	return "Primary %s | Q %s | E %s | Swim %d%% | Flight %d%% | %s" % [
 		_format_cooldown(player.primary_timer),
-		_format_cooldown(player.dash_timer),
-		_format_cooldown(player.ability_timer)
+		_format_cooldown(player.q_timer),
+		_format_cooldown(player.e_timer),
+		int(player.get_swim_ratio() * 100.0),
+		int(player.get_flight_ratio() * 100.0),
+		"LATCH" if player.has_latch() else "free"
 	]
 
 func _format_cooldown(timer: float) -> String:

@@ -12,7 +12,6 @@ const BUTTON_FLIGHT_TOGGLE := 64
 var move := Vector2.ZERO
 var aim := Vector2.RIGHT
 var buttons := 0
-var legacy_hero_slot := -1
 
 func is_pressed(button: int) -> bool:
 	return (buttons & button) != 0

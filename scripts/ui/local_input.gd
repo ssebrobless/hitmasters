@@ -14,11 +14,4 @@ func build_frame(aim_world: Vector2) -> Resource:
 	frame.set_button(InputFrameScript.BUTTON_HABITAT_DEPOSIT, Input.is_action_pressed("habitat_deposit"))
 	frame.set_button(InputFrameScript.BUTTON_CONTEXT_ACTION, Input.is_action_pressed("context_action"))
 	frame.set_button(InputFrameScript.BUTTON_FLIGHT_TOGGLE, Input.is_action_pressed("flight_toggle"))
-	frame.legacy_hero_slot = _get_legacy_hero_slot()
 	return frame
-
-func _get_legacy_hero_slot() -> int:
-	for slot in range(6):
-		if Input.is_key_pressed(KEY_1 + slot):
-			return slot
-	return -1

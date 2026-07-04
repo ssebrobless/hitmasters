@@ -107,7 +107,7 @@ func _select_creature(index: int) -> void:
 
 	var creature_id := String(creature.get("id", "snapping_turtle"))
 	GameConfig.set_selected_creature(creature_id)
-	preview.set_hero(GameConfig.selected_hero_id, 0)
+	preview.set_creature(creature_id, 0)
 
 	hero_name.text = creature.get("name", "Unknown")
 	role_label.text = "%s | %s" % [
