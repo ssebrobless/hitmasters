@@ -648,8 +648,8 @@ func _spawn_vfx_for_event(event: Dictionary) -> void:
 				"aim": event.get("aim", Vector2.RIGHT),
 				"reach_px": event.get("reach_px", 24.0),
 				"color": Color(1.0, 0.93, 0.55, 0.95),
-				"duration": 0.22,
-				"remaining": 0.22
+				"duration": 0.3,
+				"remaining": 0.3
 			})
 		"hit_landed":
 			var target = event.get("target", null)
@@ -792,9 +792,9 @@ func _draw_cone(origin: Vector2, aim: Vector2, reach: float, spread: float, colo
 		var angle := -spread * 0.5 + spread * t
 		points.append(origin + aim.rotated(angle) * reach)
 	var fill := color
-	fill.a *= 0.2
+	fill.a *= 0.34
 	draw_colored_polygon(points, fill)
-	draw_arc(origin, reach, aim.angle() - spread * 0.5, aim.angle() + spread * 0.5, 18, color, 3.0)
+	draw_arc(origin, reach, aim.angle() - spread * 0.5, aim.angle() + spread * 0.5, 18, color, 5.0)
 
 func _draw_latch_countdown(telegraph: Dictionary, center: Vector2, color: Color) -> void:
 	var duration: float = maxf(float(telegraph.get("duration", 0.1)), 0.1)

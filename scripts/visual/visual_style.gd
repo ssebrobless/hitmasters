@@ -62,9 +62,9 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 	var strike := 0.0
 	if attack_t >= 0.0:
 		strike = _strike_curve(attack_t)
-		body_offset = attack_aim.normalized() * radius * 0.55 * strike
+		body_offset = attack_aim.normalized() * maxf(radius * 0.8, 8.0) * strike
 	elif windup_t >= 0.0:
-		body_offset = -forward * radius * 0.3 * windup_t
+		body_offset = -forward * maxf(radius * 0.4, 6.0) * windup_t
 
 	var rock := 0.0
 	if moving and attack_t < 0.0:
@@ -119,10 +119,14 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		canvas.draw_circle(Vector2.ZERO, radius + 3.0, Color(1.0, 1.0, 1.0, clampf(flash_alpha, 0.0, 1.0) * 0.85))
 	canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
+# Snap out fast, HOLD the extended pose, then ease back — the hold is what
+# makes small creatures' attacks readable.
 static func _strike_curve(t: float) -> float:
-	if t < 0.3:
-		return t / 0.3
-	return 1.0 - (t - 0.3) / 0.7
+	if t < 0.18:
+		return t / 0.18
+	if t < 0.6:
+		return 1.0
+	return 1.0 - (t - 0.6) / 0.4
 
 # ---------- bases ----------
 
@@ -624,9 +628,11 @@ static func _strike_turtle_bite(canvas: CanvasItem, radius: float, aim: Vector2,
 
 static func _strike_tongue(canvas: CanvasItem, radius: float, aim: Vector2, reach: float, progress: float) -> void:
 	var tongue_tip := aim * (radius * 0.5 + (reach - radius * 0.5) * progress)
-	var tongue_color := Color(0.95, 0.45, 0.55)
-	canvas.draw_line(aim * radius * 0.5, tongue_tip, tongue_color, maxf(radius * 0.22, 3.0))
-	canvas.draw_circle(tongue_tip, maxf(radius * 0.2, 3.0), tongue_color.lightened(0.15))
+	var tongue_color := Color(0.98, 0.42, 0.52)
+	canvas.draw_line(aim * radius * 0.5, tongue_tip, Color(0.5, 0.14, 0.2), maxf(radius * 0.34, 6.0))
+	canvas.draw_line(aim * radius * 0.5, tongue_tip, tongue_color, maxf(radius * 0.24, 4.0))
+	canvas.draw_circle(tongue_tip, maxf(radius * 0.26, 5.0), tongue_color.lightened(0.15))
+	canvas.draw_circle(tongue_tip, maxf(radius * 0.13, 2.5), Color(1.0, 0.85, 0.88))
 
 # ---------- non-creature drawing ----------
 

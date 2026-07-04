@@ -187,7 +187,7 @@ func _apply_own_anim(event_type: String, payload: Dictionary) -> void:
 			anim_windup_duration = maxf(float(payload.get("duration", 0.001)), 0.001)
 			anim_windup_timer = anim_windup_duration
 		"attack_swung":
-			anim_attack_duration = 0.26
+			anim_attack_duration = clampf(_attack_interval_sec() * 0.55, 0.32, 0.6)
 			anim_attack_timer = anim_attack_duration
 			anim_attack_reach = float(payload.get("reach_px", body_radius * 1.5))
 			anim_attack_aim = payload.get("aim", last_aim_direction)
@@ -519,6 +519,15 @@ func _speed_px_for_flight() -> float:
 	if stats.has("flight_speed"):
 		return _catalog().speed_to_px_per_sec(_stat_float("flight_speed", 1.0))
 	return _speed_px_for_ground()
+
+func _attack_interval_sec() -> float:
+	var interval := _numeric_stat("attack_interval_sec", 0.0)
+	if interval > 0.0:
+		return interval
+	var rate := _numeric_stat("attack_rate_per_sec", 0.0)
+	if rate > 0.0:
+		return 1.0 / rate
+	return 0.9
 
 func _footprint_radius_px() -> float:
 	var footprint: Dictionary = creature_data.get("footprint", {})
