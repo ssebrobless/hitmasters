@@ -54,20 +54,21 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 	var rocked_forward := forward.rotated(rock)
 	var side := Vector2(-rocked_forward.y, rocked_forward.x)
 
-	var shake_offset: Vector2 = anim.get("shake_offset", Vector2.ZERO)
+	var origin: Vector2 = anim.get("origin", Vector2.ZERO)
+	var shake_offset: Vector2 = origin + anim.get("shake_offset", Vector2.ZERO)
 	if airborne:
 		canvas.draw_set_transform(shake_offset, 0.0, Vector2.ONE)
 		canvas.draw_circle(Vector2(0.0, radius * 0.55), radius * 0.8, _with_alpha(Color(0.0, 0.0, 0.0, 0.3), alpha))
 	canvas.draw_set_transform(shake_offset + body_offset + (Vector2(0.0, -radius * 0.5) if airborne else Vector2.ZERO), 0.0, Vector2.ONE)
 
 	if creature_id == "snapping_turtle":
-		_draw_turtle(canvas, radius, rocked_forward, side, shadow, outline, body)
+		_draw_turtle(canvas, radius, rocked_forward, side, outline, walk_phase, moving, windup_t)
 		if strike_progress > 0.0:
-			_draw_turtle_bite(canvas, radius, attack_aim.normalized(), attack_reach, strike_progress, outline, body)
+			_draw_turtle_bite(canvas, radius, attack_aim.normalized(), attack_reach, strike_progress, outline, Color(0.45, 0.4, 0.24))
 	elif creature_id == "mink":
-		_draw_mink(canvas, radius, rocked_forward, side, shadow, outline, body, strike_progress)
+		_draw_mink(canvas, radius, rocked_forward, side, outline, walk_phase, moving, strike_progress)
 	elif creature_id == "chorus_frog":
-		_draw_frog(canvas, radius, rocked_forward, side, shadow, outline, body)
+		_draw_frog(canvas, radius, rocked_forward, side, outline, walk_phase, moving)
 		if strike_progress > 0.0:
 			_draw_frog_tongue(canvas, radius, attack_aim.normalized(), attack_reach, strike_progress)
 	else:
@@ -138,42 +139,188 @@ static func draw_pixel_minion(canvas: CanvasItem, team: int, pixel_size := 4.0, 
 	_draw_cells(canvas, body_cells, pixel_size, team_col, Vector2(3.0, 3.0))
 	_draw_cells(canvas, [Vector2i(4, 1), Vector2i(5, 1)], pixel_size, _with_alpha(Color(0.85, 0.9, 0.95), alpha), Vector2(3.0, 3.0))
 
-static func _draw_turtle(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, shadow: Color, outline: Color, body: Color) -> void:
-	var shell := [
-		Vector2(-1.12, 0.0), Vector2(-0.86, -0.5), Vector2(-0.26, -0.73), Vector2(0.48, -0.64),
-		Vector2(0.86, -0.34), Vector2(1.18, -0.22), Vector2(1.32, 0.0), Vector2(1.18, 0.22),
-		Vector2(0.86, 0.34), Vector2(0.48, 0.64), Vector2(-0.26, 0.73), Vector2(-0.86, 0.5)
-	]
-	_draw_shape(canvas, shell, radius + 4.0, forward, side, shadow)
-	_draw_shape(canvas, shell, radius + 2.0, forward, side, outline)
-	_draw_shape(canvas, shell, radius, forward, side, body)
-	canvas.draw_line(_orient(Vector2(-0.55, -0.38), radius, forward, side), _orient(Vector2(0.62, -0.26), radius, forward, side), body.lightened(0.28), 2.0)
-	canvas.draw_line(_orient(Vector2(-0.62, 0.32), radius, forward, side), _orient(Vector2(0.48, 0.25), radius, forward, side), body.darkened(0.18), 2.0)
+static func _draw_turtle(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, outline: Color, walk_phase: float, moving: bool, windup_t: float) -> void:
+	var shell_color := Color(0.26, 0.3, 0.16)
+	var shell_rim := Color(0.18, 0.21, 0.11)
+	var skin := Color(0.45, 0.4, 0.24)
+	var skin_dark := skin.darkened(0.22)
 
-static func _draw_mink(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, shadow: Color, outline: Color, body: Color, strike := 0.0) -> void:
-	var stretch := 1.0 + strike * 0.45
-	var squeeze := 1.0 - strike * 0.25
-	var body_shape := [
-		Vector2(-1.48 * stretch, -0.18 * squeeze), Vector2(-1.12 * stretch, -0.42 * squeeze), Vector2(0.58 * stretch, -0.46 * squeeze), Vector2(1.22 * stretch, -0.28 * squeeze),
-		Vector2(1.48 * stretch, -0.08 * squeeze), Vector2(1.28 * stretch, 0.24 * squeeze), Vector2(0.32 * stretch, 0.42 * squeeze), Vector2(-1.28 * stretch, 0.34 * squeeze),
-		Vector2(-1.72 * stretch, 0.08 * squeeze)
-	]
-	_draw_shape(canvas, body_shape, radius + 4.0, forward, side, shadow)
-	_draw_shape(canvas, body_shape, radius + 2.0, forward, side, outline)
-	_draw_shape(canvas, body_shape, radius, forward, side, body)
-	canvas.draw_line(_orient(Vector2(-1.32 * stretch, 0.12), radius, forward, side), _orient(Vector2(-1.88 * stretch, 0.44), radius, forward, side), outline, 3.0)
-	canvas.draw_circle(_orient(Vector2(1.02 * stretch, -0.1), radius, forward, side), maxf(radius * 0.12, 1.5), Color(0.95, 0.96, 0.85))
+	# Team ring under everything.
+	canvas.draw_arc(Vector2.ZERO, radius + 3.0, 0.0, TAU, 40, outline, 2.5)
+
+	# Tail: saw-ridged, swishes slowly.
+	var tail_sway := sin(walk_phase * 0.5) * 0.15
+	var tail_direction := (-forward).rotated(tail_sway)
+	var tail_base := tail_direction * radius * 0.9
+	var tail_tip := tail_direction * radius * 1.55
+	canvas.draw_line(tail_base, tail_tip, skin_dark, maxf(radius * 0.18, 3.0))
+	for i in 3:
+		var t := 0.25 + 0.25 * float(i)
+		var ridge := tail_base.lerp(tail_tip, t)
+		canvas.draw_line(ridge, ridge + tail_direction.rotated(PI * 0.5) * radius * 0.09, skin_dark.darkened(0.15), 2.0)
+
+	# Four clawed legs at the shell corners, paddle-stepping.
+	for leg_index in 4:
+		var angle := [0.96, -0.96, 2.18, -2.18][leg_index] as float
+		var leg_phase := walk_phase + (PI if leg_index % 2 == 0 else 0.0)
+		var step := (sin(leg_phase) * radius * 0.12) if moving else 0.0
+		var leg_center := (forward.rotated(angle) * radius * 0.92) + forward * step
+		canvas.draw_circle(leg_center, radius * 0.26, skin_dark)
+		canvas.draw_circle(leg_center, radius * 0.2, skin)
+		var claw_direction := leg_center.normalized()
+		for claw in 3:
+			var claw_angle := (float(claw) - 1.0) * 0.35
+			canvas.draw_line(leg_center + claw_direction.rotated(claw_angle) * radius * 0.18, leg_center + claw_direction.rotated(claw_angle) * radius * 0.34, Color(0.85, 0.82, 0.7), 1.5)
+
+	# Head: hooked beak, retracts into the shell during windup.
+	var head_reach := 1.05 - (0.35 * windup_t if windup_t >= 0.0 else 0.0)
+	var head_center := forward * radius * head_reach
+	canvas.draw_circle(head_center, radius * 0.32, skin_dark)
+	canvas.draw_circle(head_center, radius * 0.26, skin)
+	canvas.draw_line(head_center + forward * radius * 0.2, head_center + forward * radius * 0.4, skin_dark.darkened(0.2), 2.5)
+	canvas.draw_circle(head_center + side * radius * 0.13 + forward * radius * 0.08, maxf(radius * 0.05, 1.2), Color(0.1, 0.09, 0.05))
+	canvas.draw_circle(head_center - side * radius * 0.13 + forward * radius * 0.08, maxf(radius * 0.05, 1.2), Color(0.1, 0.09, 0.05))
+
+	# Carapace: broad oval with rim, scute grid, and three keel ridges.
+	var shell_points := PackedVector2Array()
+	for i in 18:
+		var shell_angle := TAU * float(i) / 18.0
+		var rx := radius * 1.02
+		var ry := radius * 0.88
+		shell_points.append(forward * cos(shell_angle) * rx + side * sin(shell_angle) * ry)
+	canvas.draw_colored_polygon(shell_points, shell_rim)
+	var inner_points := PackedVector2Array()
+	for i in 18:
+		var shell_angle := TAU * float(i) / 18.0
+		inner_points.append(forward * cos(shell_angle) * radius * 0.88 + side * sin(shell_angle) * radius * 0.74)
+	canvas.draw_colored_polygon(inner_points, shell_color)
+	for keel in [-0.34, 0.0, 0.34]:
+		canvas.draw_line(forward * radius * -0.7 + side * radius * keel, forward * radius * 0.72 + side * radius * keel, shell_rim.darkened(0.1), 2.0)
+	for cross in [-0.42, 0.0, 0.42]:
+		canvas.draw_line(forward * radius * cross - side * radius * 0.55, forward * radius * cross + side * radius * 0.55, shell_rim.darkened(0.06), 1.5)
+	canvas.draw_line(forward * radius * -0.7, forward * radius * 0.72, shell_color.lightened(0.18), 1.5)
+
+static func _draw_mink(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, outline: Color, walk_phase: float, moving: bool, strike := 0.0) -> void:
+	var fur := Color(0.24, 0.14, 0.09)
+	var fur_dark := Color(0.17, 0.1, 0.06)
+	var stretch := 1.0 + strike * 0.5
+
+	canvas.draw_arc(Vector2.ZERO, radius + 3.0, 0.0, TAU, 40, outline, 2.5)
+
+	# Sinuous spine: 5 segments from tail to head, undulating laterally while moving.
+	var spine: Array[Vector2] = []
+	var segment_radii: Array[float] = []
+	for i in 5:
+		var t := float(i) / 4.0
+		var along := lerpf(-1.35, 1.15, t) * radius * stretch
+		var wiggle := 0.0
+		if moving and strike <= 0.0:
+			wiggle = sin(walk_phase * 1.4 - t * 2.6) * radius * 0.16 * (1.0 - t * 0.4)
+		spine.append(forward * along + side * wiggle)
+		segment_radii.append(radius * lerpf(0.4, 0.52, sin(t * PI)))
+
+	# Bushy tail off the rear segment.
+	var tail_wiggle := sin(walk_phase * 1.4 + 1.8) * 0.3 if moving else 0.12
+	var tail_direction := (-forward).rotated(tail_wiggle)
+	var tail_base: Vector2 = spine[0]
+	for i in 4:
+		var t := float(i) / 3.0
+		canvas.draw_circle(tail_base + tail_direction * radius * (0.35 + t * 1.0), radius * lerpf(0.3, 0.12, t), fur_dark)
+
+	# Paw nubs alternating with the stride.
+	if moving and strike <= 0.0:
+		for paw_index in 4:
+			var paw_t := [0.22, 0.36, 0.72, 0.86][paw_index] as float
+			var paw_side := 1.0 if paw_index % 2 == 0 else -1.0
+			var paw_phase := walk_phase * 1.4 + PI * float(paw_index)
+			var paw_step := sin(paw_phase) * radius * 0.14
+			var spine_point: Vector2 = spine[1].lerp(spine[3], paw_t)
+			canvas.draw_circle(spine_point + side * paw_side * radius * 0.5 + forward * paw_step, radius * 0.13, fur_dark)
+
+	# Body segments, tail-to-head so the head overlaps.
+	for i in 5:
+		canvas.draw_circle(spine[i], segment_radii[i] + 2.0, fur_dark)
+	for i in 5:
+		canvas.draw_circle(spine[i], segment_radii[i], fur)
+	canvas.draw_line(spine[0], spine[4], fur.lightened(0.12), maxf(radius * 0.14, 2.0))
+
+	# Head: small, round ears, pale snout, white chin patch, whiskers.
+	var head: Vector2 = spine[4]
+	canvas.draw_circle(head + side * radius * 0.28 - forward * radius * 0.1, radius * 0.14, fur_dark)
+	canvas.draw_circle(head - side * radius * 0.28 - forward * radius * 0.1, radius * 0.14, fur_dark)
+	canvas.draw_circle(head, radius * 0.4, fur)
+	canvas.draw_circle(head + forward * radius * 0.28, radius * 0.18, fur.lightened(0.18))
+	canvas.draw_circle(head + forward * radius * 0.34, maxf(radius * 0.07, 1.2), Color(0.1, 0.07, 0.05))
+	canvas.draw_circle(head + forward * radius * 0.16, maxf(radius * 0.09, 1.4), Color(0.93, 0.9, 0.82))
+	canvas.draw_circle(head + side * radius * 0.16 + forward * radius * 0.16, maxf(radius * 0.05, 1.0), Color(0.08, 0.05, 0.04))
+	canvas.draw_circle(head - side * radius * 0.16 + forward * radius * 0.16, maxf(radius * 0.05, 1.0), Color(0.08, 0.05, 0.04))
+	canvas.draw_line(head + forward * radius * 0.24, head + forward * radius * 0.44 + side * radius * 0.22, Color(0.8, 0.78, 0.7, 0.7), 1.0)
+	canvas.draw_line(head + forward * radius * 0.24, head + forward * radius * 0.44 - side * radius * 0.22, Color(0.8, 0.78, 0.7, 0.7), 1.0)
+
 	if strike > 0.25:
-		var fang_origin := _orient(Vector2(1.5 * stretch, 0.0), radius, forward, side)
-		canvas.draw_line(fang_origin, fang_origin + forward * radius * 0.5, Color(0.98, 0.98, 0.92, strike), 2.5)
+		var fang_origin := head + forward * radius * 0.4
+		canvas.draw_line(fang_origin + side * 2.0, fang_origin + forward * radius * 0.4 + side * 2.0, Color(0.98, 0.98, 0.92, strike), 2.0)
+		canvas.draw_line(fang_origin - side * 2.0, fang_origin + forward * radius * 0.4 - side * 2.0, Color(0.98, 0.98, 0.92, strike), 2.0)
 
-static func _draw_frog(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, shadow: Color, outline: Color, body: Color) -> void:
-	canvas.draw_circle(Vector2.ZERO, radius + 4.0, shadow)
-	canvas.draw_circle(Vector2.ZERO, radius + 2.0, outline)
-	canvas.draw_circle(Vector2.ZERO, radius, body)
-	canvas.draw_circle(_orient(Vector2(0.58, 0.0), radius, forward, side), radius * 0.42, body.lightened(0.22))
-	canvas.draw_circle(_orient(Vector2(0.38, -0.45), radius, forward, side), maxf(radius * 0.18, 1.5), Color(0.95, 0.96, 0.85))
-	canvas.draw_circle(_orient(Vector2(0.38, 0.45), radius, forward, side), maxf(radius * 0.18, 1.5), Color(0.95, 0.96, 0.85))
+static func _draw_frog(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, outline: Color, walk_phase: float, moving: bool) -> void:
+	var skin := Color(0.36, 0.42, 0.2)
+	var skin_dark := Color(0.22, 0.27, 0.12)
+	var belly := skin.lightened(0.2)
+
+	canvas.draw_arc(Vector2.ZERO, radius + 3.0, 0.0, TAU, 40, outline, 2.5)
+
+	# Hop cycle: legs extend at the push phase, body squashes/stretches slightly.
+	var hop := sin(walk_phase * 1.2) * 0.5 + 0.5 if moving else 0.0
+	var leg_extend := 0.55 + hop * 0.55
+
+	# Folded Z hind legs hugging the rear flanks.
+	for leg_side: float in [-1.0, 1.0]:
+		var hip := -forward * radius * 0.45 + side * leg_side * radius * 0.62
+		var knee := hip - forward * radius * 0.35 * leg_extend + side * leg_side * radius * 0.4
+		var foot := knee - forward * radius * 0.55 * leg_extend - side * leg_side * radius * 0.08
+		canvas.draw_line(hip, knee, skin_dark, maxf(radius * 0.24, 3.0))
+		canvas.draw_line(knee, foot, skin_dark, maxf(radius * 0.18, 2.5))
+		for toe in 3:
+			var toe_angle := (float(toe) - 1.0) * 0.4
+			canvas.draw_line(foot, foot + (-forward).rotated(toe_angle) * radius * 0.22, skin_dark, 1.5)
+
+	# Front feet: small dots ahead of the chest.
+	for foot_side: float in [-1.0, 1.0]:
+		var front_step := sin(walk_phase * 1.2 + PI * 0.5) * radius * 0.08 if moving else 0.0
+		canvas.draw_circle(forward * (radius * 0.55 + front_step) + side * foot_side * radius * 0.4, radius * 0.13, skin_dark)
+
+	# Pear body: wide rear, narrow front.
+	var body_points := PackedVector2Array()
+	for i in 16:
+		var body_angle := TAU * float(i) / 16.0
+		var rx := radius * 0.95
+		var ry := radius * lerpf(0.85, 0.6, (cos(body_angle) * 0.5 + 0.5))
+		body_points.append(forward * cos(body_angle) * rx + side * sin(body_angle) * ry)
+	canvas.draw_colored_polygon(body_points, skin_dark)
+	var inner := PackedVector2Array()
+	for point in body_points:
+		inner.append(point * 0.88)
+	canvas.draw_colored_polygon(inner, skin)
+
+	# Chorus frog signature: dark triangle between the eyes + three dorsal stripes.
+	canvas.draw_colored_polygon(PackedVector2Array([
+		forward * radius * 0.62 + side * radius * 0.22,
+		forward * radius * 0.62 - side * radius * 0.22,
+		forward * radius * 0.3
+	]), skin_dark.darkened(0.15))
+	for stripe in [-0.3, 0.0, 0.3]:
+		canvas.draw_line(forward * radius * 0.15 + side * radius * stripe, -forward * radius * 0.72 + side * radius * stripe * 1.4, skin_dark.darkened(0.12), maxf(radius * 0.09, 1.5))
+
+	# Bulging eyes with pupils.
+	for eye_side: float in [-1.0, 1.0]:
+		var eye := forward * radius * 0.68 + side * eye_side * radius * 0.42
+		canvas.draw_circle(eye, radius * 0.22, skin_dark)
+		canvas.draw_circle(eye, radius * 0.17, Color(0.82, 0.72, 0.35))
+		canvas.draw_circle(eye + forward * radius * 0.05, maxf(radius * 0.08, 1.3), Color(0.08, 0.07, 0.04))
+
+	# Pulsing vocal sac under the chin — it's a chorus frog.
+	var sac_pulse := (sin(Time.get_ticks_msec() * 0.008) * 0.5 + 0.5) * 0.35
+	canvas.draw_circle(forward * radius * 0.88, radius * (0.14 + sac_pulse * 0.14), belly)
 
 static func _draw_shape(canvas: CanvasItem, local_points: Array, radius: float, forward: Vector2, side: Vector2, color: Color) -> void:
 	var points := PackedVector2Array()

@@ -20,6 +20,7 @@ func _draw() -> void:
 	draw_line(Vector2(0.0, size.y - 18.0), Vector2(size.x, size.y - 18.0), Color(0.13, 0.16, 0.17), 2.0)
 
 	var center := size * 0.5 + Vector2(0.0, 10.0)
-	draw_set_transform(center, 0.0, Vector2.ONE)
-	VisualStyle.draw_pixel_hero(self, hero_id, team, 9.0)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	VisualStyle.draw_battle_creature(self, hero_id, team, minf(size.x, size.y) * 0.24, Vector2(0.0, -1.0), 0.0, 1.0, false, {"moving": true, "walk_phase": Time.get_ticks_msec() * 0.004, "origin": center})
+
+func _process(_delta: float) -> void:
+	queue_redraw()
