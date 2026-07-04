@@ -4,6 +4,9 @@ const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 const TurtleHook := preload("res://scripts/ai/bot_kit_hooks/snapping_turtle_bot.gd")
 const FrogHook := preload("res://scripts/ai/bot_kit_hooks/chorus_frog_bot.gd")
 const MinkHook := preload("res://scripts/ai/bot_kit_hooks/mink_bot.gd")
+const BeaverHook := preload("res://scripts/ai/bot_kit_hooks/beaver_bot.gd")
+const OwlHook := preload("res://scripts/ai/bot_kit_hooks/owl_bot.gd")
+const DuckHook := preload("res://scripts/ai/bot_kit_hooks/duck_bot.gd")
 
 var hooks := {}
 
@@ -43,6 +46,12 @@ func _hook(actor: Node) -> RefCounted:
 			hook = FrogHook.new()
 		"mink":
 			hook = MinkHook.new()
+		"beaver":
+			hook = BeaverHook.new()
+		"owl":
+			hook = OwlHook.new()
+		"duck":
+			hook = DuckHook.new()
 		_:
 			hook = FrogHook.new()
 	hooks[actor.creature_id] = hook
@@ -56,6 +65,12 @@ func _preferred_range(actor: Node) -> float:
 			return 24.0
 		"mink":
 			return 18.0
+		"beaver":
+			return 22.0
+		"owl":
+			return 60.0
+		"duck":
+			return 20.0
 		_:
 			return 32.0
 

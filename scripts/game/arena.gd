@@ -34,6 +34,7 @@ var elapsed := 0.0
 var match_over := false
 var telegraphs: Array[Dictionary] = []
 var vfx_events: Array[Dictionary] = []
+var dams: Array[Node] = []
 var actor_stats: Dictionary = {}
 var team_stats := {
 	BLUE: {"kills": 0, "deaths": 0, "core_damage": 0.0, "objectives": 0},
@@ -314,9 +315,9 @@ func _spawn_match() -> void:
 func _spawn_bots_for_mode() -> void:
 	if GameConfig.selected_mode == "3v3":
 		_spawn_bot(BLUE, "chorus_frog", get_bot_spawn(BLUE, "Blue Guard"), "Blue Guard")
-		_spawn_bot(BLUE, "mink", get_bot_spawn(BLUE, "Blue Ward"), "Blue Ward")
+		_spawn_bot(BLUE, "beaver", get_bot_spawn(BLUE, "Blue Ward"), "Blue Ward")
 		_spawn_bot(RED, "snapping_turtle", get_bot_spawn(RED, "Red Blade"), "Red Blade")
-		_spawn_bot(RED, "chorus_frog", get_bot_spawn(RED, "Red Scope"), "Red Scope")
+		_spawn_bot(RED, "duck", get_bot_spawn(RED, "Red Scope"), "Red Scope")
 		_spawn_bot(RED, "mink", get_bot_spawn(RED, "Red Chorus"), "Red Chorus")
 	else:
 		_spawn_bot(RED, "mink", get_bot_spawn(RED, "Red Rival"), "Red Rival")
@@ -340,6 +341,21 @@ func _spawn_minion(team: int, spawn_position: Vector2) -> void:
 	minion.setup(self, team, spawn_position)
 	minions.append(minion)
 	register_entity(minion)
+
+func register_dam(dam: Node) -> void:
+	if not dams.has(dam):
+		dams.append(dam)
+	register_entity(dam)
+
+func unregister_dam(dam: Node) -> void:
+	dams.erase(dam)
+
+func get_dam_rects() -> Array:
+	var rects: Array = []
+	for dam in dams:
+		if dam != null and is_instance_valid(dam):
+			rects.append(dam.rect)
+	return rects
 
 func register_entity(entity: Node) -> void:
 	if not entities.has(entity):
@@ -421,6 +437,8 @@ func get_closest_enemy(source: Node, max_distance: float) -> Node:
 		if entity == source or entity == null or not is_instance_valid(entity):
 			continue
 		if entity.team == source.team:
+			continue
+		if entity.has_method("is_stealthed") and entity.is_stealthed():
 			continue
 		if not has_line_of_sight(source.global_position, entity.global_position, source.body_radius):
 			continue
@@ -529,7 +547,7 @@ func clamp_to_arena(point: Vector2) -> Vector2:
 
 func resolve_body_position(point: Vector2, radius: float) -> Vector2:
 	var resolved := Vector2(clampf(point.x, arena_rect.position.x + radius, arena_rect.end.x - radius), clampf(point.y, arena_rect.position.y + radius, arena_rect.end.y - radius))
-	for cover in cover_rects:
+	for cover in cover_rects + get_dam_rects():
 		var expanded: Rect2 = cover.grow(radius)
 		if not expanded.has_point(resolved):
 			continue
@@ -597,7 +615,7 @@ func _body_step_hits_cover(from: Vector2, direction: Vector2, radius: float) -> 
 	var next_position := from + direction.normalized() * 34.0
 	if not arena_rect.grow(-radius).has_point(next_position):
 		return true
-	for cover in cover_rects:
+	for cover in cover_rects + get_dam_rects():
 		if cover.grow(radius).has_point(next_position):
 			return true
 	return false
@@ -759,6 +777,16 @@ func _spawn_vfx_for_event(event: Dictionary) -> void:
 				"execute_after": event.get("execute_after", 0.0),
 				"color": Color(1.0, 0.28, 0.2, 0.9),
 				"width": 4.0
+			})
+		"attack_dodged":
+			telegraphs.append({
+				"type": "float_text",
+				"position": event.get("position", Vector2.ZERO),
+				"text": "MISS",
+				"color": Color(0.75, 0.8, 0.9, 0.9),
+				"size": 13,
+				"duration": 0.5,
+				"remaining": 0.5
 			})
 		"latch_ended":
 			_remove_tether(event.get("attacker", null), event.get("victim", null))

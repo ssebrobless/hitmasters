@@ -9,6 +9,9 @@ const VisualStyle := preload("res://scripts/visual/visual_style.gd")
 const TurtleKitScript := preload("res://scripts/sim/kits/snapping_turtle.gd")
 const FrogKitScript := preload("res://scripts/sim/kits/chorus_frog.gd")
 const MinkKitScript := preload("res://scripts/sim/kits/mink.gd")
+const BeaverKitScript := preload("res://scripts/sim/kits/beaver.gd")
+const OwlKitScript := preload("res://scripts/sim/kits/owl.gd")
+const DuckKitScript := preload("res://scripts/sim/kits/duck.gd")
 
 const WATER_SPEED_MULTIPLIER := 1.15
 const WRONG_TERRAIN_GRACE_SEC := 3.0
@@ -65,6 +68,8 @@ var anim_attack_reach := 0.0
 var anim_attack_aim := Vector2.RIGHT
 var anim_windup_timer := 0.0
 var anim_windup_duration := 0.001
+var stealth_timer := 0.0
+var low_window_timer := 0.0
 
 func setup(creature_arena: Node, creature_team: int, spawn_position: Vector2, next_creature_id: String, next_terrain_map: RefCounted = null) -> void:
 	arena = creature_arena
@@ -122,6 +127,8 @@ func tick_sim(delta: float) -> void:
 
 	_tick_timers(delta)
 	flight_grounded_timer = maxf(flight_grounded_timer - delta, 0.0)
+	stealth_timer = maxf(stealth_timer - delta, 0.0)
+	low_window_timer = maxf(low_window_timer - delta, 0.0)
 	_update_flight(delta)
 	_update_terrain(delta)
 	_move_from_input(delta)
@@ -135,9 +142,34 @@ func take_damage(amount: float, _source_team: int = -1, _source_actor: Node = nu
 	event.setup(amount, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, _source_actor, "")
 	take_damage_event(event)
 
+func begin_stealth(duration: float, _source: String) -> void:
+	stealth_timer = duration
+
+func break_stealth() -> void:
+	stealth_timer = 0.0
+
+func is_stealthed() -> bool:
+	return stealth_timer > 0.0
+
+func open_low_window(duration: float) -> void:
+	low_window_timer = duration
+
+func _dodges_event(event: Resource) -> bool:
+	# Elevated creatures (true flight or perch, not always-flying bugs) dodge
+	# ground melee — except during their low attack window.
+	if event.delivery != DamageEventScript.DELIVERY_MELEE or event.plane != DamageEventScript.PLANE_GROUND:
+		return false
+	if low_window_timer > 0.0 or has_movement("always_flying"):
+		return false
+	return state == CreatureStateScript.State.AIRBORNE or state == CreatureStateScript.State.PERCHED
+
 func take_damage_event(event: Resource) -> void:
 	if not alive:
 		return
+	if _dodges_event(event):
+		emit_vfx_event("attack_dodged", {"target": self, "position": global_position})
+		return
+	break_stealth()
 	var amount: float = _modified_incoming_damage(event)
 	health = maxf(health - amount, 0.0)
 	if event.source_actor != null or String(event.source_ability) != "":
@@ -187,6 +219,7 @@ func _apply_own_anim(event_type: String, payload: Dictionary) -> void:
 			anim_windup_duration = maxf(float(payload.get("duration", 0.001)), 0.001)
 			anim_windup_timer = anim_windup_duration
 		"attack_swung":
+			break_stealth()
 			anim_attack_duration = clampf(_attack_interval_sec() * 0.55, 0.32, 0.6)
 			anim_attack_timer = anim_attack_duration
 			anim_attack_reach = float(payload.get("reach_px", body_radius * 1.5))
@@ -242,6 +275,11 @@ func get_flight_ratio() -> float:
 	return clampf(flight_time_remaining / flight_time_max, 0.0, 1.0)
 
 func _move_from_input(delta: float) -> void:
+	if state == CreatureStateScript.State.PERCHED:
+		velocity = Vector2.ZERO
+		if input_frame != null and input_frame.aim != Vector2.ZERO:
+			last_aim_direction = (input_frame.aim - global_position).normalized()
+		return
 	var move := Vector2.ZERO
 	if input_frame != null:
 		move = input_frame.move.normalized()
@@ -253,8 +291,12 @@ func _move_from_input(delta: float) -> void:
 		move_and_slide()
 	else:
 		global_position += velocity * delta
-	if arena != null and arena.has_method("resolve_body_position"):
-		global_position = arena.resolve_body_position(global_position, body_radius)
+	if arena != null:
+		if is_airborne():
+			# Airborne creatures pass over obstacles; only the arena bounds apply.
+			global_position = arena.clamp_to_arena(global_position)
+		elif arena.has_method("resolve_body_position"):
+			global_position = arena.resolve_body_position(global_position, body_radius)
 
 func _update_terrain(delta: float) -> void:
 	var zone := get_current_zone()
@@ -275,6 +317,9 @@ func _update_terrain(delta: float) -> void:
 func _update_flight(delta: float) -> void:
 	if has_movement("always_flying"):
 		state = CreatureStateScript.State.AIRBORNE
+		return
+
+	if state == CreatureStateScript.State.PERCHED:
 		return
 
 	if is_airborne():
@@ -487,6 +532,12 @@ func _make_kit() -> RefCounted:
 			return FrogKitScript.new()
 		"mink":
 			return MinkKitScript.new()
+		"beaver":
+			return BeaverKitScript.new()
+		"owl":
+			return OwlKitScript.new()
+		"duck":
+			return DuckKitScript.new()
 		_:
 			return null
 
@@ -561,7 +612,8 @@ func _draw() -> void:
 		"windup_t": 1.0 - anim_windup_timer / anim_windup_duration if anim_windup_timer > 0.0 else -1.0,
 		"shake_offset": shake_offset
 	}
-	VisualStyle.draw_battle_creature(self, creature_id, team, body_radius, last_aim_direction, render_flash_timer / 0.1, 1.0, is_airborne(), anim)
+	var draw_alpha := 0.4 if is_stealthed() else 1.0
+	VisualStyle.draw_battle_creature(self, creature_id, team, body_radius, last_aim_direction, render_flash_timer / 0.1, draw_alpha, is_airborne() or state == CreatureStateScript.State.PERCHED, anim)
 	if arena != null and arena.get("player") == self:
 		VisualStyle.draw_aim_indicator(self, body_radius, last_aim_direction)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
