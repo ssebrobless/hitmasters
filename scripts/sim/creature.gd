@@ -4,6 +4,10 @@ const SimConstants := preload("res://scripts/sim/sim_constants.gd")
 const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 const CreatureStateScript := preload("res://scripts/sim/creature_state.gd")
 const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
+const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
+const TurtleKitScript := preload("res://scripts/sim/kits/snapping_turtle.gd")
+const FrogKitScript := preload("res://scripts/sim/kits/chorus_frog.gd")
+const MinkKitScript := preload("res://scripts/sim/kits/mink.gd")
 
 const WATER_SPEED_MULTIPLIER := 1.15
 const WRONG_TERRAIN_GRACE_SEC := 3.0
@@ -33,6 +37,24 @@ var flight_time_remaining := 0.0
 var flight_grounded_timer := 0.0
 var takeoff_distance_px := 0.0
 var alive := true
+var actor_name := "Creature"
+var kit: RefCounted = null
+var primary_timer := 0.0
+var q_timer := 0.0
+var e_timer := 0.0
+var q_charges := 0
+var e_charges := 0
+var dash_velocity := Vector2.ZERO
+var dash_timer := 0.0
+var modifiers: Array[Dictionary] = []
+var healing_ticks: Array[Dictionary] = []
+var latched_attacker: Node = null
+var latch_victim: Node = null
+var latch_timer := 0.0
+var latch_source := ""
+var latch_execute_timer := 0.0
+var latch_move_multiplier := 1.0
+var last_aim_direction := Vector2.RIGHT
 
 func setup(creature_arena: Node, creature_team: int, spawn_position: Vector2, next_creature_id: String, next_terrain_map: RefCounted = null) -> void:
 	arena = creature_arena
@@ -55,6 +77,17 @@ func apply_creature(next_creature_id: String) -> void:
 	flight_time_max = _numeric_stat("flight_time_sec", 0.0)
 	flight_time_remaining = flight_time_max
 	state = CreatureStateScript.State.AIRBORNE if has_movement("always_flying") else CreatureStateScript.State.NORMAL
+	actor_name = String(creature_data.get("name", creature_id))
+	modifiers.clear()
+	healing_ticks.clear()
+	latched_attacker = null
+	latch_victim = null
+	latch_timer = 0.0
+	latch_source = ""
+	latch_execute_timer = 0.0
+	kit = _make_kit()
+	if kit != null:
+		kit.setup(self)
 	alive = true
 	queue_redraw()
 
@@ -68,17 +101,31 @@ func tick_sim(delta: float) -> void:
 	if not alive:
 		return
 
+	_tick_timers(delta)
 	flight_grounded_timer = maxf(flight_grounded_timer - delta, 0.0)
 	_update_flight(delta)
 	_update_terrain(delta)
 	_move_from_input(delta)
+	_tick_latch(delta)
+	if kit != null and kit.has_method("tick"):
+		kit.tick(self, delta)
 	queue_redraw()
 
 func take_damage(amount: float, _source_team: int = -1, _source_actor: Node = null) -> void:
+	var event := DamageEventScript.new()
+	event.setup(amount, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, _source_actor, "")
+	take_damage_event(event)
+
+func take_damage_event(event: Resource) -> void:
 	if not alive:
 		return
+	var amount: float = _modified_incoming_damage(event)
 	health = maxf(health - amount, 0.0)
 	if health <= 0.0:
+		if event.source_actor != null and is_instance_valid(event.source_actor) and event.source_actor.has_method("on_kill"):
+			event.source_actor.on_kill(self)
+		if arena != null and arena.has_method("record_death"):
+			arena.record_death(self, event.source_actor)
 		alive = false
 		velocity = Vector2.ZERO
 		if arena != null and arena.has_method("unregister_entity"):
@@ -86,10 +133,16 @@ func take_damage(amount: float, _source_team: int = -1, _source_actor: Node = nu
 
 func heal(amount: float) -> void:
 	if alive:
-		health = minf(health + amount, max_health)
+		health = minf(health + amount * _modifier_value("healing_received_mult", 1.0), max_health)
 
 func is_alive() -> bool:
 	return alive
+
+func get_actor_name() -> String:
+	return actor_name
+
+func is_scored_actor() -> bool:
+	return true
 
 func is_airborne() -> bool:
 	return state == CreatureStateScript.State.AIRBORNE or has_movement("always_flying")
@@ -128,7 +181,10 @@ func _move_from_input(delta: float) -> void:
 	var move := Vector2.ZERO
 	if input_frame != null:
 		move = input_frame.move.normalized()
-	velocity = move * get_speed_px()
+		if input_frame.aim != Vector2.ZERO:
+			last_aim_direction = (input_frame.aim - global_position).normalized()
+	var speed_multiplier := latch_move_multiplier * _modifier_value("move_speed_mult", 1.0)
+	velocity = (dash_velocity if dash_timer > 0.0 else move * get_speed_px() * speed_multiplier)
 	if Engine.is_in_physics_frame():
 		move_and_slide()
 	else:
@@ -180,6 +236,174 @@ func _update_flight(delta: float) -> void:
 			takeoff_distance_px = 0.0
 	else:
 		takeoff_distance_px = 0.0
+
+func get_aim_direction() -> Vector2:
+	if input_frame != null and input_frame.aim != Vector2.ZERO:
+		var direction: Vector2 = input_frame.aim - global_position
+		if direction != Vector2.ZERO:
+			last_aim_direction = direction.normalized()
+	return last_aim_direction
+
+func make_damage_event(amount: float, delivery: int, plane: int, source_ability: String) -> Resource:
+	var event := DamageEventScript.new()
+	event.setup(amount * _modifier_value("damage_dealt_mult", 1.0), delivery, plane, self, source_ability)
+	return event
+
+func add_modifier(source: String, values: Dictionary, duration: float) -> void:
+	modifiers.append({"source": source, "values": values, "remaining": duration})
+
+func get_modifier_value(key: String, fallback: float) -> float:
+	return _modifier_value(key, fallback)
+
+func break_latch(_reason: String) -> void:
+	if latched_attacker != null and is_instance_valid(latched_attacker) and latched_attacker.has_method("release_latch"):
+		latched_attacker.release_latch("victim_displacement")
+	if latch_victim != null:
+		release_latch("self_displacement")
+
+func attach_to_victim(victim: Node, duration: float, source_ability: String, execute_after := 0.0) -> void:
+	latch_victim = victim
+	latch_timer = duration
+	latch_source = source_ability
+	latch_execute_timer = execute_after
+	state = CreatureStateScript.State.LATCHED
+
+func receive_latch(attacker: Node, duration: float, source_ability: String) -> void:
+	latched_attacker = attacker
+	latch_timer = duration
+	latch_source = source_ability
+	latch_move_multiplier = 0.65
+
+func release_latch(_reason: String) -> void:
+	if latch_victim != null and is_instance_valid(latch_victim) and latch_victim.latched_attacker == self:
+		latch_victim.latched_attacker = null
+		latch_victim.latch_move_multiplier = 1.0
+	latch_victim = null
+	latched_attacker = null
+	latch_timer = 0.0
+	latch_source = ""
+	latch_execute_timer = 0.0
+	latch_move_multiplier = 1.0
+	if not is_airborne():
+		state = CreatureStateScript.State.NORMAL
+
+func has_latch() -> bool:
+	return latch_victim != null or latched_attacker != null
+
+func on_kill(_victim: Node) -> void:
+	var diet := String(creature_data.get("diet", ""))
+	if diet == "carnivore" or diet == "omnivore":
+		healing_ticks.append({"remaining": 2.0, "amount_remaining": max_health * 0.05})
+
+func damage_enemy_cores_near(center: Vector2, radius: float, damage: float, source_ability: String) -> void:
+	if arena == null or not arena.has_method("record_core_damage"):
+		return
+	for core_team in arena.cores.keys():
+		var core = arena.cores[core_team]
+		if core.team == team:
+			continue
+		if core.global_position.distance_to(center) <= radius + core.radius:
+			core.take_damage(damage, team, self)
+			arena.record_core_damage(team, damage, self)
+
+func damage_enemy_cores_line(range_px: float, damage: float, source_ability: String) -> void:
+	if arena == null:
+		return
+	var aim := get_aim_direction()
+	for core_team in arena.cores.keys():
+		var core = arena.cores[core_team]
+		if core.team == team:
+			continue
+		var offset: Vector2 = core.global_position - global_position
+		var along := offset.dot(aim)
+		if along >= 0.0 and along <= range_px and absf(offset.cross(aim)) <= core.radius:
+			core.take_damage(damage, team, self)
+			arena.record_core_damage(team, damage, self)
+
+func _tick_timers(delta: float) -> void:
+	primary_timer = maxf(primary_timer - delta, 0.0)
+	q_timer = maxf(q_timer - delta, 0.0)
+	e_timer = maxf(e_timer - delta, 0.0)
+	dash_timer = maxf(dash_timer - delta, 0.0)
+	if dash_timer <= 0.0:
+		dash_velocity = Vector2.ZERO
+	for i in range(modifiers.size() - 1, -1, -1):
+		modifiers[i]["remaining"] = float(modifiers[i]["remaining"]) - delta
+		if float(modifiers[i]["remaining"]) <= 0.0:
+			modifiers.remove_at(i)
+	for i in range(healing_ticks.size() - 1, -1, -1):
+		var tick: Dictionary = healing_ticks[i]
+		var heal_amount: float = minf(float(tick["amount_remaining"]), max_health * 0.05 * delta / 2.0)
+		heal(heal_amount)
+		tick["amount_remaining"] = float(tick["amount_remaining"]) - heal_amount
+		tick["remaining"] = float(tick["remaining"]) - delta
+		healing_ticks[i] = tick
+		if float(tick["remaining"]) <= 0.0 or float(tick["amount_remaining"]) <= 0.0:
+			healing_ticks.remove_at(i)
+
+func _tick_latch(delta: float) -> void:
+	if latch_victim != null and is_instance_valid(latch_victim):
+		latch_timer = maxf(latch_timer - delta, 0.0)
+		latch_execute_timer = maxf(latch_execute_timer - delta, 0.0)
+		var offset: Vector2 = global_position - latch_victim.global_position
+		if offset == Vector2.ZERO:
+			offset = Vector2.LEFT
+		var drag_direction: Vector2 = offset.normalized()
+		if max_health > latch_victim.max_health:
+			latch_victim.global_position += drag_direction * get_speed_px() * 0.18 * delta
+		global_position = latch_victim.global_position + drag_direction * (body_radius + latch_victim.body_radius * 0.5)
+		if latch_execute_timer == 0.0 and latch_source == "Choke":
+			latch_victim.take_damage_event(make_damage_event(latch_victim.health, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, latch_source))
+			release_latch("execute")
+		elif latch_timer <= 0.0:
+			release_latch("timeout")
+	elif latched_attacker != null and is_instance_valid(latched_attacker):
+		latch_timer = maxf(latch_timer - delta, 0.0)
+		if latch_timer <= 0.0:
+			latched_attacker.release_latch("timeout")
+
+func _modified_incoming_damage(event: Resource) -> float:
+	var amount: float = event.amount
+	amount *= _modifier_value("damage_taken_mult", 1.0)
+	if creature_id == "snapping_turtle":
+		amount *= 1.0 - _passive_percent("Protective Shell", 0.0)
+	if creature_id == "mink" and event.source_actor != null and is_instance_valid(event.source_actor):
+		if event.source_actor.max_health > max_health:
+			amount *= 1.0 - _passive_percent("Fearless", 0.0)
+	return amount
+
+func _modifier_value(key: String, fallback: float) -> float:
+	var output := fallback
+	for modifier in modifiers:
+		var values: Dictionary = modifier.get("values", {})
+		if values.has(key):
+			output *= float(values[key])
+	return output
+
+func _passive_percent(passive_name: String, fallback: float) -> float:
+	for passive: Dictionary in creature_data.get("passives", []):
+		if String(passive.get("name", "")) == passive_name:
+			return _first_percent(String(passive.get("summary", "")), fallback)
+	return fallback
+
+func _first_percent(text: String, fallback: float) -> float:
+	var regex := RegEx.new()
+	regex.compile("(\\d+(?:\\.\\d+)?)%")
+	var result := regex.search(text)
+	if result == null:
+		return fallback
+	return float(result.get_string(1)) / 100.0
+
+func _make_kit() -> RefCounted:
+	match creature_id:
+		"snapping_turtle":
+			return TurtleKitScript.new()
+		"chorus_frog":
+			return FrogKitScript.new()
+		"mink":
+			return MinkKitScript.new()
+		_:
+			return null
 
 func _is_wrong_terrain() -> bool:
 	if has_movement("aquatic") or has_movement("paddling") or has_movement("wading"):
@@ -240,6 +464,8 @@ func _draw() -> void:
 		_draw_meter(Vector2(-body_radius, body_radius + 6.0), body_radius * 2.0, get_swim_ratio(), Color(0.2, 0.7, 1.0))
 	if flight_time_max > 0.0:
 		_draw_meter(Vector2(-body_radius, body_radius + 12.0), body_radius * 2.0, get_flight_ratio(), Color(0.9, 0.9, 0.45))
+	if has_latch():
+		draw_rect(Rect2(Vector2(-body_radius, body_radius + 18.0), Vector2(body_radius * 2.0, 3.0)), Color(1.0, 0.35, 0.25))
 
 func _draw_meter(start: Vector2, width: float, ratio: float, color: Color) -> void:
 	draw_rect(Rect2(start, Vector2(width, 3.0)), Color(0.06, 0.06, 0.07))
