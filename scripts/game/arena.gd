@@ -22,10 +22,25 @@ const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 const TerrainLayerScript := preload("res://scripts/game/terrain_layer.gd")
 const WaterLayerScript := preload("res://scripts/game/water_layer.gd")
 const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
+const SimConstants := preload("res://scripts/sim/sim_constants.gd")
+
+const PLAYABLE_CREATURE_POOL := ["snapping_turtle", "chorus_frog", "mink", "beaver", "owl", "duck"]
+const SQUAD_COMMAND_FARM := "farm"
+const SQUAD_COMMAND_FOLLOW := "follow"
+const SQUAD_COMMAND_AGGRO := "aggro"
+const SQUAD_COMMAND_SECONDS := 10.0
+const SQUAD_FOLLOW_RADIUS := 5.0 * SimConstants.UNIT_PX
+const SQUAD_DANGER_HEALTH_RATIO := 0.28
+const SQUAD_DANGER_RANGE := 360.0
 
 var entities: Array[Node] = []
 var minions: Array[Node] = []
 var bots: Array[Node] = []
+var player_squad: Array[Node] = []
+var active_squad_index := 0
+var squad_command := SQUAD_COMMAND_FARM
+var squad_command_timer := 0.0
+var squad_aggro_target: Node = null
 var cores: Dictionary = {}
 var player: Node
 var wave_timer := 2.0
@@ -111,7 +126,10 @@ func _physics_process(delta: float) -> void:
 		return
 
 	hut_defend_hint_timer = maxf(hut_defend_hint_timer - delta, 0.0)
-	if player != null and is_instance_valid(player):
+	_tick_squad_command(delta)
+	if _is_1v1_trio_mode():
+		_feed_player_squad_inputs()
+	elif player != null and is_instance_valid(player):
 		var player_frame: Resource = local_input.build_frame(player.get_global_mouse_position())
 		player.set_input_frame(player_frame)
 		if player_frame.is_pressed(InputFrameScript.BUTTON_HUT_DEFEND) and hut_defend_hint_timer <= 0.0 and _player_near_own_hut():
@@ -157,6 +175,7 @@ func _draw() -> void:
 
 	draw_string(ThemeDB.fallback_font, blue_core_position + Vector2(-42.0, -110.0), "BLUE HABITAT", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, Color(0.45, 0.72, 1.0))
 	draw_string(ThemeDB.fallback_font, red_core_position + Vector2(-42.0, -110.0), "RED HABITAT", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, Color(1.0, 0.45, 0.4))
+	_draw_squad_badges()
 
 func _setup_crosshair_cursor() -> void:
 	var size := 25
@@ -203,7 +222,7 @@ func _build_ui() -> void:
 	kill_feed_label = Label.new()
 	end_summary_label = Label.new()
 	help_label = Label.new()
-	help_label.text = "WASD move | mouse aim | LMB primary | Q / E abilities | Space flight | Esc menu"
+	help_label.text = "WASD move | mouse aim | LMB primary | Q / E abilities | 1/2/3 swap | T regroup | G farm/safe | Space flight | Esc menu"
 
 	root.add_child(status_label)
 	root.add_child(core_label)
@@ -246,34 +265,80 @@ func _spawn_match() -> void:
 			huts.append(hut)
 			register_entity(hut)
 
-	player = CreatureScript.new()
-	add_child(player)
-	player.setup(self, BLUE, get_team_spawn(BLUE), GameConfig.selected_creature_id, terrain_map)
-	register_entity(player)
+	if _is_1v1_trio_mode():
+		_spawn_player_squad()
+	else:
+		player = CreatureScript.new()
+		add_child(player)
+		player.setup(self, BLUE, get_team_spawn(BLUE), GameConfig.selected_creature_id, terrain_map)
+		register_entity(player)
 	_spawn_bots_for_mode()
 
 	camera = Camera2D.new()
 	camera.zoom = camera_zoom
 	camera.position_smoothing_enabled = true
-	player.add_child(camera)
-	camera.make_current()
+	_attach_camera_to_player()
 
 	spawn_wave()
 	_update_ui()
 
 func _spawn_bots_for_mode() -> void:
-	var pool := ["snapping_turtle", "chorus_frog", "mink", "beaver", "owl", "duck"]
 	if GameConfig.selected_mode == "3v3":
-		var ally_pool := _shuffled_creature_pool(pool)
+		var ally_pool := _shuffled_creature_pool(PLAYABLE_CREATURE_POOL)
 		ally_pool.erase(GameConfig.selected_creature_id)
-		var enemy_pool := _shuffled_creature_pool(pool)
+		var enemy_pool := _shuffled_creature_pool(PLAYABLE_CREATURE_POOL)
 		_spawn_bot(BLUE, ally_pool[0], get_bot_spawn(BLUE, "Blue Guard"), "Blue Guard")
 		_spawn_bot(BLUE, ally_pool[1], get_bot_spawn(BLUE, "Blue Ward"), "Blue Ward")
 		_spawn_bot(RED, enemy_pool[0], get_bot_spawn(RED, "Red Blade"), "Red Blade")
 		_spawn_bot(RED, enemy_pool[1], get_bot_spawn(RED, "Red Scope"), "Red Scope")
 		_spawn_bot(RED, enemy_pool[2], get_bot_spawn(RED, "Red Chorus"), "Red Chorus")
+	elif _is_1v1_trio_mode():
+		var enemy_pool := _shuffled_creature_pool(PLAYABLE_CREATURE_POOL)
+		var red_spawn := get_team_spawn(RED)
+		var red_names := ["Red Claw", "Red Reed", "Red Fang"]
+		for i in 3:
+			_spawn_bot(RED, enemy_pool[i], red_spawn + _squad_spawn_offset(i, RED), red_names[i])
 	else:
-		_spawn_bot(RED, pool[match_rng.randi_range(0, pool.size() - 1)], get_bot_spawn(RED, "Red Rival"), "Red Rival")
+		_spawn_bot(RED, PLAYABLE_CREATURE_POOL[match_rng.randi_range(0, PLAYABLE_CREATURE_POOL.size() - 1)], get_bot_spawn(RED, "Red Rival"), "Red Rival")
+
+func _is_1v1_trio_mode() -> bool:
+	return GameConfig.selected_mode == "1v1"
+
+func get_squad_follow_radius() -> float:
+	return SQUAD_FOLLOW_RADIUS
+
+func _spawn_player_squad() -> void:
+	player_squad.clear()
+	active_squad_index = 0
+	squad_command = SQUAD_COMMAND_FARM
+	squad_command_timer = 0.0
+	squad_aggro_target = null
+
+	var squad_ids: Array[String] = GameConfig.get_selected_squad_ids() if GameConfig.has_method("get_selected_squad_ids") else [GameConfig.selected_creature_id, "chorus_frog", "mink"]
+	var blue_spawn := get_team_spawn(BLUE)
+	for i in 3:
+		var member = CreatureScript.new()
+		add_child(member)
+		member.setup(self, BLUE, blue_spawn + _squad_spawn_offset(i, BLUE), squad_ids[i], terrain_map)
+		member.actor_name = "Blue %d %s" % [i + 1, member.creature_data.get("name", member.creature_id)]
+		player_squad.append(member)
+		register_entity(member)
+	player = player_squad[active_squad_index]
+
+func _squad_spawn_offset(index: int, team: int) -> Vector2:
+	var y_offsets := [-42.0, 0.0, 42.0]
+	var x := -28.0 if team == BLUE else 28.0
+	return Vector2(x, y_offsets[index])
+
+func _attach_camera_to_player() -> void:
+	if camera == null or player == null or not is_instance_valid(player):
+		return
+	var parent := camera.get_parent()
+	if parent != null:
+		parent.remove_child(camera)
+	player.add_child(camera)
+	camera.position = Vector2.ZERO
+	camera.make_current()
 
 func _seed_match_rng() -> void:
 	match_rng.seed = int(("%s:%s" % [GameConfig.selected_mode, GameConfig.selected_creature_id]).hash())
@@ -294,6 +359,217 @@ func _spawn_bot(team: int, creature_id: String, spawn_position: Vector2, bot_nam
 	bot.actor_name = bot_name
 	bots.append(bot)
 	register_entity(bot)
+
+func _feed_player_squad_inputs() -> void:
+	_select_live_active_if_needed()
+	if player != null and is_instance_valid(player) and player.is_alive():
+		var player_frame: Resource = local_input.build_frame(player.get_global_mouse_position())
+		player.set_input_frame(player_frame)
+		if player_frame.is_pressed(InputFrameScript.BUTTON_HUT_DEFEND) and hut_defend_hint_timer <= 0.0 and _player_near_own_hut():
+			hut_defend_hint_timer = 2.5
+			add_kill_feed("Hut defense assignment needs 3+ habitat stocks (coming with the stock system)")
+	for member in player_squad:
+		if member == null or not is_instance_valid(member) or member == player:
+			continue
+		if member.is_alive():
+			member.set_input_frame(_build_squad_ai_frame(member))
+
+func _select_live_active_if_needed() -> void:
+	if player != null and is_instance_valid(player) and player.is_alive():
+		return
+	var best_index := -1
+	var best_health_ratio := -1.0
+	for i in player_squad.size():
+		var member: Node = player_squad[i]
+		if member == null or not is_instance_valid(member) or not member.is_alive():
+			continue
+		var ratio := _health_ratio(member)
+		if ratio > best_health_ratio:
+			best_health_ratio = ratio
+			best_index = i
+	if best_index >= 0:
+		_set_active_squad_index(best_index, false)
+
+func _build_squad_ai_frame(actor: Node) -> Resource:
+	if _is_severe_danger(actor):
+		return _retreat_frame(actor)
+	match squad_command:
+		SQUAD_COMMAND_FOLLOW:
+			return _follow_active_frame(actor)
+		SQUAD_COMMAND_AGGRO:
+			var target := squad_aggro_target if _valid_target(squad_aggro_target) else _closest_enemy_creature(actor, SQUAD_DANGER_RANGE * 1.8)
+			if target != null:
+				return _direct_target_frame(actor, target, true)
+			return _follow_active_frame(actor)
+		_:
+			return _safe_farm_frame(actor)
+
+func _follow_active_frame(actor: Node) -> Resource:
+	if player == null or not is_instance_valid(player):
+		return _safe_farm_frame(actor)
+	var distance: float = actor.global_position.distance_to(player.global_position)
+	if distance <= SQUAD_FOLLOW_RADIUS:
+		var frame := InputFrameScript.new()
+		frame.aim = player.global_position
+		return frame
+	return _move_to_frame(actor, player.global_position, SQUAD_FOLLOW_RADIUS, player.global_position)
+
+func _safe_farm_frame(actor: Node) -> Resource:
+	var minion_target := _closest_enemy_minion(actor, 520.0)
+	if minion_target != null:
+		return _direct_target_frame(actor, minion_target, false)
+	var patrol := _safe_patrol_point(actor)
+	return _move_to_frame(actor, patrol, 70.0, patrol)
+
+func _retreat_frame(actor: Node) -> Resource:
+	var point := _retreat_point(actor)
+	var threat := _closest_enemy_creature(actor, SQUAD_DANGER_RANGE)
+	return _move_to_frame(actor, point, 36.0, threat.global_position if threat != null else point)
+
+func _direct_target_frame(actor: Node, target: Node, allow_abilities: bool) -> Resource:
+	var frame := _move_to_frame(actor, target.global_position, bot_brain._preferred_range(actor) + _target_radius(target), target.global_position)
+	var distance: float = actor.global_position.distance_to(target.global_position)
+	if distance <= bot_brain._primary_range(actor, target):
+		frame.set_button(InputFrameScript.BUTTON_PRIMARY, true)
+		if allow_abilities:
+			bot_brain._hook(actor).apply(actor, target, frame, distance)
+	return frame
+
+func _move_to_frame(actor: Node, point: Vector2, hold_radius: float, aim_point: Vector2) -> Resource:
+	var frame := InputFrameScript.new()
+	frame.aim = aim_point
+	var offset: Vector2 = point - actor.global_position
+	var distance := offset.length()
+	if distance > hold_radius:
+		var direction := offset.normalized()
+		frame.move = get_steering_direction(actor.global_position, point, actor.body_radius, actor.team)
+		if frame.move == Vector2.ZERO:
+			frame.move = direction
+	return frame
+
+func _is_severe_danger(actor: Node) -> bool:
+	return _health_ratio(actor) <= SQUAD_DANGER_HEALTH_RATIO and _closest_enemy_creature(actor, SQUAD_DANGER_RANGE) != null
+
+func _health_ratio(target: Node) -> float:
+	var max_health := float(target.get("max_health") if target.get("max_health") != null else 0.0)
+	if max_health <= 0.0:
+		return 1.0
+	return clampf(float(target.health) / max_health, 0.0, 1.0)
+
+func _closest_enemy_creature(actor: Node, max_distance: float) -> Node:
+	var closest: Node = null
+	var closest_distance := max_distance
+	for entity in entities:
+		if not _valid_target(entity) or entity.team == actor.team:
+			continue
+		if not entity.has_method("is_scored_actor") or not entity.is_scored_actor():
+			continue
+		if entity.has_method("is_stealthed") and entity.is_stealthed():
+			continue
+		var distance: float = actor.global_position.distance_to(entity.global_position)
+		if distance < closest_distance:
+			closest = entity
+			closest_distance = distance
+	return closest
+
+func _closest_enemy_minion(actor: Node, max_distance: float) -> Node:
+	var closest: Node = null
+	var closest_distance := max_distance
+	for minion in minions:
+		if not _valid_target(minion) or minion.team == actor.team:
+			continue
+		var distance: float = actor.global_position.distance_to(minion.global_position)
+		if distance < closest_distance:
+			closest = minion
+			closest_distance = distance
+	return closest
+
+func _valid_target(target: Variant) -> bool:
+	if target == null or not is_instance_valid(target):
+		return false
+	if target.has_method("is_alive") and not target.is_alive():
+		return false
+	if target.get("health") != null and float(target.health) <= 0.0:
+		return false
+	return true
+
+func _target_radius(target: Node) -> float:
+	if target.get("body_radius") != null:
+		return float(target.body_radius)
+	if target.get("radius") != null:
+		return float(target.radius)
+	return 0.0
+
+func _retreat_point(actor: Node) -> Vector2:
+	var best_point := get_team_spawn(actor.team)
+	var best_distance := actor.global_position.distance_to(best_point)
+	for hut in huts:
+		if not _valid_target(hut) or hut.team != actor.team:
+			continue
+		var distance: float = actor.global_position.distance_to(hut.global_position)
+		if distance < best_distance:
+			best_point = hut.global_position
+			best_distance = distance
+	return best_point
+
+func _safe_patrol_point(actor: Node) -> Vector2:
+	var spawn := get_team_spawn(actor.team)
+	var lane_y := 56.0 * (1.0 if active_squad_index % 2 == 0 else -1.0)
+	return spawn + Vector2(150.0 if actor.team == BLUE else -150.0, lane_y)
+
+func _tick_squad_command(delta: float) -> void:
+	if not _is_1v1_trio_mode():
+		return
+	if squad_command == SQUAD_COMMAND_FOLLOW or squad_command == SQUAD_COMMAND_AGGRO:
+		squad_command_timer = maxf(squad_command_timer - delta, 0.0)
+		if squad_command_timer <= 0.0:
+			_issue_squad_farm(false)
+
+func _set_active_squad_index(index: int, announce := true) -> void:
+	if index < 0 or index >= player_squad.size():
+		return
+	var next_player: Node = player_squad[index]
+	if next_player == null or not is_instance_valid(next_player) or not next_player.is_alive():
+		if announce:
+			add_kill_feed("Squad slot %d is respawning" % (index + 1))
+		return
+	active_squad_index = index
+	player = next_player
+	_attach_camera_to_player()
+	if announce:
+		add_kill_feed("Controlling %d: %s" % [index + 1, player.get_actor_name()])
+	_update_ui()
+
+func _issue_squad_follow(announce := true) -> void:
+	if not _is_1v1_trio_mode():
+		return
+	squad_command = SQUAD_COMMAND_FOLLOW
+	squad_command_timer = SQUAD_COMMAND_SECONDS
+	squad_aggro_target = null
+	if announce:
+		add_kill_feed("Squad regrouping on active creature")
+		if player != null and is_instance_valid(player):
+			add_circle_telegraph(player.global_position, SQUAD_FOLLOW_RADIUS, Color(0.45, 0.75, 1.0, 0.75), 0.35, 3.0, false)
+
+func _issue_squad_farm(announce := true) -> void:
+	if not _is_1v1_trio_mode():
+		return
+	squad_command = SQUAD_COMMAND_FARM
+	squad_command_timer = 0.0
+	squad_aggro_target = null
+	if announce:
+		add_kill_feed("Squad farming safely")
+
+func _issue_squad_aggro(target: Node) -> void:
+	if not _is_1v1_trio_mode() or squad_command != SQUAD_COMMAND_FOLLOW or squad_command_timer <= 0.0:
+		return
+	if not _valid_target(target) or (player != null and target.team == player.team):
+		return
+	if not target.has_method("is_scored_actor") or not target.is_scored_actor():
+		return
+	squad_command = SQUAD_COMMAND_AGGRO
+	squad_aggro_target = target
+	add_kill_feed("Squad assisting on %s" % (target.get_actor_name() if target.has_method("get_actor_name") else "target"))
 
 func spawn_wave() -> void:
 	# Each surviving hut fields a wave that marches down its lane.
@@ -404,8 +680,19 @@ func record_vfx_event(event: Dictionary) -> void:
 	vfx_events.append(event.duplicate())
 	if vfx_events.size() > 240:
 		vfx_events.pop_front()
+	_maybe_trigger_squad_aggro(event)
 	_spawn_vfx_for_event(event)
 	queue_redraw()
+
+func _maybe_trigger_squad_aggro(event: Dictionary) -> void:
+	if not _is_1v1_trio_mode() or squad_command != SQUAD_COMMAND_FOLLOW or squad_command_timer <= 0.0:
+		return
+	if String(event.get("type", "")) != "hit_landed":
+		return
+	var source = event.get("source", null)
+	var target = event.get("target", null)
+	if source == player:
+		_issue_squad_aggro(target)
 
 func resolve_projectile_hits(projectile: Node) -> void:
 	if projectile_crosses_cover(projectile.previous_position, projectile.global_position, projectile.radius):
@@ -922,6 +1209,45 @@ func _draw_latch_countdown(telegraph: Dictionary, center: Vector2, color: Color)
 	draw_circle(center, radius + 2.0, Color(0.04, 0.02, 0.02, color.a))
 	draw_arc(center, radius, -PI * 0.5, -PI * 0.5 + TAU * (remaining / duration), 20, color, 3.0)
 
+func _draw_squad_badges() -> void:
+	if not _is_1v1_trio_mode():
+		return
+	for i in player_squad.size():
+		var member: Node = player_squad[i]
+		if member == null or not is_instance_valid(member) or not member.is_alive():
+			continue
+		var text := _squad_badge_text(member, i)
+		var color := _squad_badge_color(member, i)
+		var position := member.global_position + Vector2(-28.0, -member.body_radius - 25.0)
+		draw_string(ThemeDB.fallback_font, position + Vector2(1.5, 1.5), text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(0.02, 0.02, 0.02, 0.85))
+		draw_string(ThemeDB.fallback_font, position, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, color)
+
+func _squad_badge_text(member: Node, index: int) -> String:
+	if member == player:
+		return "%d ACTIVE" % (index + 1)
+	if _is_severe_danger(member):
+		return "%d DANGER" % (index + 1)
+	match squad_command:
+		SQUAD_COMMAND_FOLLOW:
+			return "%d FOLLOW %.0f" % [index + 1, ceili(squad_command_timer)]
+		SQUAD_COMMAND_AGGRO:
+			return "%d AGGRO" % (index + 1)
+		_:
+			return "%d FARM" % (index + 1)
+
+func _squad_badge_color(member: Node, _index: int) -> Color:
+	if member == player:
+		return Color(1.0, 1.0, 1.0, 0.95)
+	if _is_severe_danger(member):
+		return Color(1.0, 0.34, 0.24, 0.95)
+	match squad_command:
+		SQUAD_COMMAND_FOLLOW:
+			return Color(0.45, 0.75, 1.0, 0.95)
+		SQUAD_COMMAND_AGGRO:
+			return Color(1.0, 0.54, 0.26, 0.95)
+		_:
+			return Color(0.58, 1.0, 0.48, 0.95)
+
 func _draw_float_text(telegraph: Dictionary, color: Color, fade: float) -> void:
 	var duration: float = maxf(float(telegraph.get("duration", 0.5)), 0.01)
 	var remaining: float = float(telegraph.get("remaining", 0.0))
@@ -955,7 +1281,9 @@ func _update_ui() -> void:
 	var red_core = cores[RED]
 	var creature_name: String = player.creature_data.get("name", "Unknown") if player != null else "Unknown"
 	if not match_over:
-		status_label.text = "%s | %s | Creature: %s | Bots: %d | Next wave: %ds" % [GameConfig.selected_mode, _format_match_time(elapsed), creature_name, bots.size(), ceili(wave_timer)]
+		var mode_text := "1v1 Trio" if _is_1v1_trio_mode() else GameConfig.selected_mode
+		var active_text := "Slot %d %s" % [active_squad_index + 1, creature_name] if _is_1v1_trio_mode() else creature_name
+		status_label.text = "%s | %s | Active: %s | Bots: %d | Next wave: %ds" % [mode_text, _format_match_time(elapsed), active_text, bots.size(), ceili(wave_timer)]
 	core_label.text = "Blue Core %d / %d    Red Core %d / %d" % [blue_core.health, blue_core.max_health, red_core.health, red_core.max_health]
 	cooldown_label.text = _get_cooldown_text()
 	scoreboard_label.text = _get_scoreboard_text()
@@ -966,7 +1294,7 @@ func _get_cooldown_text() -> String:
 		return ""
 	if player.has_method("is_alive") and not player.is_alive():
 		return "RESPAWNING IN %.1fs" % maxf(player.respawn_timer, 0.0)
-	return "Primary %s | Q %s | E %s | Swim %d%% | Flight %d%% | %s" % [
+	var active_line := "Primary %s | Q %s | E %s | Swim %d%% | Flight %d%% | %s" % [
 		_format_cooldown(player.primary_timer),
 		_format_cooldown(player.q_timer),
 		_format_cooldown(player.e_timer),
@@ -974,6 +1302,26 @@ func _get_cooldown_text() -> String:
 		int(player.get_flight_ratio() * 100.0),
 		"LATCH" if player.has_latch() else "free"
 	]
+	if _is_1v1_trio_mode():
+		return "%s\n%s" % [_get_squad_rail_text(), active_line]
+	return active_line
+
+func _get_squad_rail_text() -> String:
+	var command_text := "FARM/SAFE"
+	if squad_command == SQUAD_COMMAND_FOLLOW:
+		command_text = "FOLLOW %.0fs" % ceili(squad_command_timer)
+	elif squad_command == SQUAD_COMMAND_AGGRO:
+		command_text = "AGGRO %.0fs" % ceili(squad_command_timer)
+	var chunks: Array[String] = ["Squad %s" % command_text]
+	for i in player_squad.size():
+		var member: Node = player_squad[i]
+		if member == null or not is_instance_valid(member):
+			continue
+		var marker := "*" if member == player else " "
+		var hp_ratio := _health_ratio(member)
+		var state := "KO %.1fs" % member.respawn_timer if member.has_method("is_alive") and not member.is_alive() else "%d%%" % int(hp_ratio * 100.0)
+		chunks.append("%s%d %s stocks 3/3 %s" % [marker, i + 1, member.creature_data.get("name", member.creature_id), state])
+	return " | ".join(chunks)
 
 func _format_cooldown(timer: float) -> String:
 	if timer <= 0.05:
@@ -1076,3 +1424,15 @@ func _input(event: InputEvent) -> void:
 			add_kill_feed("Press Esc again to leave the match")
 			var confirm_timer := get_tree().create_timer(2.0)
 			confirm_timer.timeout.connect(func() -> void: quit_confirm_timer = 0.0)
+	elif _is_1v1_trio_mode() and event is InputEventKey and event.pressed and not event.echo:
+		match event.keycode:
+			KEY_1:
+				_set_active_squad_index(0)
+			KEY_2:
+				_set_active_squad_index(1)
+			KEY_3:
+				_set_active_squad_index(2)
+			KEY_T:
+				_issue_squad_follow()
+			KEY_G:
+				_issue_squad_farm()

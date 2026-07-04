@@ -60,6 +60,17 @@ func _draw() -> void:
 
 	if arena.player != null and is_instance_valid(arena.player):
 		var player_point: Vector2 = (arena.player.global_position - world.position) * map_scale
+		if arena.has_method("get_squad_follow_radius") and String(arena.get("squad_command")) in ["follow", "aggro"]:
+			draw_arc(player_point, arena.get_squad_follow_radius() * map_scale, 0.0, TAU, 24, Color(0.45, 0.75, 1.0, 0.35), 1.0)
+		if arena.get("player_squad") != null:
+			for i in arena.player_squad.size():
+				var member = arena.player_squad[i]
+				if member == null or not is_instance_valid(member) or (member.has_method("is_alive") and not member.is_alive()):
+					continue
+				var member_point: Vector2 = (member.global_position - world.position) * map_scale
+				var active := member == arena.player
+				draw_arc(member_point, 5.0 if active else 3.8, 0.0, TAU, 16, Color(1.0, 1.0, 1.0, 0.95 if active else 0.68), 1.5)
+				draw_string(ThemeDB.fallback_font, member_point + Vector2(4.0, 4.0), str(i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 8, Color(1.0, 1.0, 1.0, 0.85))
 		draw_arc(player_point, 4.0, 0.0, TAU, 12, Color(1.0, 1.0, 1.0, 0.95), 1.5)
 		var viewport_world: Vector2 = get_viewport_rect().size / arena.camera_zoom
 		var view_rect := Rect2((arena.player.global_position - viewport_world * 0.5 - world.position) * map_scale, viewport_world * map_scale)

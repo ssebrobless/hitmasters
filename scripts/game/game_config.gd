@@ -1,7 +1,11 @@
 extends Node
 
+const DEFAULT_SQUAD_IDS := ["snapping_turtle", "chorus_frog", "mink"]
+const PLAYABLE_SQUAD_POOL := ["snapping_turtle", "chorus_frog", "mink", "beaver", "owl", "duck"]
+
 var selected_mode := "1v1"
 var selected_creature_id := "snapping_turtle"
+var selected_squad_ids: Array[String] = ["snapping_turtle", "chorus_frog", "mink"]
 
 func _ready() -> void:
 	for argument in OS.get_cmdline_args():
@@ -12,3 +16,39 @@ func _ready() -> void:
 
 func set_selected_creature(creature_id: String) -> void:
 	selected_creature_id = creature_id
+	selected_squad_ids = _build_squad_around(creature_id)
+
+func get_selected_squad_ids() -> Array[String]:
+	return _normalize_squad_ids(selected_squad_ids)
+
+func set_selected_squad_ids(creature_ids: Array[String]) -> void:
+	selected_squad_ids = _normalize_squad_ids(creature_ids)
+	if not selected_squad_ids.is_empty():
+		selected_creature_id = selected_squad_ids[0]
+
+func _build_squad_around(creature_id: String) -> Array[String]:
+	var output: Array[String] = []
+	if not creature_id.is_empty():
+		output.append(creature_id)
+	for candidate in PLAYABLE_SQUAD_POOL:
+		if output.size() >= 3:
+			break
+		if not output.has(candidate):
+			output.append(candidate)
+	return _normalize_squad_ids(output)
+
+func _normalize_squad_ids(creature_ids: Array[String]) -> Array[String]:
+	var output: Array[String] = []
+	for creature_id in creature_ids:
+		if creature_id.is_empty() or output.has(creature_id):
+			continue
+		output.append(creature_id)
+	for fallback in DEFAULT_SQUAD_IDS:
+		if output.size() >= 3:
+			break
+		if not output.has(fallback):
+			output.append(fallback)
+	var normalized: Array[String] = []
+	for i in mini(output.size(), 3):
+		normalized.append(output[i])
+	return normalized
