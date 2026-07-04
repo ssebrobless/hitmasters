@@ -27,7 +27,7 @@ theme_override_constants/separation = 6
 
 [node name="Title" type="Label" parent="Root/Header"]
 layout_mode = 2
-text = "CHOOSE YOUR HITMASTER"
+text = "CHOOSE YOUR BOG CREATURE"
 horizontal_alignment = 1
 
 [node name="ModeLabel" type="Label" parent="Root/Header"]
@@ -40,9 +40,14 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 22
 
-[node name="HeroList" type="VBoxContainer" parent="Root/Content"]
+[node name="HeroScroll" type="ScrollContainer" parent="Root/Content"]
 layout_mode = 2
 custom_minimum_size = Vector2(280, 0)
+horizontal_scroll_mode = 0
+
+[node name="HeroList" type="VBoxContainer" parent="Root/Content/HeroScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
 [node name="Details" type="VBoxContainer" parent="Root/Content"]
@@ -57,7 +62,7 @@ script = ExtResource("2_hero_preview")
 
 [node name="HeroName" type="Label" parent="Root/Content/Details"]
 layout_mode = 2
-text = "Hero"
+text = "Creature"
 
 [node name="RoleLabel" type="Label" parent="Root/Content/Details"]
 layout_mode = 2
