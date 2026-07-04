@@ -437,6 +437,8 @@ func damage_enemy_cores_near(center: Vector2, radius: float, damage: float, sour
 		var core = arena.cores[core_team]
 		if core.team == team:
 			continue
+		if arena.has_method("can_damage_core") and not arena.can_damage_core(core.team):
+			continue
 		if core.global_position.distance_to(center) <= radius + core.radius:
 			core.take_damage(damage, team, self)
 			arena.record_core_damage(team, damage, self)
@@ -448,6 +450,8 @@ func damage_enemy_cores_line(range_px: float, damage: float, source_ability: Str
 	for core_team in arena.cores.keys():
 		var core = arena.cores[core_team]
 		if core.team == team:
+			continue
+		if arena.has_method("can_damage_core") and not arena.can_damage_core(core.team):
 			continue
 		var offset: Vector2 = core.global_position - global_position
 		var along := offset.dot(aim)

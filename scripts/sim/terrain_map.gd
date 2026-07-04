@@ -21,6 +21,7 @@ var bot_spawns := {}
 var wave_minion_offsets: Array[Vector2] = []
 var objective_position := Vector2.ZERO
 var objective_radius := 0.0
+var hut_positions := {}
 
 func configure(next_mode: String) -> void:
 	mode = next_mode
@@ -109,6 +110,10 @@ func _configure_3v3() -> void:
 	wave_minion_offsets = [Vector2(0.0, -4.0 * unit), Vector2.ZERO, Vector2(0.0, 4.0 * unit)]
 	objective_position = Vector2.ZERO
 	objective_radius = 7.0 * unit
+	hut_positions = {
+		0: [Vector2(-78.0 * unit, -34.0 * unit), Vector2(-78.0 * unit, 34.0 * unit)],
+		1: [Vector2(78.0 * unit, -34.0 * unit), Vector2(78.0 * unit, 34.0 * unit)]
+	}
 
 func _configure_1v1() -> void:
 	var unit := SimConstants.UNIT_PX
@@ -151,6 +156,10 @@ func _configure_1v1() -> void:
 	wave_minion_offsets = [Vector2(0.0, -3.0 * unit), Vector2(0.0, 3.0 * unit)]
 	objective_position = Vector2.ZERO
 	objective_radius = 5.0 * unit
+	hut_positions = {
+		0: [Vector2(-45.0 * unit, 0.0)],
+		1: [Vector2(45.0 * unit, 0.0)]
+	}
 
 func _rect_units(x: float, y: float, width: float, height: float) -> Rect2:
 	var unit := SimConstants.UNIT_PX

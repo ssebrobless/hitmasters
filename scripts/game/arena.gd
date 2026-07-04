@@ -23,6 +23,8 @@ const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
 const LocalInputScript := preload("res://scripts/ui/local_input.gd")
 const BotBrainScript := preload("res://scripts/ai/bot_brain.gd")
 const MinimapScript := preload("res://scripts/ui/minimap.gd")
+const MudHutScript := preload("res://scripts/game/mud_hut.gd")
+const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 
 var entities: Array[Node] = []
 var minions: Array[Node] = []
@@ -35,6 +37,9 @@ var match_over := false
 var telegraphs: Array[Dictionary] = []
 var vfx_events: Array[Dictionary] = []
 var dams: Array[Node] = []
+var huts: Array[Node] = []
+var huts_lost := {0: 0, 1: 0}
+var hut_defend_hint_timer := 0.0
 var camera: Camera2D = null
 
 const CAMERA_LEAD_DEADZONE := 70.0
@@ -120,8 +125,13 @@ func _physics_process(delta: float) -> void:
 	if match_over:
 		return
 
+	hut_defend_hint_timer = maxf(hut_defend_hint_timer - delta, 0.0)
 	if player != null and is_instance_valid(player):
-		player.set_input_frame(local_input.build_frame(player.get_global_mouse_position()))
+		var player_frame: Resource = local_input.build_frame(player.get_global_mouse_position())
+		player.set_input_frame(player_frame)
+		if player_frame.is_pressed(InputFrameScript.BUTTON_HUT_DEFEND) and hut_defend_hint_timer <= 0.0 and _player_near_own_hut():
+			hut_defend_hint_timer = 2.5
+			add_kill_feed("Hut defense assignment needs 3+ habitat stocks (coming with the stock system)")
 	for bot in bots:
 		if bot != null and is_instance_valid(bot):
 			bot.set_input_frame(bot_brain.build_frame(bot))
@@ -315,6 +325,15 @@ func _spawn_match() -> void:
 	red_core.destroyed.connect(_on_core_destroyed)
 	cores[RED] = red_core
 
+	for hut_team in terrain_map.hut_positions.keys():
+		var lane_list: Array = terrain_map.hut_positions[hut_team]
+		for lane_index in lane_list.size():
+			var hut = MudHutScript.new()
+			add_child(hut)
+			hut.setup(self, int(hut_team), lane_index, lane_list[lane_index])
+			huts.append(hut)
+			register_entity(hut)
+
 	player = CreatureScript.new()
 	add_child(player)
 	player.setup(self, BLUE, get_team_spawn(BLUE), GameConfig.selected_creature_id, terrain_map)
@@ -349,16 +368,56 @@ func _spawn_bot(team: int, creature_id: String, spawn_position: Vector2, bot_nam
 	register_entity(bot)
 
 func spawn_wave() -> void:
-	for i in wave_minion_offsets.size():
-		_spawn_minion(BLUE, blue_minion_spawn + wave_minion_offsets[i] + Vector2(-i * 18.0, 0.0))
-		_spawn_minion(RED, red_minion_spawn + wave_minion_offsets[i] + Vector2(i * 18.0, 0.0))
+	# Each surviving hut fields a wave that marches down its lane.
+	for hut in huts:
+		if hut == null or not is_instance_valid(hut) or not hut.is_alive():
+			continue
+		var toward_mid := Vector2(1.0 if hut.team == BLUE else -1.0, 0.0)
+		var lane_anchor := Vector2(-hut.global_position.x, hut.global_position.y)
+		for i in wave_minion_offsets.size():
+			var minion = MinionScript.new()
+			add_child(minion)
+			minion.setup(self, hut.team, hut.global_position + toward_mid * (52.0 + float(i) * 22.0) + wave_minion_offsets[i] * 0.4, "lane", lane_anchor)
+			minions.append(minion)
+			register_entity(minion)
 
-func _spawn_minion(team: int, spawn_position: Vector2) -> void:
-	var minion = MinionScript.new()
-	add_child(minion)
-	minion.setup(self, team, spawn_position)
-	minions.append(minion)
-	register_entity(minion)
+func track_minion(minion: Node) -> void:
+	if not minions.has(minion):
+		minions.append(minion)
+
+func get_lane_destination(attacking_team: int, lane_anchor: Vector2) -> Vector2:
+	# March to the nearest surviving enemy hut on this lane; if none remain,
+	# push into the habitat toward the core.
+	var enemy_team := RED if attacking_team == BLUE else BLUE
+	var best_position := Vector2.ZERO
+	var best_distance := INF
+	for hut in huts:
+		if hut == null or not is_instance_valid(hut) or not hut.is_alive() or hut.team != enemy_team:
+			continue
+		var distance: float = hut.global_position.distance_to(lane_anchor)
+		if distance < best_distance:
+			best_distance = distance
+			best_position = hut.global_position
+	if best_distance < INF:
+		return best_position
+	var core = cores.get(enemy_team)
+	return core.global_position if core != null else lane_anchor
+
+func can_damage_core(defending_team: int) -> bool:
+	return int(huts_lost.get(defending_team, 0)) > 0 or not _team_has_huts(defending_team)
+
+func _team_has_huts(defending_team: int) -> bool:
+	for hut in huts:
+		if hut != null and is_instance_valid(hut) and hut.team == defending_team:
+			return true
+	return int(huts_lost.get(defending_team, 0)) > 0
+
+func on_hut_destroyed(hut: Node) -> void:
+	huts.erase(hut)
+	huts_lost[hut.team] = int(huts_lost.get(hut.team, 0)) + 1
+	var team_name := _team_name(hut.team)
+	add_kill_feed("%s mud hut destroyed — %s habitat exposed!" % [team_name, team_name])
+	add_circle_telegraph(cores[hut.team].global_position, 90.0, Color(1.0, 0.6, 0.2, 0.8), 1.0, 5.0, true)
 
 func register_dam(dam: Node) -> void:
 	if not dams.has(dam):
@@ -442,6 +501,10 @@ func resolve_projectile_hits(projectile: Node) -> void:
 		if core.team == projectile.team:
 			continue
 		if core.global_position.distance_to(projectile.global_position) <= projectile.radius + core.radius:
+			if not can_damage_core(core.team):
+				_show_core_shielded(core)
+				projectile.queue_free()
+				return
 			var core_damage: float = projectile.damage * get_core_damage_multiplier(projectile.team)
 			core.take_damage(core_damage, projectile.team, projectile.source_actor)
 			record_core_damage(projectile.team, core_damage, projectile.source_actor)
@@ -478,6 +541,9 @@ func damage_enemies_in_radius(source_team: int, center: Vector2, radius: float, 
 	for core_team in cores.keys():
 		var core = cores[core_team]
 		if core.team != source_team and core.global_position.distance_to(center) <= radius + core.radius:
+			if not can_damage_core(core.team):
+				_show_core_shielded(core)
+				continue
 			var core_damage: float = damage * get_core_damage_multiplier(source_team)
 			core.take_damage(core_damage, source_team, source_actor)
 			record_core_damage(source_team, core_damage, source_actor)
@@ -506,6 +572,20 @@ func record_death(victim: Node, killer: Node = null) -> void:
 		add_kill_feed("%s eliminated %s" % [killer.get_actor_name(), victim.get_actor_name()])
 	else:
 		add_kill_feed("%s was eliminated" % victim.get_actor_name())
+
+func _show_core_shielded(core: Node) -> void:
+	if hut_defend_hint_timer > 0.0:
+		return
+	hut_defend_hint_timer = 1.2
+	telegraphs.append({
+		"type": "float_text",
+		"position": core.global_position + Vector2(-20.0, -70.0),
+		"text": "SHIELDED — destroy a mud hut first",
+		"color": Color(0.7, 0.85, 1.0, 0.95),
+		"size": 13,
+		"duration": 1.1,
+		"remaining": 1.1
+	})
 
 func record_core_damage(source_team: int, amount: float, source_actor: Node = null) -> void:
 	team_stats[source_team]["core_damage"] += amount
@@ -1113,6 +1193,14 @@ func _get_objective_text() -> String:
 	if objective_capture < -0.05:
 		return "Shrine Red %d%%" % int(absf(objective_capture) * 100.0)
 	return "Shrine active"
+
+func _player_near_own_hut() -> bool:
+	if player == null or not is_instance_valid(player):
+		return false
+	for hut in huts:
+		if hut != null and is_instance_valid(hut) and hut.team == player.team and hut.global_position.distance_to(player.global_position) < 110.0:
+			return true
+	return false
 
 func _team_name(team: int) -> String:
 	return "Blue" if team == BLUE else "Red"
