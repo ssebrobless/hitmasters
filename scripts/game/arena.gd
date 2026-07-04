@@ -230,9 +230,9 @@ func _setup_crosshair_cursor() -> void:
 	# Four cross ticks with a gap around the center, dark-edged for contrast.
 	for offset in range(4, 11):
 		for axis in 2:
-			for direction in [-1, 1]:
-				var x := center + (offset * direction if axis == 0 else 0)
-				var y := center + (offset * direction if axis == 1 else 0)
+			for direction: int in [-1, 1]:
+				var x: int = center + (offset * direction if axis == 0 else 0)
+				var y: int = center + (offset * direction if axis == 1 else 0)
 				img.set_pixel(x, y, white)
 				if axis == 0:
 					img.set_pixel(x, y - 1, dark)
