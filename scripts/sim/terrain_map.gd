@@ -1,5 +1,4 @@
 extends RefCounted
-class_name TerrainMap
 
 const SimConstants := preload("res://scripts/sim/sim_constants.gd")
 
