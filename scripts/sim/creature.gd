@@ -172,6 +172,11 @@ func take_damage_event(event: Resource) -> void:
 	break_stealth()
 	var amount: float = _modified_incoming_damage(event)
 	health = maxf(health - amount, 0.0)
+	# Spike rule (decision #20): a heavy ranged hit grounds a flying bird.
+	if state == CreatureStateScript.State.AIRBORNE and not has_movement("always_flying") and event.delivery == DamageEventScript.DELIVERY_RANGED and amount >= 30.0:
+		state = CreatureStateScript.State.NORMAL
+		flight_grounded_timer = FLIGHT_GROUNDED_LOCKOUT_SEC
+		emit_vfx_event("spiked", {"target": self, "position": global_position})
 	if event.source_actor != null or String(event.source_ability) != "":
 		emit_vfx_event("hit_landed", {
 			"source": event.source_actor,

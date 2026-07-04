@@ -40,6 +40,22 @@ func _initialize() -> void:
 	owl.take_damage_event(ground_melee)
 	var low_window_hit := owl.health < owl.max_health
 
+	# Spike rule: heavy ranged hit grounds a flying bird with lockout.
+	owl.heal(1000.0)
+	owl.state = CreatureStateScript.State.AIRBORNE
+	owl.flight_grounded_timer = 0.0
+	var spike := DamageEventScript.new()
+	spike.setup(35.0, DamageEventScript.DELIVERY_RANGED, DamageEventScript.PLANE_GROUND, null, "Heavy Shot")
+	owl.take_damage_event(spike)
+	var spiked: bool = owl.state == CreatureStateScript.State.NORMAL and owl.flight_grounded_timer > 2.9
+	owl.heal(1000.0)
+	owl.state = CreatureStateScript.State.AIRBORNE
+	owl.flight_grounded_timer = 0.0
+	var light := DamageEventScript.new()
+	light.setup(15.0, DamageEventScript.DELIVERY_RANGED, DamageEventScript.PLANE_GROUND, null, "Light Shot")
+	owl.take_damage_event(light)
+	var light_no_spike: bool = owl.state == CreatureStateScript.State.AIRBORNE
+
 	# Stealth set/break.
 	owl.begin_stealth(10.0, "Silent Flight")
 	var stealth_on := owl.is_stealthed()
@@ -66,8 +82,8 @@ func _initialize() -> void:
 	duckling.take_damage(30.0)
 	var duckling_ok: bool = duckling.is_alive() and duckling.health == 50.0
 
-	var passed := kits_ok and dodged and ranged_hit and low_window_hit and stealth_on and stealth_off and perch_pause and dam_ok and duckling_ok
-	print("m3 kits=%s dodge=%s ranged_hit=%s low_window=%s stealth=%s/%s perch_pause=%s dam=%s duckling=%s" % [
-		str(kits_ok), str(dodged), str(ranged_hit), str(low_window_hit), str(stealth_on), str(stealth_off), str(perch_pause), str(dam_ok), str(duckling_ok)
+	var passed := kits_ok and dodged and ranged_hit and low_window_hit and stealth_on and stealth_off and perch_pause and dam_ok and duckling_ok and spiked and light_no_spike
+	print("m3 kits=%s dodge=%s ranged_hit=%s low_window=%s stealth=%s/%s perch_pause=%s dam=%s duckling=%s spike=%s/%s" % [
+		str(kits_ok), str(dodged), str(ranged_hit), str(low_window_hit), str(stealth_on), str(stealth_off), str(perch_pause), str(dam_ok), str(duckling_ok), str(spiked), str(light_no_spike)
 	])
 	quit(0 if passed else 1)

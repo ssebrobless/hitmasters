@@ -796,6 +796,26 @@ func _spawn_vfx_for_event(event: Dictionary) -> void:
 				"color": Color(1.0, 0.28, 0.2, 0.9),
 				"width": 4.0
 			})
+		"spiked":
+			telegraphs.append({
+				"type": "float_text",
+				"position": event.get("position", Vector2.ZERO),
+				"text": "SPIKED!",
+				"color": Color(1.0, 0.45, 0.2, 1.0),
+				"size": 18,
+				"duration": 0.8,
+				"remaining": 0.8
+			})
+			telegraphs.append({
+				"type": "circle",
+				"center": event.get("position", Vector2.ZERO),
+				"radius": 22.0,
+				"color": Color(1.0, 0.5, 0.2, 0.9),
+				"width": 4.0,
+				"filled": true,
+				"duration": 0.3,
+				"remaining": 0.3
+			})
 		"attack_dodged":
 			telegraphs.append({
 				"type": "float_text",
