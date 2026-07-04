@@ -35,6 +35,11 @@ var match_over := false
 var telegraphs: Array[Dictionary] = []
 var vfx_events: Array[Dictionary] = []
 var dams: Array[Node] = []
+var camera: Camera2D = null
+
+const CAMERA_LEAD_DEADZONE := 70.0
+const CAMERA_LEAD_FRACTION := 0.32
+const CAMERA_LEAD_MAX := 150.0
 var actor_stats: Dictionary = {}
 var team_stats := {
 	BLUE: {"kills": 0, "deaths": 0, "core_damage": 0.0, "objectives": 0},
@@ -132,8 +137,21 @@ func _physics_process(delta: float) -> void:
 
 	_update_ui()
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_update_camera_lead(delta)
 	queue_redraw()
+
+func _update_camera_lead(delta: float) -> void:
+	# Supervive-style cursor-led camera: past a deadzone, the view drifts a
+	# fraction of the way toward the cursor so you can see where you aim.
+	if camera == null or player == null or not is_instance_valid(player):
+		return
+	var to_cursor: Vector2 = player.get_global_mouse_position() - player.global_position
+	var lead := Vector2.ZERO
+	var cursor_distance := to_cursor.length()
+	if cursor_distance > CAMERA_LEAD_DEADZONE:
+		lead = to_cursor.normalized() * minf((cursor_distance - CAMERA_LEAD_DEADZONE) * CAMERA_LEAD_FRACTION, CAMERA_LEAD_MAX)
+	camera.offset = camera.offset.lerp(lead, minf(delta * 7.0, 1.0))
 
 func _draw() -> void:
 	_draw_terrain()
@@ -303,7 +321,7 @@ func _spawn_match() -> void:
 	register_entity(player)
 	_spawn_bots_for_mode()
 
-	var camera := Camera2D.new()
+	camera = Camera2D.new()
 	camera.zoom = camera_zoom
 	camera.position_smoothing_enabled = true
 	player.add_child(camera)
