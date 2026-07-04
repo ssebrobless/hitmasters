@@ -58,6 +58,13 @@ var latch_move_multiplier := 1.0
 var last_aim_direction := Vector2.RIGHT
 var render_flash_timer := 0.0
 var render_shake_timer := 0.0
+var anim_walk_phase := 0.0
+var anim_attack_timer := 0.0
+var anim_attack_duration := 0.001
+var anim_attack_reach := 0.0
+var anim_attack_aim := Vector2.RIGHT
+var anim_windup_timer := 0.0
+var anim_windup_duration := 0.001
 
 func setup(creature_arena: Node, creature_team: int, spawn_position: Vector2, next_creature_id: String, next_terrain_map: RefCounted = null) -> void:
 	arena = creature_arena
@@ -101,11 +108,13 @@ func _physics_process(delta: float) -> void:
 	tick_sim(delta)
 
 func _process(delta: float) -> void:
-	var had_render_feedback := render_flash_timer > 0.0 or render_shake_timer > 0.0
 	render_flash_timer = maxf(render_flash_timer - delta, 0.0)
 	render_shake_timer = maxf(render_shake_timer - delta, 0.0)
-	if had_render_feedback:
-		queue_redraw()
+	anim_attack_timer = maxf(anim_attack_timer - delta, 0.0)
+	anim_windup_timer = maxf(anim_windup_timer - delta, 0.0)
+	if velocity.length() > 4.0:
+		anim_walk_phase += delta * clampf(velocity.length() / 26.0, 3.0, 11.0)
+	queue_redraw()
 
 func tick_sim(delta: float) -> void:
 	if not alive:
@@ -163,11 +172,26 @@ func heal(amount: float) -> void:
 			})
 
 func emit_vfx_event(event_type: String, payload: Dictionary = {}) -> void:
+	_apply_own_anim(event_type, payload)
 	if arena == null or not arena.has_method("record_vfx_event"):
 		return
 	var event := payload.duplicate()
 	event["type"] = event_type
 	arena.record_vfx_event(event)
+
+func _apply_own_anim(event_type: String, payload: Dictionary) -> void:
+	if payload.get("actor", null) != self:
+		return
+	match event_type:
+		"windup_started":
+			anim_windup_duration = maxf(float(payload.get("duration", 0.001)), 0.001)
+			anim_windup_timer = anim_windup_duration
+		"attack_swung":
+			anim_attack_duration = 0.26
+			anim_attack_timer = anim_attack_duration
+			anim_attack_reach = float(payload.get("reach_px", body_radius * 1.5))
+			anim_attack_aim = payload.get("aim", last_aim_direction)
+			anim_windup_timer = 0.0
 
 func apply_render_hit_feedback(amount: float) -> void:
 	render_flash_timer = 0.1
@@ -519,8 +543,16 @@ func _draw() -> void:
 	if render_shake_timer > 0.0:
 		var shake_phase := render_shake_timer * 120.0
 		shake_offset = Vector2(sin(shake_phase), cos(shake_phase * 1.37)) * 2.0
-	draw_set_transform(shake_offset, 0.0, Vector2.ONE)
-	VisualStyle.draw_battle_creature(self, creature_id, team, body_radius, last_aim_direction, render_flash_timer / 0.1, 1.0, is_airborne())
+	var anim := {
+		"walk_phase": anim_walk_phase,
+		"moving": velocity.length() > 4.0,
+		"attack_t": 1.0 - anim_attack_timer / anim_attack_duration if anim_attack_timer > 0.0 else -1.0,
+		"attack_reach": anim_attack_reach,
+		"attack_aim": anim_attack_aim,
+		"windup_t": 1.0 - anim_windup_timer / anim_windup_duration if anim_windup_timer > 0.0 else -1.0,
+		"shake_offset": shake_offset
+	}
+	VisualStyle.draw_battle_creature(self, creature_id, team, body_radius, last_aim_direction, render_flash_timer / 0.1, 1.0, is_airborne(), anim)
 	if arena != null and arena.get("player") == self:
 		VisualStyle.draw_aim_indicator(self, body_radius, last_aim_direction)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

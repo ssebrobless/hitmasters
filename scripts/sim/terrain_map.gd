@@ -53,91 +53,104 @@ func get_team_habitat_rect(team: int) -> Rect2:
 
 func _configure_3v3() -> void:
 	var unit := SimConstants.UNIT_PX
-	arena_rect = _rect_units(-40.0, -22.5, 80.0, 45.0)
+	arena_rect = _rect_units(-120.0, -67.5, 240.0, 135.0)
 	zone_layers = [
 		{"zone": LAND, "rects": [arena_rect]},
 		{"zone": SHALLOW, "rects": [
-			_rect_units(-15.5, -16.5, 31.0, 6.5),
-			_rect_units(-15.5, 10.0, 31.0, 6.5)
+			_rect_units(-17.0, -67.5, 8.0, 135.0),
+			_rect_units(9.0, -67.5, 8.0, 135.0),
+			_rect_units(-82.0, -62.0, 28.0, 22.0),
+			_rect_units(54.0, 40.0, 28.0, 22.0)
 		]},
 		{"zone": WATER, "rects": [
-			_rect_units(-5.5, -22.5, 11.0, 45.0)
+			_rect_units(-9.0, -67.5, 18.0, 135.0),
+			_rect_units(-78.0, -58.0, 20.0, 14.0),
+			_rect_units(58.0, 44.0, 20.0, 14.0)
 		]},
 		{"zone": HABITAT_BLUE, "rects": [
-			_rect_units(-39.0, -11.0, 12.0, 22.0)
+			_rect_units(-117.0, -19.0, 30.0, 38.0)
 		]},
 		{"zone": HABITAT_RED, "rects": [
-			_rect_units(27.0, -11.0, 12.0, 22.0)
+			_rect_units(87.0, -19.0, 30.0, 38.0)
 		]},
 		{"zone": COVER, "rects": [
-			_rect_units(-22.0, -18.0, 6.0, 5.0),
-			_rect_units(-22.0, 13.0, 6.0, 5.0),
-			_rect_units(16.0, -18.0, 6.0, 5.0),
-			_rect_units(16.0, 13.0, 6.0, 5.0),
-			_rect_units(-3.0, -4.0, 2.5, 8.0),
-			_rect_units(0.5, -4.0, 2.5, 8.0)
+			_rect_units(-92.0, -48.0, 9.0, 7.0),
+			_rect_units(83.0, 41.0, 9.0, 7.0),
+			_rect_units(-92.0, 40.0, 9.0, 7.0),
+			_rect_units(83.0, -47.0, 9.0, 7.0),
+			_rect_units(-60.0, -26.0, 8.0, 6.0),
+			_rect_units(52.0, 20.0, 8.0, 6.0),
+			_rect_units(-60.0, 20.0, 8.0, 6.0),
+			_rect_units(52.0, -26.0, 8.0, 6.0),
+			_rect_units(-38.0, -56.0, 10.0, 7.0),
+			_rect_units(28.0, 49.0, 10.0, 7.0),
+			_rect_units(-38.0, 49.0, 10.0, 7.0),
+			_rect_units(28.0, -56.0, 10.0, 7.0),
+			_rect_units(-26.0, -8.0, 6.0, 16.0),
+			_rect_units(20.0, -8.0, 6.0, 16.0)
 		]}
 	]
-	blue_core_position = Vector2(-33.0 * unit, 0.0)
-	red_core_position = Vector2(33.0 * unit, 0.0)
-	blue_minion_spawn = Vector2(-25.0 * unit, 0.0)
-	red_minion_spawn = Vector2(25.0 * unit, 0.0)
+	blue_core_position = Vector2(-103.0 * unit, 0.0)
+	red_core_position = Vector2(103.0 * unit, 0.0)
+	blue_minion_spawn = Vector2(-84.0 * unit, 0.0)
+	red_minion_spawn = Vector2(84.0 * unit, 0.0)
 	team_spawns = {
-		0: Vector2(-30.5 * unit, 6.0 * unit),
-		1: Vector2(30.5 * unit, -6.0 * unit)
+		0: Vector2(-98.0 * unit, 10.0 * unit),
+		1: Vector2(98.0 * unit, -10.0 * unit)
 	}
 	bot_spawns = {
-		"Blue Guard": Vector2(-31.0 * unit, -7.0 * unit),
-		"Blue Ward": Vector2(-35.0 * unit, 4.0 * unit),
-		"Red Blade": Vector2(31.0 * unit, -7.0 * unit),
-		"Red Scope": Vector2(35.0 * unit, 4.0 * unit),
-		"Red Chorus": Vector2(31.0 * unit, 7.0 * unit),
-		"Red Rival": Vector2(31.0 * unit, -7.0 * unit)
+		"Blue Guard": Vector2(-100.0 * unit, -11.0 * unit),
+		"Blue Ward": Vector2(-106.0 * unit, 6.0 * unit),
+		"Red Blade": Vector2(100.0 * unit, -11.0 * unit),
+		"Red Scope": Vector2(106.0 * unit, 6.0 * unit),
+		"Red Chorus": Vector2(100.0 * unit, 11.0 * unit),
+		"Red Rival": Vector2(100.0 * unit, -11.0 * unit)
 	}
-	wave_minion_offsets = [Vector2(0.0, -3.0 * unit), Vector2.ZERO, Vector2(0.0, 3.0 * unit)]
+	wave_minion_offsets = [Vector2(0.0, -4.0 * unit), Vector2.ZERO, Vector2(0.0, 4.0 * unit)]
 	objective_position = Vector2.ZERO
-	objective_radius = 5.5 * unit
+	objective_radius = 7.0 * unit
 
 func _configure_1v1() -> void:
 	var unit := SimConstants.UNIT_PX
-	arena_rect = _rect_units(-27.5, -15.0, 55.0, 30.0)
+	arena_rect = _rect_units(-75.0, -42.0, 150.0, 84.0)
 	zone_layers = [
 		{"zone": LAND, "rects": [arena_rect]},
 		{"zone": SHALLOW, "rects": [
-			_rect_units(-10.0, -11.0, 20.0, 4.5),
-			_rect_units(-10.0, 6.5, 20.0, 4.5)
+			_rect_units(-12.0, -42.0, 6.0, 84.0),
+			_rect_units(6.0, -42.0, 6.0, 84.0)
 		]},
 		{"zone": WATER, "rects": [
-			_rect_units(-3.75, -15.0, 7.5, 30.0)
+			_rect_units(-6.0, -42.0, 12.0, 84.0)
 		]},
 		{"zone": HABITAT_BLUE, "rects": [
-			_rect_units(-26.5, -7.5, 8.5, 15.0)
+			_rect_units(-73.0, -13.0, 20.0, 26.0)
 		]},
 		{"zone": HABITAT_RED, "rects": [
-			_rect_units(18.0, -7.5, 8.5, 15.0)
+			_rect_units(53.0, -13.0, 20.0, 26.0)
 		]},
 		{"zone": COVER, "rects": [
-			_rect_units(-15.0, -11.0, 4.5, 4.0),
-			_rect_units(-15.0, 7.0, 4.5, 4.0),
-			_rect_units(10.5, -11.0, 4.5, 4.0),
-			_rect_units(10.5, 7.0, 4.5, 4.0),
-			_rect_units(-1.5, -3.0, 3.0, 6.0)
+			_rect_units(-52.0, -30.0, 8.0, 6.0),
+			_rect_units(44.0, 24.0, 8.0, 6.0),
+			_rect_units(-52.0, 24.0, 8.0, 6.0),
+			_rect_units(44.0, -30.0, 8.0, 6.0),
+			_rect_units(-20.0, -6.0, 5.0, 12.0),
+			_rect_units(15.0, -6.0, 5.0, 12.0)
 		]}
 	]
-	blue_core_position = Vector2(-22.0 * unit, 0.0)
-	red_core_position = Vector2(22.0 * unit, 0.0)
-	blue_minion_spawn = Vector2(-16.5 * unit, 0.0)
-	red_minion_spawn = Vector2(16.5 * unit, 0.0)
+	blue_core_position = Vector2(-62.0 * unit, 0.0)
+	red_core_position = Vector2(62.0 * unit, 0.0)
+	blue_minion_spawn = Vector2(-48.0 * unit, 0.0)
+	red_minion_spawn = Vector2(48.0 * unit, 0.0)
 	team_spawns = {
-		0: Vector2(-20.0 * unit, 4.0 * unit),
-		1: Vector2(20.0 * unit, -4.0 * unit)
+		0: Vector2(-58.0 * unit, 7.0 * unit),
+		1: Vector2(58.0 * unit, -7.0 * unit)
 	}
 	bot_spawns = {
-		"Red Rival": Vector2(20.0 * unit, -4.0 * unit)
+		"Red Rival": Vector2(58.0 * unit, -7.0 * unit)
 	}
-	wave_minion_offsets = [Vector2(0.0, -2.25 * unit), Vector2(0.0, 2.25 * unit)]
+	wave_minion_offsets = [Vector2(0.0, -3.0 * unit), Vector2(0.0, 3.0 * unit)]
 	objective_position = Vector2.ZERO
-	objective_radius = 4.0 * unit
+	objective_radius = 5.0 * unit
 
 func _rect_units(x: float, y: float, width: float, height: float) -> Rect2:
 	var unit := SimConstants.UNIT_PX

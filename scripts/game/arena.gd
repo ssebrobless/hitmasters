@@ -22,6 +22,7 @@ const ProjectileScript := preload("res://scripts/game/projectile.gd")
 const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
 const LocalInputScript := preload("res://scripts/ui/local_input.gd")
 const BotBrainScript := preload("res://scripts/ai/bot_brain.gd")
+const MinimapScript := preload("res://scripts/ui/minimap.gd")
 
 var entities: Array[Node] = []
 var minions: Array[Node] = []
@@ -98,13 +99,13 @@ func _configure_mode() -> void:
 		objective_capture_seconds = 3.2
 		objective_respawn_seconds = 34.0
 		surge_seconds = 18.0
-		camera_zoom = Vector2(1.42, 1.42)
+		camera_zoom = Vector2(2.6, 2.6)
 	else:
 		wave_interval = WAVE_INTERVAL
 		objective_capture_seconds = OBJECTIVE_CAPTURE_SECONDS
 		objective_respawn_seconds = OBJECTIVE_RESPAWN_SECONDS
 		surge_seconds = SURGE_SECONDS
-		camera_zoom = Vector2(1.08, 1.08)
+		camera_zoom = Vector2(2.4, 2.4)
 
 	wave_timer = 2.0
 
@@ -134,47 +135,88 @@ func _process(_delta: float) -> void:
 
 func _draw() -> void:
 	_draw_terrain()
-	draw_rect(arena_rect, Color(0.22, 0.28, 0.31), false, 5.0)
-
-	for x in range(int(arena_rect.position.x), int(arena_rect.end.x), 80):
-		draw_line(Vector2(x, arena_rect.position.y), Vector2(x, arena_rect.end.y), Color(0.1, 0.13, 0.14), 1.0)
-	for y in range(int(arena_rect.position.y), int(arena_rect.end.y), 80):
-		draw_line(Vector2(arena_rect.position.x, y), Vector2(arena_rect.end.x, y), Color(0.1, 0.13, 0.14), 1.0)
-
-	draw_line(Vector2(arena_rect.position.x, 0.0), Vector2(arena_rect.end.x, 0.0), Color(0.32, 0.36, 0.37), 2.0)
-	draw_line(Vector2(blue_minion_spawn.x, -90.0), Vector2(red_minion_spawn.x, -90.0), Color(0.22, 0.26, 0.27), 1.0)
-	draw_line(Vector2(blue_minion_spawn.x, 90.0), Vector2(red_minion_spawn.x, 90.0), Color(0.22, 0.26, 0.27), 1.0)
+	draw_rect(arena_rect, Color(0.28, 0.33, 0.24), false, 6.0)
 	_draw_objective()
-
-	for cover in cover_rects:
-		draw_rect(cover.grow(-2.0), Color(0.28, 0.33, 0.35), false, 2.0)
-		draw_line(cover.position + Vector2(8.0, 8.0), cover.end - Vector2(8.0, 8.0), Color(0.12, 0.15, 0.16), 2.0)
-
 	_draw_telegraphs()
 
-	draw_string(ThemeDB.fallback_font, blue_core_position + Vector2(-110.0, -150.0), "BLUE CORE", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 18, Color(0.45, 0.72, 1.0))
-	draw_string(ThemeDB.fallback_font, red_core_position + Vector2(-15.0, -150.0), "RED CORE", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 18, Color(1.0, 0.45, 0.4))
+	draw_string(ThemeDB.fallback_font, blue_core_position + Vector2(-42.0, -110.0), "BLUE HABITAT", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, Color(0.45, 0.72, 1.0))
+	draw_string(ThemeDB.fallback_font, red_core_position + Vector2(-42.0, -110.0), "RED HABITAT", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, Color(1.0, 0.45, 0.4))
 
 func _draw_terrain() -> void:
 	for layer in terrain_map.zone_layers:
 		var zone := String(layer["zone"])
 		for rect: Rect2 in layer["rects"]:
 			draw_rect(rect, _terrain_color(zone))
+			_draw_zone_detail(zone, rect)
+
+func _draw_zone_detail(zone: String, rect: Rect2) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(Vector2i(int(rect.position.x), int(rect.position.y)))
+	match zone:
+		TerrainMapScript.LAND:
+			for i in int(rect.get_area() / 9000.0):
+				var spot := Vector2(rng.randf_range(rect.position.x, rect.end.x), rng.randf_range(rect.position.y, rect.end.y))
+				var tone := rng.randf_range(-0.02, 0.03)
+				draw_circle(spot, rng.randf_range(6.0, 18.0), Color(0.16 + tone, 0.2 + tone * 1.4, 0.11 + tone))
+			for i in int(rect.get_area() / 26000.0):
+				var tuft := Vector2(rng.randf_range(rect.position.x, rect.end.x), rng.randf_range(rect.position.y, rect.end.y))
+				draw_line(tuft, tuft + Vector2(-1.5, -4.0), Color(0.24, 0.32, 0.16), 1.5)
+				draw_line(tuft + Vector2(2.5, 0.0), tuft + Vector2(3.5, -4.5), Color(0.22, 0.3, 0.15), 1.5)
+		TerrainMapScript.WATER:
+			var phase := elapsed * 0.9
+			for i in int(rect.get_area() / 14000.0) + 2:
+				var ripple_origin := Vector2(rng.randf_range(rect.position.x + 10.0, rect.end.x - 10.0), rng.randf_range(rect.position.y + 6.0, rect.end.y - 6.0))
+				var drift := fmod(phase * 14.0 + rng.randf() * 60.0, 60.0) - 30.0
+				var ripple := ripple_origin + Vector2(0.0, drift)
+				if rect.grow(-4.0).has_point(ripple):
+					draw_line(ripple + Vector2(-7.0, 0.0), ripple + Vector2(7.0, 0.0), Color(0.32, 0.55, 0.62, 0.5), 1.5)
+		TerrainMapScript.SHALLOW:
+			for i in int(rect.get_area() / 11000.0) + 1:
+				var speck := Vector2(rng.randf_range(rect.position.x, rect.end.x), rng.randf_range(rect.position.y, rect.end.y))
+				draw_circle(speck, rng.randf_range(2.0, 5.0), Color(0.24, 0.38, 0.3, 0.7))
+			for i in int(rect.get_area() / 30000.0) + 1:
+				var reed := Vector2(rng.randf_range(rect.position.x + 6.0, rect.end.x - 6.0), rng.randf_range(rect.position.y + 6.0, rect.end.y - 6.0))
+				draw_line(reed, reed + Vector2(-1.0, -7.0), Color(0.28, 0.42, 0.2), 2.0)
+				draw_line(reed + Vector2(3.0, 0.0), reed + Vector2(4.0, -6.0), Color(0.25, 0.38, 0.18), 2.0)
+		TerrainMapScript.COVER:
+			draw_rect(rect, Color(0.1, 0.16, 0.09))
+			for i in maxi(int(rect.get_area() / 2600.0), 3):
+				var bush := Vector2(rng.randf_range(rect.position.x + 8.0, rect.end.x - 8.0), rng.randf_range(rect.position.y + 8.0, rect.end.y - 8.0))
+				draw_circle(bush, rng.randf_range(7.0, 13.0), Color(0.14 + rng.randf() * 0.04, 0.24 + rng.randf() * 0.05, 0.12))
+				draw_circle(bush + Vector2(-2.0, -3.0), rng.randf_range(3.0, 6.0), Color(0.2, 0.32, 0.16))
+			draw_rect(rect, Color(0.05, 0.09, 0.05), false, 2.0)
+		TerrainMapScript.HABITAT_BLUE, TerrainMapScript.HABITAT_RED:
+			var team_tint := Color(0.3, 0.55, 0.85, 0.5) if zone == TerrainMapScript.HABITAT_BLUE else Color(0.85, 0.4, 0.35, 0.5)
+			draw_rect(rect, team_tint, false, 4.0)
+			var post_gap := 28.0
+			var x := rect.position.x
+			while x <= rect.end.x:
+				draw_rect(Rect2(Vector2(x - 2.0, rect.position.y - 5.0), Vector2(4.0, 8.0)), Color(0.32, 0.24, 0.14))
+				draw_rect(Rect2(Vector2(x - 2.0, rect.end.y - 3.0), Vector2(4.0, 8.0)), Color(0.32, 0.24, 0.14))
+				x += post_gap
+			var y := rect.position.y
+			while y <= rect.end.y:
+				draw_rect(Rect2(Vector2(rect.position.x - 5.0, y - 2.0), Vector2(8.0, 4.0)), Color(0.32, 0.24, 0.14))
+				draw_rect(Rect2(Vector2(rect.end.x - 3.0, y - 2.0), Vector2(8.0, 4.0)), Color(0.32, 0.24, 0.14))
+				y += post_gap
+			for i in 7:
+				var patch := Vector2(rng.randf_range(rect.position.x + 12.0, rect.end.x - 12.0), rng.randf_range(rect.position.y + 12.0, rect.end.y - 12.0))
+				draw_circle(patch, rng.randf_range(6.0, 12.0), Color(0.2, 0.19, 0.1, 0.55))
 
 func _terrain_color(zone: String) -> Color:
 	match zone:
 		TerrainMapScript.HABITAT_BLUE:
-			return Color(0.07, 0.13, 0.19)
+			return Color(0.13, 0.17, 0.13)
 		TerrainMapScript.HABITAT_RED:
-			return Color(0.18, 0.08, 0.08)
+			return Color(0.17, 0.14, 0.11)
 		TerrainMapScript.WATER:
-			return Color(0.07, 0.19, 0.25)
+			return Color(0.1, 0.26, 0.34)
 		TerrainMapScript.SHALLOW:
-			return Color(0.13, 0.21, 0.18)
+			return Color(0.16, 0.3, 0.26)
 		TerrainMapScript.COVER:
-			return Color(0.18, 0.22, 0.24)
+			return Color(0.1, 0.16, 0.09)
 		_:
-			return Color(0.08, 0.1, 0.11)
+			return Color(0.15, 0.19, 0.1)
 
 func _build_ui() -> void:
 	var canvas := CanvasLayer.new()
@@ -203,6 +245,15 @@ func _build_ui() -> void:
 	root.add_child(kill_feed_label)
 	root.add_child(end_summary_label)
 	root.add_child(help_label)
+
+	var minimap := MinimapScript.new()
+	minimap.arena = self
+	minimap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	minimap.offset_left = -252.0
+	minimap.offset_top = 14.0
+	minimap.offset_right = -14.0
+	minimap.offset_bottom = 160.0
+	canvas.add_child(minimap)
 
 func _spawn_match() -> void:
 	var blue_core = CoreScript.new()
@@ -597,21 +648,33 @@ func _spawn_vfx_for_event(event: Dictionary) -> void:
 				"aim": event.get("aim", Vector2.RIGHT),
 				"reach_px": event.get("reach_px", 24.0),
 				"color": Color(1.0, 0.93, 0.55, 0.95),
-				"duration": 0.14,
-				"remaining": 0.14
+				"duration": 0.22,
+				"remaining": 0.22
 			})
 		"hit_landed":
 			var target = event.get("target", null)
 			var amount: float = float(event.get("amount", 0.0))
 			if target != null and is_instance_valid(target) and target.has_method("apply_render_hit_feedback"):
 				target.apply_render_hit_feedback(amount)
+			var heavy := bool(event.get("heavy", false))
 			telegraphs.append({
 				"type": "float_text",
 				"position": event.get("position", Vector2.ZERO),
 				"text": str(int(round(amount))),
-				"color": Color(1.0, 0.96, 0.82, 1.0),
-				"duration": 0.5,
-				"remaining": 0.5
+				"color": Color(1.0, 0.62, 0.28, 1.0) if heavy else Color(1.0, 0.96, 0.82, 1.0),
+				"size": 19 if heavy else 15,
+				"duration": 0.7 if heavy else 0.55,
+				"remaining": 0.7 if heavy else 0.55
+			})
+			telegraphs.append({
+				"type": "circle",
+				"center": event.get("position", Vector2.ZERO),
+				"radius": 16.0 if heavy else 10.0,
+				"color": Color(1.0, 0.9, 0.7, 0.85),
+				"width": 3.0,
+				"filled": true,
+				"duration": 0.16,
+				"remaining": 0.16
 			})
 		"heal_tick":
 			var heal_amount: float = float(event.get("amount", 0.0))
@@ -699,10 +762,17 @@ func _draw_windup_telegraph(telegraph: Dictionary, color: Color) -> void:
 	if actor == null or not is_instance_valid(actor):
 		return
 	var aim: Vector2 = telegraph.get("aim", Vector2.RIGHT)
+	if actor.get("last_aim_direction") != null:
+		aim = actor.last_aim_direction
 	if aim == Vector2.ZERO:
 		aim = Vector2.RIGHT
+	var duration: float = maxf(float(telegraph.get("duration", 0.01)), 0.01)
+	var remaining: float = float(telegraph.get("remaining", 0.0))
+	var progress := 1.0 - clampf(remaining / duration, 0.0, 1.0)
 	var reach: float = float(telegraph.get("reach_px", 24.0))
-	_draw_cone(actor.global_position, aim.normalized(), reach, PI * 0.52, color)
+	var danger := Color(1.0, 0.42, 0.2, 0.35 + progress * 0.55)
+	_draw_cone(actor.global_position, aim.normalized(), reach, PI * 0.52, Color(1.0, 0.75, 0.3, 0.3))
+	_draw_cone(actor.global_position, aim.normalized(), reach * progress, PI * 0.52, danger)
 
 func _draw_swing_telegraph(telegraph: Dictionary, color: Color) -> void:
 	var actor = telegraph.get("actor", null)
@@ -737,10 +807,11 @@ func _draw_float_text(telegraph: Dictionary, color: Color, fade: float) -> void:
 	var duration: float = maxf(float(telegraph.get("duration", 0.5)), 0.01)
 	var remaining: float = float(telegraph.get("remaining", 0.0))
 	var progress := 1.0 - clampf(remaining / duration, 0.0, 1.0)
-	var position: Vector2 = telegraph.get("position", Vector2.ZERO) + Vector2(-8.0, -18.0 - progress * 20.0)
+	var position: Vector2 = telegraph.get("position", Vector2.ZERO) + Vector2(-8.0, -18.0 - progress * 24.0)
+	var size: int = int(telegraph.get("size", 15))
 	color.a *= fade
-	draw_string(ThemeDB.fallback_font, position + Vector2(1.0, 1.0), String(telegraph.get("text", "")), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(0.02, 0.02, 0.02, color.a))
-	draw_string(ThemeDB.fallback_font, position, String(telegraph.get("text", "")), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, color)
+	draw_string(ThemeDB.fallback_font, position + Vector2(1.5, 1.5), String(telegraph.get("text", "")), HORIZONTAL_ALIGNMENT_LEFT, -1.0, size, Color(0.02, 0.02, 0.02, color.a))
+	draw_string(ThemeDB.fallback_font, position, String(telegraph.get("text", "")), HORIZONTAL_ALIGNMENT_LEFT, -1.0, size, color)
 
 func _aura_ring_radius(target: Variant) -> float:
 	if target != null and is_instance_valid(target) and target.get("body_radius") != null:
