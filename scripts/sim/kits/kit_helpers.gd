@@ -27,6 +27,15 @@ static func nth_number(text: String, index: int, fallback: float) -> float:
 		return fallback
 	return float(results[index].get_string(1))
 
+static func max_number(text: String, fallback: float) -> float:
+	var results := _number_regex.search_all(text)
+	if results.is_empty():
+		return fallback
+	var output := float(results[0].get_string(1))
+	for result in results:
+		output = maxf(output, float(result.get_string(1)))
+	return output
+
 static func first_percent(text: String, fallback: float) -> float:
 	var result := _percent_regex.search(text)
 	if result == null:
@@ -37,5 +46,4 @@ static func first_seconds(text: String, fallback: float) -> float:
 	return first_number(text, fallback)
 
 static func range_units(stats: Dictionary, fallback: float) -> float:
-	return first_number(String(stats.get("range", "")), fallback)
-
+	return max_number(String(stats.get("range", "")), fallback)

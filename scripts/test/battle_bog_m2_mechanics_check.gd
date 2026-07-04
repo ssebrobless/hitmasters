@@ -5,6 +5,7 @@ const CreatureScript := preload("res://scripts/sim/creature.gd")
 const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
 const Dash := preload("res://scripts/sim/abilities/dash.gd")
+const KitHelpers := preload("res://scripts/sim/kits/kit_helpers.gd")
 
 class FakeArena:
 	extends Node
@@ -41,8 +42,9 @@ func _initialize() -> void:
 	var latch_ok := _check_latch()
 	var heal_ok := _check_kill_heal()
 	var dr_ok := _check_dr()
-	print("windup=%s aura=%s latch=%s kill_heal=%s dr=%s" % [str(windup_ok), str(aura_ok), str(latch_ok), str(heal_ok), str(dr_ok)])
-	quit(0 if windup_ok and aura_ok and latch_ok and heal_ok and dr_ok else 1)
+	var range_ok := _check_range_parsing()
+	print("windup=%s aura=%s latch=%s kill_heal=%s dr=%s range=%s" % [str(windup_ok), str(aura_ok), str(latch_ok), str(heal_ok), str(dr_ok), str(range_ok)])
+	quit(0 if windup_ok and aura_ok and latch_ok and heal_ok and dr_ok and range_ok else 1)
 
 func _check_windup() -> bool:
 	var arena := _arena()
@@ -107,7 +109,19 @@ func _check_dr() -> bool:
 	var before_mink: float = mink.health
 	mink.take_damage_event(turtle.make_damage_event(100.0, preload("res://scripts/sim/damage_event.gd").DELIVERY_MELEE, preload("res://scripts/sim/damage_event.gd").PLANE_GROUND, "test"))
 	var mink_loss: float = before_mink - mink.health
-	return absf(turtle_loss - 76.5) < 0.1 and absf(mink_loss - 85.0) < 0.1
+	return absf(turtle_loss - 85.68) < 0.1 and absf(mink_loss - 85.0) < 0.1
+
+func _check_range_parsing() -> bool:
+	var catalog := get_root().get_node_or_null("CreatureCatalog")
+	if catalog == null:
+		return false
+	var frog_stats: Dictionary = catalog.get_creature("chorus_frog").get("stats", {})
+	var turtle_stats: Dictionary = catalog.get_creature("snapping_turtle").get("stats", {})
+	var leech_stats: Dictionary = catalog.get_creature("leech").get("stats", {})
+	var frog_ok := absf(KitHelpers.range_units(frog_stats, 1.0) - 3.0) < 0.001
+	var turtle_ok := absf(KitHelpers.range_units(turtle_stats, 1.0) - 2.0) < 0.001
+	var leech_ok := absf(KitHelpers.range_units(leech_stats, 1.0) - 7.0) < 0.001
+	return frog_ok and turtle_ok and leech_ok
 
 func _arena() -> FakeArena:
 	var arena := FakeArena.new()

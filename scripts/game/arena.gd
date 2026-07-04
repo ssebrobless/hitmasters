@@ -4,12 +4,6 @@ const BLUE := 0
 const RED := 1
 const ARENA_RECT := Rect2(Vector2(-1120.0, -620.0), Vector2(2240.0, 1240.0))
 const WAVE_INTERVAL := 20.0
-const OBJECTIVE_POSITION := Vector2(0.0, 0.0)
-const OBJECTIVE_RADIUS := 118.0
-const OBJECTIVE_CAPTURE_SECONDS := 4.0
-const OBJECTIVE_RESPAWN_SECONDS := 42.0
-const SURGE_SECONDS := 22.0
-const SURGE_CORE_DAMAGE_MULTIPLIER := 1.35
 const COVER_RECTS := [
 	Rect2(Vector2(-210.0, -265.0), Vector2(130.0, 105.0)),
 	Rect2(Vector2(80.0, 160.0), Vector2(130.0, 105.0)),
@@ -51,17 +45,10 @@ const CAMERA_LEAD_FRACTION := 0.32
 const CAMERA_LEAD_MAX := 150.0
 var actor_stats: Dictionary = {}
 var team_stats := {
-	BLUE: {"kills": 0, "deaths": 0, "core_damage": 0.0, "objectives": 0},
-	RED: {"kills": 0, "deaths": 0, "core_damage": 0.0, "objectives": 0}
+	BLUE: {"kills": 0, "deaths": 0, "core_damage": 0.0},
+	RED: {"kills": 0, "deaths": 0, "core_damage": 0.0}
 }
 var kill_feed: Array[Dictionary] = []
-var objective_active := true
-var objective_capture := 0.0
-var objective_respawn_timer := 0.0
-var surge_timers := {
-	BLUE: 0.0,
-	RED: 0.0
-}
 var terrain_map: RefCounted = TerrainMapScript.new()
 var arena_rect := ARENA_RECT
 var cover_rects: Array = []
@@ -73,11 +60,6 @@ var blue_minion_spawn := Vector2(-760.0, 0.0)
 var red_minion_spawn := Vector2(760.0, 0.0)
 var team_spawns := {}
 var bot_spawns := {}
-var objective_position := OBJECTIVE_POSITION
-var objective_radius := OBJECTIVE_RADIUS
-var objective_capture_seconds := OBJECTIVE_CAPTURE_SECONDS
-var objective_respawn_seconds := OBJECTIVE_RESPAWN_SECONDS
-var surge_seconds := SURGE_SECONDS
 var camera_zoom := Vector2(0.9, 0.9)
 
 var status_label: Label
@@ -114,20 +96,12 @@ func _configure_mode() -> void:
 	red_minion_spawn = terrain_map.red_minion_spawn
 	team_spawns = terrain_map.team_spawns
 	bot_spawns = terrain_map.bot_spawns
-	objective_position = terrain_map.objective_position
-	objective_radius = terrain_map.objective_radius
 
 	if GameConfig.selected_mode == "1v1" or GameConfig.selected_mode == "Hero Lab":
 		wave_interval = 18.0
-		objective_capture_seconds = 3.2
-		objective_respawn_seconds = 34.0
-		surge_seconds = 18.0
 		camera_zoom = Vector2(2.6, 2.6)
 	else:
 		wave_interval = WAVE_INTERVAL
-		objective_capture_seconds = OBJECTIVE_CAPTURE_SECONDS
-		objective_respawn_seconds = OBJECTIVE_RESPAWN_SECONDS
-		surge_seconds = SURGE_SECONDS
 		camera_zoom = Vector2(2.4, 2.4)
 
 	wave_timer = 2.0
@@ -177,8 +151,8 @@ func _update_camera_lead(delta: float) -> void:
 	camera.offset = camera.offset.lerp(lead, minf(delta * 7.0, 1.0))
 
 func _draw() -> void:
-	# Shrine/Surge objective removed: it was a Hitmasters holdover absent
-	# from every Battle Bog design doc; mid-map belongs to contested water.
+	# Retired mid-objective holdover: Battle Bog's center belongs to
+	# contested water while huts and habitats carry the match contract.
 	_draw_telegraphs()
 
 	draw_string(ThemeDB.fallback_font, blue_core_position + Vector2(-42.0, -110.0), "BLUE HABITAT", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, Color(0.45, 0.72, 1.0))
@@ -554,29 +528,8 @@ func record_core_damage(source_team: int, amount: float, source_actor: Node = nu
 		_ensure_actor_stats(source_actor)
 		actor_stats[_get_actor_key(source_actor)]["core_damage"] += amount
 
-func record_objective_capture(team: int) -> void:
-	team_stats[team]["objectives"] += 1
-	surge_timers[team] = surge_seconds
-	surge_timers[RED if team == BLUE else BLUE] = 0.0
-	objective_active = false
-	objective_respawn_timer = objective_respawn_seconds
-	objective_capture = 0.0
-	add_kill_feed("%s captured the Shrine" % _team_name(team))
-	add_circle_telegraph(objective_position, objective_radius + 34.0, Color(0.45, 0.72, 1.0, 0.8) if team == BLUE else Color(1.0, 0.28, 0.25, 0.8), 0.8, 5.0, true)
-
 func get_core_damage_multiplier(_team: int) -> float:
 	return 1.0
-
-func get_objective_position() -> Vector2:
-	return objective_position
-
-func should_seek_objective(actor: Node) -> bool:
-	if not objective_active or actor == null or not is_instance_valid(actor):
-		return false
-	if actor.global_position.distance_to(objective_position) <= objective_radius * 0.7:
-		return false
-	var nearest_enemy := get_closest_enemy(actor, 330.0)
-	return nearest_enemy == null
 
 func add_kill_feed(message: String) -> void:
 	kill_feed.push_front({
@@ -1097,78 +1050,6 @@ func _tick_kill_feed(delta: float) -> void:
 		kill_feed[i]["remaining"] = float(kill_feed[i]["remaining"]) - delta
 		if float(kill_feed[i]["remaining"]) <= 0.0:
 			kill_feed.remove_at(i)
-
-func _tick_objective(delta: float) -> void:
-	surge_timers[BLUE] = maxf(float(surge_timers[BLUE]) - delta, 0.0)
-	surge_timers[RED] = maxf(float(surge_timers[RED]) - delta, 0.0)
-
-	if not objective_active:
-		objective_respawn_timer = maxf(objective_respawn_timer - delta, 0.0)
-		if objective_respawn_timer <= 0.0:
-			objective_active = true
-			objective_capture = 0.0
-			add_kill_feed("Shrine is active")
-		return
-
-	var presence := _get_objective_presence()
-	var blue_count: int = presence[BLUE]
-	var red_count: int = presence[RED]
-
-	if blue_count > 0 and red_count == 0:
-		objective_capture = minf(objective_capture + delta / objective_capture_seconds, 1.0)
-	elif red_count > 0 and blue_count == 0:
-		objective_capture = maxf(objective_capture - delta / objective_capture_seconds, -1.0)
-	else:
-		objective_capture = move_toward(objective_capture, 0.0, delta / (objective_capture_seconds * 1.6))
-
-	if objective_capture >= 1.0:
-		record_objective_capture(BLUE)
-	elif objective_capture <= -1.0:
-		record_objective_capture(RED)
-
-func _get_objective_presence() -> Dictionary:
-	var presence := {
-		BLUE: 0,
-		RED: 0
-	}
-	for entity in entities:
-		if entity == null or not is_instance_valid(entity):
-			continue
-		if not entity.has_method("is_scored_actor") or not entity.is_scored_actor():
-			continue
-		if entity.has_method("is_alive") and not entity.is_alive():
-			continue
-		if entity.global_position.distance_to(objective_position) <= objective_radius:
-			presence[entity.team] += 1
-	return presence
-
-func _draw_objective() -> void:
-	var base_color := Color(0.7, 0.72, 0.62, 0.5)
-	if not objective_active:
-		base_color = Color(0.32, 0.32, 0.32, 0.35)
-	elif objective_capture > 0.0:
-		base_color = Color(0.25, 0.65, 1.0, 0.42)
-	elif objective_capture < 0.0:
-		base_color = Color(1.0, 0.28, 0.25, 0.42)
-
-	draw_circle(objective_position, objective_radius, base_color)
-	draw_arc(objective_position, objective_radius, 0.0, TAU, 64, Color(0.74, 0.76, 0.7), 3.0)
-	draw_rect(Rect2(objective_position - Vector2(38.0, 38.0), Vector2(76.0, 76.0)), Color(0.12, 0.14, 0.14))
-	draw_rect(Rect2(objective_position - Vector2(26.0, 26.0), Vector2(52.0, 52.0)), Color(0.32, 0.34, 0.32))
-
-	if objective_active:
-		var progress_width := 180.0
-		var progress_origin := objective_position + Vector2(-progress_width * 0.5, objective_radius + 14.0)
-		draw_rect(Rect2(progress_origin, Vector2(progress_width, 8.0)), Color(0.05, 0.055, 0.06))
-		if objective_capture > 0.0:
-			draw_rect(Rect2(progress_origin + Vector2(progress_width * 0.5, 0.0), Vector2(progress_width * 0.5 * objective_capture, 8.0)), Color(0.25, 0.65, 1.0))
-		elif objective_capture < 0.0:
-			draw_rect(Rect2(progress_origin + Vector2(progress_width * 0.5 * (1.0 + objective_capture), 0.0), Vector2(progress_width * 0.5 * absf(objective_capture), 8.0)), Color(1.0, 0.28, 0.25))
-	else:
-		draw_string(ThemeDB.fallback_font, objective_position + Vector2(-56.0, objective_radius + 26.0), "Shrine %ds" % ceili(objective_respawn_timer), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, Color(0.72, 0.72, 0.72))
-
-func _get_objective_text() -> String:
-	return ""
 
 func _player_near_own_hut() -> bool:
 	if player == null or not is_instance_valid(player):

@@ -234,7 +234,8 @@ func _check_mink_choke_once_and_cooldown(failures: Array[String]) -> bool:
 
 	var after_hit_health: float = victim.health
 	var latched: bool = mink.latch_victim == victim and victim.latched_attacker == mink
-	var one_hit: bool = absf(after_hit_health - (victim.max_health - 20.0)) < 0.001
+	var expected_choke_damage: float = 20.0 * (1.0 + mink.get_passive_percent("Fearless", 1, 0.0))
+	var one_hit: bool = absf(after_hit_health - (victim.max_health - expected_choke_damage)) < 0.001
 	var q_after_hit: float = mink.q_timer
 	var q_held_while_latched: bool = q_after_hit >= 0.19
 	_tick(mink, _frame(Vector2.ZERO, aim, 0), 0.55)
@@ -247,7 +248,8 @@ func _check_mink_choke_once_and_cooldown(failures: Array[String]) -> bool:
 
 	var ok: bool = latched and one_hit and q_held_while_latched and no_aura_damage and release_cooldown
 	if not ok:
-		failures.append("mink_choke expected one 20 damage latch and 10s release cooldown; latched=%s health=%.3f q_after_hit=%.3f no_aura=%s q_latched=%.3f q_after_release=%.3f" % [
+		failures.append("mink_choke expected one %.1f damage latch and 10s release cooldown; latched=%s health=%.3f q_after_hit=%.3f no_aura=%s q_latched=%.3f q_after_release=%.3f" % [
+			expected_choke_damage,
 			str(latched),
 			after_hit_health,
 			q_after_hit,

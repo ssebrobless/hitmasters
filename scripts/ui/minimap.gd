@@ -29,6 +29,20 @@ func _draw() -> void:
 			var mini := Rect2((rect.position - world.position) * map_scale, rect.size * map_scale)
 			draw_rect(mini, _zone_color(zone))
 
+	for hut in arena.huts:
+		if hut == null or not is_instance_valid(hut):
+			continue
+		var hut_point: Vector2 = (hut.global_position - world.position) * map_scale
+		var hut_color: Color = _team_color(hut.team)
+		var hp_ratio := clampf(hut.health / hut.max_health, 0.0, 1.0) if hut.max_health > 0.0 else 0.0
+		var icon_rect := Rect2(hut_point - Vector2(3.5, 3.5), Vector2(7.0, 7.0))
+		draw_rect(icon_rect.grow(1.0), Color(0.04, 0.04, 0.035, 0.95))
+		draw_rect(icon_rect, hut_color.darkened(0.15) if hut.is_alive() else Color(0.18, 0.16, 0.13))
+		draw_arc(hut_point, 5.6, -PI * 0.5, -PI * 0.5 + TAU * hp_ratio, 16, hut_color, 1.5)
+		if not hut.is_alive():
+			draw_line(hut_point + Vector2(-3.5, -3.5), hut_point + Vector2(3.5, 3.5), Color(0.95, 0.72, 0.45), 1.4)
+			draw_line(hut_point + Vector2(-3.5, 3.5), hut_point + Vector2(3.5, -3.5), Color(0.95, 0.72, 0.45), 1.4)
+
 	for core_team in arena.cores.keys():
 		var core = arena.cores[core_team]
 		if core != null and is_instance_valid(core):

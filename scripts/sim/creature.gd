@@ -564,9 +564,16 @@ func _modified_incoming_damage(event: Resource) -> float:
 	amount *= _modifier_value("damage_taken_mult", 1.0)
 	if creature_id == "snapping_turtle":
 		amount *= 1.0 - _passive_percent("Protective Shell", 0.0)
-	if creature_id == "mink" and event.source_actor != null and is_instance_valid(event.source_actor):
-		if event.source_actor.max_health > max_health:
+	var source_actor = event.source_actor
+	if source_actor != null and is_instance_valid(source_actor):
+		var source_max_health_value: Variant = source_actor.get("max_health")
+		var source_creature_id_value: Variant = source_actor.get("creature_id")
+		var source_max_health := float(source_max_health_value) if source_max_health_value != null else 0.0
+		var source_creature_id := String(source_creature_id_value) if source_creature_id_value != null else ""
+		if creature_id == "mink" and source_max_health > max_health:
 			amount *= 1.0 - _passive_percent("Fearless", 0.0)
+		if source_creature_id == "mink" and max_health > source_max_health and source_actor.has_method("get_passive_percent"):
+			amount *= 1.0 + source_actor.get_passive_percent("Fearless", 1, 0.0)
 	return amount
 
 func _modifier_value(key: String, fallback: float) -> float:
@@ -578,18 +585,24 @@ func _modifier_value(key: String, fallback: float) -> float:
 	return output
 
 func _passive_percent(passive_name: String, fallback: float) -> float:
+	return get_passive_percent(passive_name, 0, fallback)
+
+func get_passive_percent(passive_name: String, index: int = 0, fallback: float = 0.0) -> float:
 	for passive: Dictionary in creature_data.get("passives", []):
 		if String(passive.get("name", "")) == passive_name:
-			return _first_percent(String(passive.get("summary", "")), fallback)
+			return _nth_percent(String(passive.get("summary", "")), index, fallback)
 	return fallback
 
 static var _percent_regex: RegEx = RegEx.create_from_string("(\\d+(?:\\.\\d+)?)%")
 
 func _first_percent(text: String, fallback: float) -> float:
-	var result := _percent_regex.search(text)
-	if result == null:
+	return _nth_percent(text, 0, fallback)
+
+func _nth_percent(text: String, index: int, fallback: float) -> float:
+	var results := _percent_regex.search_all(text)
+	if index < 0 or index >= results.size():
 		return fallback
-	return float(result.get_string(1)) / 100.0
+	return float(results[index].get_string(1)) / 100.0
 
 func _make_kit() -> RefCounted:
 	match creature_id:
@@ -680,6 +693,8 @@ func _draw() -> void:
 		"shake_offset": shake_offset
 	}
 	var draw_alpha := 0.4 if is_stealthed() else 1.0
+	if wrong_terrain_seconds > 0.0:
+		_draw_wrong_terrain_warning()
 	VisualStyle.draw_battle_creature(self, creature_id, team, body_radius, last_aim_direction, render_flash_timer / 0.1, draw_alpha, is_airborne() or state == CreatureStateScript.State.PERCHED, anim)
 	if arena != null and arena.get("player") == self:
 		VisualStyle.draw_aim_indicator(self, body_radius, last_aim_direction)
@@ -696,3 +711,17 @@ func _draw() -> void:
 func _draw_meter(start: Vector2, width: float, ratio: float, color: Color) -> void:
 	draw_rect(Rect2(start, Vector2(width, 3.0)), Color(0.06, 0.06, 0.07))
 	draw_rect(Rect2(start, Vector2(width * ratio, 3.0)), color)
+
+func _draw_wrong_terrain_warning() -> void:
+	var danger_t := clampf(wrong_terrain_seconds / WRONG_TERRAIN_GRACE_SEC, 0.0, 1.0)
+	var late := wrong_terrain_seconds > WRONG_TERRAIN_GRACE_SEC
+	var pulse := sin(Time.get_ticks_msec() * 0.012) * 0.5 + 0.5
+	var color := Color(0.24, 0.72, 1.0, 0.26 + danger_t * 0.2)
+	if late:
+		color = Color(1.0, 0.25, 0.16, 0.46 + pulse * 0.18)
+	var ring_radius := body_radius + 7.0 + pulse * (3.0 if late else 1.5)
+	draw_arc(Vector2.ZERO, ring_radius, 0.0, TAU, 40, color, 2.5)
+	for i in 3:
+		var angle := TAU * float(i) / 3.0 + pulse * 0.5
+		var bubble := Vector2(cos(angle), sin(angle)) * (body_radius * 0.55 + float(i) * 2.0)
+		draw_circle(bubble, 1.8 + danger_t * 1.4, color.lightened(0.15))

@@ -23,6 +23,7 @@ func _draw() -> void:
 		for rect: Rect2 in layer["rects"]:
 			draw_rect(rect, _terrain_color(zone))
 			_draw_zone_detail(zone, rect)
+			_draw_zone_edge(zone, rect)
 	draw_rect(arena_rect, Color(0.28, 0.33, 0.24), false, 6.0)
 
 func _draw_zone_detail(zone: String, rect: Rect2) -> void:
@@ -70,6 +71,31 @@ func _draw_zone_detail(zone: String, rect: Rect2) -> void:
 			for i in 7:
 				var patch := Vector2(rng.randf_range(rect.position.x + 12.0, rect.end.x - 12.0), rng.randf_range(rect.position.y + 12.0, rect.end.y - 12.0))
 				draw_circle(patch, rng.randf_range(6.0, 12.0), Color(0.2, 0.19, 0.1, 0.55))
+
+func _draw_zone_edge(zone: String, rect: Rect2) -> void:
+	match zone:
+		TerrainMapScript.WATER:
+			draw_rect(rect.grow(1.0), Color(0.42, 0.68, 0.7, 0.55), false, 3.0)
+			draw_rect(rect.grow(-3.0), Color(0.04, 0.16, 0.22, 0.45), false, 1.5)
+		TerrainMapScript.SHALLOW:
+			_draw_stippled_rect(rect.grow(-2.0), Color(0.44, 0.56, 0.42, 0.55), 18.0)
+		TerrainMapScript.COVER:
+			draw_rect(rect.grow(2.0), Color(0.03, 0.055, 0.03, 0.85), false, 3.0)
+		TerrainMapScript.HABITAT_BLUE, TerrainMapScript.HABITAT_RED:
+			var color := Color(0.38, 0.68, 1.0, 0.65) if zone == TerrainMapScript.HABITAT_BLUE else Color(1.0, 0.48, 0.38, 0.65)
+			draw_rect(rect.grow(-7.0), color, false, 2.0)
+
+func _draw_stippled_rect(rect: Rect2, color: Color, step: float) -> void:
+	var x := rect.position.x
+	while x <= rect.end.x:
+		draw_circle(Vector2(x, rect.position.y), 1.6, color)
+		draw_circle(Vector2(x, rect.end.y), 1.6, color)
+		x += step
+	var y := rect.position.y
+	while y <= rect.end.y:
+		draw_circle(Vector2(rect.position.x, y), 1.6, color)
+		draw_circle(Vector2(rect.end.x, y), 1.6, color)
+		y += step
 
 func _terrain_color(zone: String) -> Color:
 	match zone:
