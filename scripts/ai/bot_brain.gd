@@ -12,6 +12,7 @@ const WaterShrewHook := preload("res://scripts/ai/bot_kit_hooks/water_shrew_bot.
 const BeaverHook := preload("res://scripts/ai/bot_kit_hooks/beaver_bot.gd")
 const OwlHook := preload("res://scripts/ai/bot_kit_hooks/owl_bot.gd")
 const HeronHook := preload("res://scripts/ai/bot_kit_hooks/great_blue_heron_bot.gd")
+const KingfisherHook := preload("res://scripts/ai/bot_kit_hooks/kingfisher_bot.gd")
 const DuckHook := preload("res://scripts/ai/bot_kit_hooks/duck_bot.gd")
 const TargetFilter := preload("res://scripts/sim/combat/target_filter.gd")
 
@@ -363,6 +364,8 @@ func _hook(actor: Node) -> RefCounted:
 			hook = OwlHook.new()
 		"great_blue_heron":
 			hook = HeronHook.new()
+		"kingfisher":
+			hook = KingfisherHook.new()
 		"duck":
 			hook = DuckHook.new()
 		_:
@@ -394,6 +397,8 @@ func _preferred_range(actor: Node) -> float:
 			return 60.0
 		"great_blue_heron":
 			return 52.0
+		"kingfisher":
+			return 24.0
 		"duck":
 			return 20.0
 		_:

@@ -14,7 +14,8 @@ const SLICE_CREATURE_IDS := [
 	"crayfish",
 	"water_shrew",
 	"newt",
-	"great_blue_heron"
+	"great_blue_heron",
+	"kingfisher"
 ]
 const FAMILY_LABELS := {
 	"amphibian": "Amphibians",

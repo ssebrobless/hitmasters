@@ -20,6 +20,7 @@ const WaterShrewKitScript := preload("res://scripts/sim/kits/water_shrew.gd")
 const BeaverKitScript := preload("res://scripts/sim/kits/beaver.gd")
 const OwlKitScript := preload("res://scripts/sim/kits/owl.gd")
 const HeronKitScript := preload("res://scripts/sim/kits/great_blue_heron.gd")
+const KingfisherKitScript := preload("res://scripts/sim/kits/kingfisher.gd")
 const DuckKitScript := preload("res://scripts/sim/kits/duck.gd")
 
 const WRONG_TERRAIN_GRACE_SEC := 3.0
@@ -398,6 +399,9 @@ func is_scored_actor() -> bool:
 func is_airborne() -> bool:
 	return state == CreatureStateScript.State.AIRBORNE or has_movement("always_flying")
 
+func is_untargetable() -> bool:
+	return _modifier_value("untargetable", 1.0) > 1.5
+
 func has_movement(tag: String) -> bool:
 	return movement_tags.has(tag)
 
@@ -426,6 +430,9 @@ func get_flight_ratio() -> float:
 func _move_from_input(delta: float) -> void:
 	var start_position := global_position
 	last_move_displacement_px = 0.0
+	if state == CreatureStateScript.State.BURROWED:
+		velocity = Vector2.ZERO
+		return
 	if state == CreatureStateScript.State.PERCHED:
 		velocity = Vector2.ZERO
 		if input_frame != null and input_frame.aim != Vector2.ZERO:
@@ -916,6 +923,8 @@ func _make_kit() -> RefCounted:
 			return OwlKitScript.new()
 		"great_blue_heron":
 			return HeronKitScript.new()
+		"kingfisher":
+			return KingfisherKitScript.new()
 		"duck":
 			return DuckKitScript.new()
 		_:

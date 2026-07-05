@@ -7,6 +7,8 @@ static func is_live_damage_target(source: Node, target: Node, opts: Dictionary =
 		return false
 	if _is_dead(target):
 		return false
+	if not bool(opts.get("allow_untargetable", false)) and target.has_method("is_untargetable") and target.is_untargetable():
+		return false
 	if not bool(opts.get("allow_stealthed", false)) and target.has_method("is_stealthed") and target.is_stealthed():
 		return false
 	if not _team_matches(source, target, opts, false):
