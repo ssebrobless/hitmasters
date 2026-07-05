@@ -17,6 +17,7 @@ const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
 const LocalInputScript := preload("res://scripts/ui/local_input.gd")
 const BotBrainScript := preload("res://scripts/ai/bot_brain.gd")
 const MinimapScript := preload("res://scripts/ui/minimap.gd")
+const SquadHudScript := preload("res://scripts/ui/squad_hud.gd")
 const MudHutScript := preload("res://scripts/game/mud_hut.gd")
 const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 const TerrainLayerScript := preload("res://scripts/game/terrain_layer.gd")
@@ -31,6 +32,7 @@ const SQUAD_COMMAND_FARM := "farm"
 const SQUAD_COMMAND_FOLLOW := "follow"
 const SQUAD_COMMAND_AGGRO := "aggro"
 const SQUAD_COMMAND_SECONDS := 10.0
+const SQUAD_SWITCH_FEEDBACK_SECONDS := 0.85
 const SQUAD_FOLLOW_RADIUS := 5.0 * SimConstants.UNIT_PX
 const SQUAD_DANGER_HEALTH_RATIO := 0.28
 const SQUAD_DANGER_RANGE := 360.0
@@ -43,6 +45,9 @@ var active_squad_index := 0
 var squad_command := SQUAD_COMMAND_FARM
 var squad_command_timer := 0.0
 var squad_aggro_target: Node = null
+var squad_switch_feedback_timer := 0.0
+var squad_switch_feedback_state := ""
+var squad_switch_feedback_slot_index := -1
 var cores: Dictionary = {}
 var player: Node
 var wave_timer := 2.0
@@ -55,6 +60,7 @@ var huts: Array[Node] = []
 var huts_lost := {0: 0, 1: 0}
 var hut_defend_hint_timer := 0.0
 var habitat_deposit_feedback_timer := 0.0
+var habitat_deposit_prompt_state := ""
 var ui_refresh_accumulator := 0.0
 var camera: Camera2D = null
 
@@ -87,6 +93,7 @@ var scoreboard_label: Label
 var kill_feed_label: Label
 var end_summary_label: Label
 var help_label: Label
+var squad_hud: Control = null
 var local_input: Node = LocalInputScript.new()
 var bot_brain: RefCounted = BotBrainScript.new()
 var match_rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -131,6 +138,12 @@ func _physics_process(delta: float) -> void:
 
 	hut_defend_hint_timer = maxf(hut_defend_hint_timer - delta, 0.0)
 	habitat_deposit_feedback_timer = maxf(habitat_deposit_feedback_timer - delta, 0.0)
+	if habitat_deposit_feedback_timer <= 0.0:
+		habitat_deposit_prompt_state = ""
+	squad_switch_feedback_timer = maxf(squad_switch_feedback_timer - delta, 0.0)
+	if squad_switch_feedback_timer <= 0.0:
+		squad_switch_feedback_state = ""
+		squad_switch_feedback_slot_index = -1
 	_tick_squad_command(delta)
 	if _is_1v1_trio_mode():
 		_feed_player_squad_inputs()
@@ -139,7 +152,7 @@ func _physics_process(delta: float) -> void:
 		player.set_input_frame(player_frame)
 		if player_frame.is_pressed(InputFrameScript.BUTTON_HUT_DEFEND) and hut_defend_hint_timer <= 0.0 and _player_near_own_hut():
 			hut_defend_hint_timer = 2.5
-			add_kill_feed("Hut defense assignment needs 3+ habitat stocks (coming with the stock system)")
+			add_kill_feed("Hut defense assignment needs a reserve habitat upgrade")
 	for bot in bots:
 		if bot != null and is_instance_valid(bot) and bot.is_alive():
 			bot.set_input_frame(bot_brain.build_frame(bot))
@@ -246,6 +259,15 @@ func _build_ui() -> void:
 	minimap.offset_bottom = 160.0
 	canvas.add_child(minimap)
 
+	squad_hud = SquadHudScript.new()
+	squad_hud.set("arena", self)
+	squad_hud.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	squad_hud.offset_left = 18.0
+	squad_hud.offset_top = -194.0
+	squad_hud.offset_right = 410.0
+	squad_hud.offset_bottom = -18.0
+	canvas.add_child(squad_hud)
+
 func _spawn_match() -> void:
 	_seed_match_rng()
 	stock_manager.reset()
@@ -314,12 +336,97 @@ func _is_1v1_trio_mode() -> bool:
 func get_squad_follow_radius() -> float:
 	return SQUAD_FOLLOW_RADIUS
 
+func get_trio_hud_rows(team: int) -> Array[Dictionary]:
+	var rows: Array[Dictionary] = []
+	if not _is_1v1_trio_mode() or stock_manager == null or not stock_manager.has_method("get_team_slots"):
+		return rows
+	for slot: Dictionary in stock_manager.get_team_slots(team):
+		rows.append(_build_trio_hud_row(slot))
+	return rows
+
+func get_squad_hud_data() -> Dictionary:
+	return {
+		"enabled": _is_1v1_trio_mode(),
+		"own_team": BLUE,
+		"enemy_team": RED,
+		"command": squad_command,
+		"command_timer": squad_command_timer,
+		"own": get_trio_hud_rows(BLUE),
+		"enemy": get_trio_hud_rows(RED),
+		"switch_feedback": get_squad_switch_feedback_state(),
+		"deposit_prompt": get_deposit_prompt_state()
+	}
+
+func get_squad_switch_feedback_state() -> Dictionary:
+	return {
+		"state": squad_switch_feedback_state if squad_switch_feedback_timer > 0.0 else "idle",
+		"slot_index": squad_switch_feedback_slot_index,
+		"timer": squad_switch_feedback_timer
+	}
+
+func get_deposit_prompt_state() -> Dictionary:
+	var state := "hidden"
+	var visible := false
+	var in_home := false
+	var near_home := false
+	if _is_1v1_trio_mode() and player != null and is_instance_valid(player) and player.has_method("is_alive") and player.is_alive():
+		in_home = _is_actor_in_home_habitat(player)
+		var rect: Rect2 = terrain_map.get_team_habitat_rect(player.team)
+		near_home = in_home or (rect.size.x > 0.0 and rect.size.y > 0.0 and rect.grow(96.0).has_point(player.global_position))
+		if habitat_deposit_feedback_timer > 0.0 and not habitat_deposit_prompt_state.is_empty():
+			state = habitat_deposit_prompt_state
+		elif in_home:
+			state = "ready"
+		elif near_home:
+			state = "near"
+		visible = state != "hidden"
+	return {
+		"state": state,
+		"visible": visible,
+		"timer": habitat_deposit_feedback_timer,
+		"in_home_habitat": in_home,
+		"near_home_habitat": near_home
+	}
+
+func _build_trio_hud_row(slot: Dictionary) -> Dictionary:
+	var actor: Node = slot.get("actor", null)
+	var team := int(slot.get("team", -1))
+	var creature_id := String(slot.get("creature_id", ""))
+	var name := creature_id
+	var hp_ratio := 0.0
+	if actor != null and is_instance_valid(actor):
+		var data_value = actor.get("creature_data")
+		if typeof(data_value) == TYPE_DICTIONARY:
+			var creature_data: Dictionary = data_value
+			name = String(creature_data.get("name", creature_id))
+		elif actor.has_method("get_actor_name"):
+			name = actor.get_actor_name()
+		if actor.has_method("is_alive") and actor.is_alive():
+			hp_ratio = _health_ratio(actor)
+	var state := String(slot.get("state", StockManagerScript.STATE_FIELD))
+	if state == StockManagerScript.STATE_FIELD and actor != null and is_instance_valid(actor) and actor.has_method("is_alive") and not actor.is_alive():
+		state = StockManagerScript.STATE_RESPAWNING
+	return {
+		"team": team,
+		"slot_index": int(slot.get("slot_index", -1)),
+		"creature_id": creature_id,
+		"name": name,
+		"active": team == BLUE and actor != null and actor == player,
+		"hp_ratio": hp_ratio,
+		"stocks": int(slot.get("stocks_remaining", StockManagerScript.MAX_STOCKS)),
+		"max_stocks": int(slot.get("max_stocks", StockManagerScript.MAX_STOCKS)),
+		"state": state
+	}
+
 func _spawn_player_squad() -> void:
 	player_squad.clear()
 	active_squad_index = 0
 	squad_command = SQUAD_COMMAND_FARM
 	squad_command_timer = 0.0
 	squad_aggro_target = null
+	squad_switch_feedback_timer = 0.0
+	squad_switch_feedback_state = ""
+	squad_switch_feedback_slot_index = -1
 
 	var squad_ids: Array[String] = GameConfig.get_selected_squad_ids() if GameConfig.has_method("get_selected_squad_ids") else [GameConfig.selected_creature_id, "chorus_frog", "mink"]
 	var blue_spawn := get_team_spawn(BLUE)
@@ -378,7 +485,7 @@ func _feed_player_squad_inputs() -> void:
 			_try_manual_habitat_deposit(player)
 		if player_frame.is_pressed(InputFrameScript.BUTTON_HUT_DEFEND) and hut_defend_hint_timer <= 0.0 and _player_near_own_hut():
 			hut_defend_hint_timer = 2.5
-			add_kill_feed("Hut defense assignment needs 3+ habitat stocks (coming with the stock system)")
+			add_kill_feed("Hut defense assignment needs a reserve habitat upgrade")
 	for member in player_squad:
 		if member == null or not is_instance_valid(member) or member == player:
 			continue
@@ -536,16 +643,24 @@ func _tick_squad_command(delta: float) -> void:
 		if squad_command_timer <= 0.0:
 			_issue_squad_farm(false)
 
+func _set_squad_switch_feedback(state: String, slot_index: int) -> void:
+	squad_switch_feedback_state = state
+	squad_switch_feedback_slot_index = slot_index
+	squad_switch_feedback_timer = SQUAD_SWITCH_FEEDBACK_SECONDS
+
 func _set_active_squad_index(index: int, announce := true) -> void:
 	if index < 0 or index >= player_squad.size():
+		_set_squad_switch_feedback("invalid", index)
 		return
 	var next_player: Node = player_squad[index]
 	if next_player == null or not is_instance_valid(next_player) or not next_player.is_alive():
+		_set_squad_switch_feedback("respawning", index)
 		if announce:
 			add_kill_feed("Squad slot %d is respawning" % (index + 1))
 		return
 	active_squad_index = index
 	player = next_player
+	_set_squad_switch_feedback("active", index)
 	_attach_camera_to_player()
 	if announce:
 		add_kill_feed("Controlling %d: %s" % [index + 1, player.get_actor_name()])
@@ -1357,8 +1472,6 @@ func _get_cooldown_text() -> String:
 		int(player.get_flight_ratio() * 100.0),
 		"LATCH" if player.has_latch() else "free"
 	]
-	if _is_1v1_trio_mode():
-		return "%s\n%s" % [_get_squad_rail_text(), active_line]
 	return active_line
 
 func _get_squad_rail_text() -> String:
@@ -1473,11 +1586,13 @@ func _try_manual_habitat_deposit(actor: Node) -> bool:
 		return false
 	habitat_deposit_feedback_timer = 1.0
 	if not _is_actor_in_home_habitat(actor):
+		habitat_deposit_prompt_state = "needs_habitat"
 		add_kill_feed("U: enter home habitat to deposit")
 		return false
 	if uses_stock_respawn(actor):
 		stock_manager.record_habitat_visit(actor)
-	add_kill_feed("%s checked into habitat; food deposit buffs are pending" % actor.get_actor_name())
+	habitat_deposit_prompt_state = "accepted"
+	add_kill_feed("%s checked into habitat; deposit reward queued for ecology pass" % actor.get_actor_name())
 	return true
 
 func _is_actor_in_home_habitat(actor: Node) -> bool:

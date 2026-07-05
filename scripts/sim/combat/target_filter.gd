@@ -13,6 +13,11 @@ static func is_live_damage_target(source: Node, target: Node, opts: Dictionary =
 		return false
 	return _has_required_api(target, opts, true)
 
+static func is_live_blind_damage_target(source: Node, target: Node, opts: Dictionary = {}) -> bool:
+	var effective_opts := opts.duplicate()
+	effective_opts["allow_stealthed"] = true
+	return is_live_damage_target(source, target, effective_opts)
+
 static func is_live_ally_target(source: Node, target: Node, opts: Dictionary = {}) -> bool:
 	if not _is_valid_target_object(target):
 		return false

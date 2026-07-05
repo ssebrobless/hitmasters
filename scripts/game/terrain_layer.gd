@@ -5,6 +5,7 @@ extends Node2D
 # on water_layer.gd. Never call queue_redraw() here after setup.
 
 const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
+const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
 
 var terrain_map: RefCounted = null
 var arena_rect := Rect2()
@@ -21,9 +22,10 @@ func _draw() -> void:
 	for layer in terrain_map.zone_layers:
 		var zone := String(layer["zone"])
 		for rect: Rect2 in layer["rects"]:
-			draw_rect(rect, _terrain_color(zone))
+			draw_rect(rect, VisualGrammar.terrain_color(zone))
 			_draw_zone_detail(zone, rect)
 			_draw_zone_edge(zone, rect)
+	_draw_perch_anchors()
 	draw_rect(arena_rect, Color(0.28, 0.33, 0.24), false, 6.0)
 
 func _draw_zone_detail(zone: String, rect: Rect2) -> void:
@@ -103,17 +105,10 @@ func _draw_stippled_rect(rect: Rect2, color: Color, step: float) -> void:
 		draw_circle(Vector2(rect.end.x, y), 1.6, color)
 		y += step
 
-func _terrain_color(zone: String) -> Color:
-	match zone:
-		TerrainMapScript.HABITAT_BLUE:
-			return Color(0.13, 0.17, 0.13)
-		TerrainMapScript.HABITAT_RED:
-			return Color(0.17, 0.14, 0.11)
-		TerrainMapScript.WATER:
-			return Color(0.1, 0.26, 0.34)
-		TerrainMapScript.SHALLOW:
-			return Color(0.16, 0.3, 0.26)
-		TerrainMapScript.COVER:
-			return Color(0.1, 0.16, 0.09)
-		_:
-			return Color(0.15, 0.19, 0.1)
+func _draw_perch_anchors() -> void:
+	if terrain_map == null or not terrain_map.has_method("get_perch_anchors"):
+		return
+	for anchor: Vector2 in terrain_map.get_perch_anchors():
+		draw_circle(anchor, 5.5, Color(0.7, 0.82, 0.48, 0.16))
+		draw_line(anchor + Vector2(-5.0, 0.0), anchor + Vector2(5.0, 0.0), Color(0.78, 0.92, 0.58, 0.28), 1.2)
+		draw_line(anchor + Vector2(0.0, -5.0), anchor + Vector2(0.0, 5.0), Color(0.78, 0.92, 0.58, 0.28), 1.2)

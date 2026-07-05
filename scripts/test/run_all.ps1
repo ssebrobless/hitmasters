@@ -3,6 +3,7 @@ param(
 	[string]$TestPattern = "*_check.gd",
 	[int]$TimeoutSec = 45,
 	[switch]$KeepGoing,
+	[switch]$StrictOutput,
 	[switch]$List
 )
 
@@ -66,13 +67,56 @@ function Resolve-Godot {
 	throw "Could not locate Godot. Set `$env:GODOT4, pass -Godot, install a 'godot' command, or install Godot through WinGet."
 }
 
+function Test-StrictOutputAllowedLine {
+	param([string]$Line)
+	return $Line -match '^\s*WARNING:\s+ObjectDB instances leaked at exit \(run with --verbose for details\)\.\s*$' -or
+		$Line -match '^\s*ERROR:\s+\d+\s+resources? still in use at exit \(run with --verbose for details\)\.\s*$'
+}
+
+function Get-StrictOutputIssues {
+	param([string]$Output)
+
+	$issues = @()
+	if ([string]::IsNullOrEmpty($Output)) {
+		return $issues
+	}
+
+	$lines = $Output -split "\r?\n"
+	for ($i = 0; $i -lt $lines.Count; $i++) {
+		$line = $lines[$i]
+		if (Test-StrictOutputAllowedLine -Line $line) {
+			continue
+		}
+
+		$reason = $null
+		if ($line -match '\bSCRIPT ERROR:') {
+			$reason = "SCRIPT ERROR"
+		} elseif ($line -match '\bParse Error\b') {
+			$reason = "Parse Error"
+		} elseif ($line -match '^\s*ERROR:') {
+			$reason = "runtime ERROR"
+		}
+
+		if ($null -ne $reason) {
+			$issues += [pscustomobject]@{
+				LineNumber = $i + 1
+				Reason = $reason
+				Line = $line
+			}
+		}
+	}
+
+	return $issues
+}
+
 function Invoke-GodotScript {
 	param(
 		[string]$GodotPath,
 		[string]$RepoRoot,
 		[System.IO.FileInfo]$ScriptFile,
 		[string]$LogDir,
-		[int]$TimeoutSeconds
+		[int]$TimeoutSeconds,
+		[bool]$StrictOutput
 	)
 
 	$logPath = Join-Path $LogDir ($ScriptFile.BaseName + ".log")
@@ -106,13 +150,28 @@ function Invoke-GodotScript {
 	Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
 
 	$elapsed = [int]((Get-Date) - $started).TotalMilliseconds
-	$status = if ($null -eq $completed) { "TIMEOUT" } elseif ($exitCode -eq 0) { "PASS" } else { "FAIL" }
+	$strictOutputIssues = @()
+	if ($StrictOutput) {
+		$strictOutputIssues = @(Get-StrictOutputIssues -Output $output)
+	}
+	$status = if ($null -eq $completed) { "TIMEOUT" } elseif ($exitCode -eq 0 -and $strictOutputIssues.Count -eq 0) { "PASS" } else { "FAIL" }
+	$strictModeText = if ($StrictOutput) { "ON" } else { "OFF" }
+	$strictHeader = @(
+		"strict_output: $strictModeText"
+	)
+	if ($StrictOutput) {
+		$strictHeader += "strict_output_issues: $($strictOutputIssues.Count)"
+		foreach ($issue in $strictOutputIssues) {
+			$strictHeader += "strict_output_issue: line $($issue.LineNumber) [$($issue.Reason)] $($issue.Line)"
+		}
+	}
 
 	$header = @(
 		"command: `"$GodotPath`" $($arguments -join ' ')",
 		"exit_code: $exitCode",
 		"elapsed_ms: $elapsed",
-		"status: $status",
+		"status: $status"
+	) + $strictHeader + @(
 		"",
 		"--- output ---",
 		$output
@@ -125,6 +184,7 @@ function Invoke-GodotScript {
 		ExitCode = $exitCode
 		ElapsedMs = $elapsed
 		Log = $logPath
+		StrictOutputIssues = $strictOutputIssues
 	}
 }
 
@@ -153,7 +213,7 @@ Write-Host ""
 
 $results = @()
 foreach ($testScript in $testScripts) {
-	$result = Invoke-GodotScript -GodotPath $godotPath -RepoRoot $repoRoot -ScriptFile $testScript -LogDir $logDir -TimeoutSeconds $TimeoutSec
+	$result = Invoke-GodotScript -GodotPath $godotPath -RepoRoot $repoRoot -ScriptFile $testScript -LogDir $logDir -TimeoutSeconds $TimeoutSec -StrictOutput $StrictOutput.IsPresent
 	$results += $result
 	if ($result.Status -ne "PASS" -and -not $KeepGoing) {
 		break
@@ -172,6 +232,11 @@ if ($failed.Count -gt 0) {
 	Write-Host "Failed tests:"
 	foreach ($result in $failed) {
 		Write-Host ("- {0} ({1}) -> {2}" -f $result.Name, $result.Status, $result.Log)
+		if ($StrictOutput -and $result.StrictOutputIssues.Count -gt 0) {
+			foreach ($issue in $result.StrictOutputIssues) {
+				Write-Host ("  strict line {0}: [{1}] {2}" -f $issue.LineNumber, $issue.Reason, $issue.Line)
+			}
+		}
 	}
 	exit 1
 }

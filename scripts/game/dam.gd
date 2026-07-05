@@ -29,6 +29,9 @@ func is_scored_actor() -> bool:
 func get_actor_name() -> String:
 	return "Dam"
 
+func get_blocker_rect() -> Rect2:
+	return rect
+
 func repair(amount: float) -> void:
 	health = minf(health + amount, max_health)
 	queue_redraw()

@@ -1,5 +1,7 @@
 extends RefCounted
 
+const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
+
 const ICON_PLAYER := "player"
 const ICON_ACTOR := "actor"
 const ICON_MINION := "minion"
@@ -22,6 +24,43 @@ static func command_color(command: String, alpha := 1.0) -> Color:
 			return Color(0.38, 0.9, 0.48, alpha)
 		_:
 			return Color(1.0, 1.0, 1.0, alpha)
+
+static func telegraph_color(kind: String, alpha := 1.0, friendly := true) -> Color:
+	match kind:
+		"windup":
+			return Color(1.0, 0.78, 0.22, alpha)
+		"swing":
+			return Color(1.0, 0.93, 0.55, alpha)
+		"damage":
+			return Color(1.0, 0.96, 0.82, alpha)
+		"heavy_damage":
+			return Color(1.0, 0.62, 0.28, alpha)
+		"heal":
+			return Color(0.32, 1.0, 0.48, alpha)
+		"dash":
+			return Color(0.65, 0.95, 1.0, alpha)
+		"aura":
+			return Color(0.35, 1.0, 0.55, alpha) if friendly else Color(0.82, 0.45, 1.0, alpha)
+		"danger":
+			return Color(1.0, 0.28, 0.18, alpha)
+		_:
+			return Color(1.0, 1.0, 1.0, alpha)
+
+static func terrain_color(zone: String, alpha := 1.0, miniature := false) -> Color:
+	var color := Color(0.16, 0.2, 0.11) if miniature else Color(0.15, 0.19, 0.1)
+	match zone:
+		TerrainMapScript.HABITAT_BLUE:
+			color = Color(0.14, 0.22, 0.32) if miniature else Color(0.13, 0.17, 0.13)
+		TerrainMapScript.HABITAT_RED:
+			color = Color(0.3, 0.15, 0.13) if miniature else Color(0.17, 0.14, 0.11)
+		TerrainMapScript.WATER:
+			color = Color(0.12, 0.3, 0.4) if miniature else Color(0.1, 0.26, 0.34)
+		TerrainMapScript.SHALLOW:
+			color = Color(0.18, 0.33, 0.28) if miniature else Color(0.16, 0.3, 0.26)
+		TerrainMapScript.COVER:
+			color = Color(0.1, 0.18, 0.1) if miniature else Color(0.1, 0.16, 0.09)
+	color.a = alpha
+	return color
 
 static func with_alpha(color: Color, alpha: float) -> Color:
 	var output := color

@@ -33,7 +33,9 @@ var active_squad_slot := 0
 @onready var preview: Control = $Root/Content/Details/HeroPreview
 @onready var hero_name: Label = $Root/Content/Details/HeroName
 @onready var role_label: Label = $Root/Content/Details/RoleLabel
+@onready var identity_label: Label = $Root/Content/Details/IdentityLabel
 @onready var stat_label: Label = $Root/Content/Details/StatLabel
+@onready var matchup_label: Label = $Root/Content/Details/MatchupLabel
 @onready var ability_label: Label = $Root/Content/Details/AbilityLabel
 @onready var counterplay_label: Label = $Root/Content/Details/CounterplayLabel
 @onready var start_button: Button = $Root/Footer/StartButton
@@ -131,6 +133,7 @@ func _select_creature(index: int) -> void:
 		String(creature.get("family", "family")).to_upper(),
 		", ".join(PackedStringArray(creature.get("role", []))).to_upper()
 	]
+	identity_label.text = String(creature.get("identity_blurb", ""))
 	var stats: Dictionary = creature.get("stats", {})
 	var footprint: Dictionary = creature.get("footprint", {})
 	stat_label.text = "HP %s    Speed %s    Diet %s    Footprint %s" % [
@@ -138,6 +141,10 @@ func _select_creature(index: int) -> void:
 		_get_speed_text(stats),
 		String(creature.get("diet", "?")).capitalize(),
 		_get_footprint_text(footprint)
+	]
+	matchup_label.text = "Wins: %s\nFears: %s" % [
+		_format_short_list(creature.get("wins", [])),
+		_format_short_list(creature.get("fears", []))
 	]
 
 	var ability_lines := ["Primary: %s" % creature.get("primary", "")]
@@ -268,6 +275,17 @@ func _get_footprint_text(footprint: Dictionary) -> String:
 	if shape == "capsule":
 		return "%s %sx%s u" % [shape, str(footprint.get("radius_units", "?")), str(footprint.get("length_units", "?"))]
 	return "%s %s u" % [shape, str(footprint.get("radius_units", "?"))]
+
+func _format_short_list(value: Variant) -> String:
+	if value is Array:
+		var parts := PackedStringArray()
+		for item in value:
+			var text := String(item)
+			if not text.is_empty():
+				parts.append(text)
+		return ", ".join(parts) if not parts.is_empty() else "?"
+	var text := String(value)
+	return text if not text.is_empty() else "?"
 
 func _start_match() -> void:
 	get_tree().change_scene_to_file(ARENA_SCENE)

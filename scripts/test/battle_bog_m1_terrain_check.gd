@@ -18,16 +18,29 @@ func _initialize() -> void:
 	var shallow_comfort_profile := terrain.get_environment_profile_for_zone(TerrainMapScript.SHALLOW, ["semi_aquatic"])
 	var deep_land_profile := EnvironmentProfileScript.for_zone(TerrainMapScript.WATER, ["land_walker"])
 	var habitat_profile := terrain.get_environment_profile_for_zone(TerrainMapScript.HABITAT_BLUE)
-	var profiles_ok := float(shallow_land_profile["speed_mult"]) < 1.0 \
+	var cover_rects := terrain.get_cover_rects()
+	var perch_anchors := terrain.get_perch_anchors()
+	var first_anchor: Vector2 = perch_anchors[0] if not perch_anchors.is_empty() else Vector2(1.0e20, 1.0e20)
+	var nearest_first_anchor: Variant = terrain.get_nearest_perch_anchor(first_anchor)
+	var far_anchor: Variant = terrain.get_nearest_perch_anchor(terrain.arena_rect.position)
+	var anchors_ok: bool = perch_anchors.size() == cover_rects.size() \
+		and not perch_anchors.is_empty() \
+		and cover_rects[0].has_point(first_anchor) \
+		and typeof(nearest_first_anchor) == TYPE_VECTOR2 \
+		and far_anchor == null
+	var deep_land_dragged: bool = bool(deep_land_profile["wrong_terrain_now"]) \
+		and absf(float(deep_land_profile["speed_mult"]) - EnvironmentProfileScript.DEEP_WATER_LAND_DRAG_MULTIPLIER) < 0.001
+	var profiles_ok: bool = float(shallow_land_profile["speed_mult"]) < 1.0 \
 		and float(shallow_comfort_profile["speed_mult"]) > 1.0 \
-		and bool(deep_land_profile["wrong_terrain_now"]) \
+		and deep_land_dragged \
 		and String(habitat_profile["danger"]) == EnvironmentProfileScript.DANGER_SAFE
 
 	terrain.configure("1v1")
 	var duel_units := terrain.arena_rect.size / unit
+	var duel_anchor_count := terrain.get_perch_anchors().size()
 
-	var passed := arena_units == Vector2(240.0, 135.0) and duel_units == Vector2(150.0, 84.0) and cores_in_habitat and center_zone == TerrainMapScript.WATER and shallow_zone == TerrainMapScript.SHALLOW and profiles_ok
-	print("terrain_3v3_units=%sx%s terrain_1v1_units=%sx%s cores_in_habitat=%s center=%s shallow=%s profiles_ok=%s" % [
+	var passed: bool = arena_units == Vector2(240.0, 135.0) and duel_units == Vector2(150.0, 84.0) and cores_in_habitat and center_zone == TerrainMapScript.WATER and shallow_zone == TerrainMapScript.SHALLOW and profiles_ok and anchors_ok and duel_anchor_count == terrain.get_cover_rects().size()
+	print("terrain_3v3_units=%sx%s terrain_1v1_units=%sx%s cores_in_habitat=%s center=%s shallow=%s profiles_ok=%s anchors_ok=%s duel_anchor_count=%d" % [
 		str(arena_units.x),
 		str(arena_units.y),
 		str(duel_units.x),
@@ -35,6 +48,8 @@ func _initialize() -> void:
 		str(cores_in_habitat),
 		center_zone,
 		shallow_zone,
-		str(profiles_ok)
+		str(profiles_ok),
+		str(anchors_ok),
+		duel_anchor_count
 	])
 	quit(0 if passed else 1)

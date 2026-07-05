@@ -45,6 +45,9 @@ var wrong_terrain_seconds := 0.0
 var flight_time_max := 0.0
 var flight_time_remaining := 0.0
 var flight_grounded_timer := 0.0
+var flight_toggle_was_pressed := false
+var flight_toggle_just_pressed := false
+var flight_toggle_requires_release := false
 var takeoff_distance_px := 0.0
 var alive := true
 var actor_name := "Creature"
@@ -101,6 +104,9 @@ func apply_creature(next_creature_id: String) -> void:
 	_reset_terrain_profile()
 	flight_time_max = _numeric_stat("flight_time_sec", 0.0)
 	flight_time_remaining = flight_time_max
+	flight_toggle_was_pressed = false
+	flight_toggle_just_pressed = false
+	flight_toggle_requires_release = false
 	state = CreatureStateScript.State.AIRBORNE if has_movement("always_flying") else CreatureStateScript.State.NORMAL
 	actor_name = String(creature_data.get("name", creature_id))
 	modifiers.clear()
@@ -144,6 +150,7 @@ func tick_sim(delta: float) -> void:
 		return
 
 	_tick_timers(delta)
+	_update_flight_toggle_edge()
 	flight_grounded_timer = maxf(flight_grounded_timer - delta, 0.0)
 	stealth_timer = maxf(stealth_timer - delta, 0.0)
 	low_window_timer = maxf(low_window_timer - delta, 0.0)
@@ -154,6 +161,7 @@ func tick_sim(delta: float) -> void:
 	_tick_latch(delta)
 	if kit != null and kit.has_method("tick"):
 		kit.tick(self, delta)
+	_commit_flight_toggle_edge()
 
 func take_damage(amount: float, _source_team: int = -1, _source_actor: Node = null) -> void:
 	var event := DamageEventScript.new()
@@ -198,6 +206,7 @@ func take_damage_event(event: Resource) -> void:
 	if state == CreatureStateScript.State.AIRBORNE and not has_movement("always_flying") and event.delivery == DamageEventScript.DELIVERY_RANGED and amount >= 30.0:
 		state = CreatureStateScript.State.NORMAL
 		flight_grounded_timer = FLIGHT_GROUNDED_LOCKOUT_SEC
+		flight_toggle_requires_release = true
 		emit_vfx_event("spiked", {"target": self, "position": global_position})
 	if event.source_actor != null or String(event.source_ability) != "":
 		emit_vfx_event("hit_landed", {
@@ -364,11 +373,18 @@ func _update_flight(delta: float) -> void:
 		return
 
 	if is_airborne():
+		if _should_voluntary_land():
+			state = CreatureStateScript.State.NORMAL
+			takeoff_distance_px = 0.0
+			flight_toggle_requires_release = true
+			break_stealth()
+			return
 		flight_time_remaining = maxf(flight_time_remaining - delta, 0.0)
 		takeoff_distance_px = 0.0
 		if flight_time_max > 0.0 and flight_time_remaining <= 0.0:
 			state = CreatureStateScript.State.NORMAL
 			flight_grounded_timer = FLIGHT_GROUNDED_LOCKOUT_SEC
+			flight_toggle_requires_release = true
 			break_stealth()
 		return
 
@@ -380,8 +396,22 @@ func _update_flight(delta: float) -> void:
 		takeoff_distance_px = 0.0
 		return
 
-	if not input_frame.is_pressed(InputFrameScript.BUTTON_FLIGHT_TOGGLE) or input_frame.move.length() <= 0.0:
+	if flight_toggle_requires_release or not input_frame.is_pressed(InputFrameScript.BUTTON_FLIGHT_TOGGLE) or input_frame.move.length() <= 0.0:
 		takeoff_distance_px = 0.0
+
+func _update_flight_toggle_edge() -> void:
+	var pressed: bool = input_frame != null and input_frame.is_pressed(InputFrameScript.BUTTON_FLIGHT_TOGGLE)
+	flight_toggle_just_pressed = pressed and not flight_toggle_was_pressed
+	if not pressed:
+		flight_toggle_requires_release = false
+
+func _commit_flight_toggle_edge() -> void:
+	flight_toggle_was_pressed = input_frame != null and input_frame.is_pressed(InputFrameScript.BUTTON_FLIGHT_TOGGLE)
+	if not flight_toggle_was_pressed:
+		flight_toggle_just_pressed = false
+
+func _should_voluntary_land() -> bool:
+	return has_movement("flight") and flight_toggle_just_pressed and not flight_toggle_requires_release
 
 func _update_takeoff_charge_from_displacement(displacement_px: float) -> void:
 	if state == CreatureStateScript.State.PERCHED or is_airborne() or flight_time_max <= 0.0 or not has_movement("flight"):
@@ -390,13 +420,14 @@ func _update_takeoff_charge_from_displacement(displacement_px: float) -> void:
 	if flight_grounded_timer > 0.0 or input_frame == null:
 		takeoff_distance_px = 0.0
 		return
-	if not input_frame.is_pressed(InputFrameScript.BUTTON_FLIGHT_TOGGLE) or input_frame.move.length() <= 0.0:
+	if flight_toggle_requires_release or not input_frame.is_pressed(InputFrameScript.BUTTON_FLIGHT_TOGGLE) or input_frame.move.length() <= 0.0:
 		takeoff_distance_px = 0.0
 		return
 	takeoff_distance_px += maxf(displacement_px, 0.0)
 	if takeoff_distance_px >= TAKEOFF_DISTANCE_UNITS * SimConstants.UNIT_PX:
 		state = CreatureStateScript.State.AIRBORNE
 		takeoff_distance_px = 0.0
+		flight_toggle_requires_release = true
 
 func get_aim_direction() -> Vector2:
 	if input_frame != null and input_frame.aim != Vector2.ZERO:
@@ -523,6 +554,9 @@ func _respawn() -> void:
 	swim_time_remaining = swim_time_max
 	flight_time_remaining = flight_time_max
 	flight_grounded_timer = 0.0
+	flight_toggle_was_pressed = false
+	flight_toggle_just_pressed = false
+	flight_toggle_requires_release = false
 	wrong_terrain_seconds = 0.0
 	_reset_terrain_profile()
 	dash_velocity = Vector2.ZERO
@@ -632,6 +666,10 @@ func _first_percent(text: String, fallback: float) -> float:
 	return _nth_percent(text, 0, fallback)
 
 func _nth_percent(text: String, index: int, fallback: float) -> float:
+	if _percent_regex == null:
+		_percent_regex = RegEx.create_from_string("(\\d+(?:\\.\\d+)?)%")
+	if _percent_regex == null:
+		return fallback
 	var results := _percent_regex.search_all(text)
 	if index < 0 or index >= results.size():
 		return fallback
@@ -659,8 +697,8 @@ func _is_wrong_terrain() -> bool:
 		current_environment_profile = _environment_profile_for_zone(get_current_zone())
 	return bool(current_environment_profile.get("wrong_terrain_now", false))
 
-func _is_water_boosted() -> bool:
-	return EnvironmentProfileScript.has_deep_water_speed_bonus(movement_tags)
+func _uses_deep_water_swim_speed() -> bool:
+	return EnvironmentProfileScript.uses_swim_speed_in_deep_water(movement_tags)
 
 func _has_limited_swim_time() -> bool:
 	return EnvironmentProfileScript.has_limited_swim_time(movement_tags) and swim_time_max > 0.0
@@ -680,7 +718,7 @@ func _environment_profile_for_zone(zone: String) -> Dictionary:
 func _terrain_target_speed_px(zone: String) -> float:
 	var profile := _environment_profile_for_zone(zone)
 	var speed_mult := float(profile.get("speed_mult", 1.0))
-	if zone == TerrainMapScript.WATER and _is_water_boosted():
+	if zone == TerrainMapScript.WATER and _uses_deep_water_swim_speed():
 		return _speed_px_for_water() * speed_mult
 	return _speed_px_for_ground() * speed_mult
 

@@ -1,33 +1,30 @@
 extends RefCounted
 
+const HitShape := preload("res://scripts/sim/combat/hit_shape.gd")
 const TargetFilter := preload("res://scripts/sim/combat/target_filter.gd")
 
-static func hit(actor: Node, reach_px: float, damage: float, delivery: int, plane: int, source_ability: String) -> Array:
+static func hit(actor: Node, reach_px: float, damage: float, delivery: int, plane: int, source_ability: String, opts: Dictionary = {}) -> Array:
 	var hits := []
 	if actor.arena == null:
 		return hits
-	var aim: Vector2 = actor.get_aim_direction()
-	var center: Vector2 = actor.global_position + aim * reach_px
-	var radius: float = reach_px + actor.body_radius
+	var shape := HitShape.melee_arc(actor, reach_px)
 	if actor.has_method("emit_vfx_event"):
-		actor.emit_vfx_event("attack_swung", {
+		var payload := shape.duplicate()
+		payload.merge({
 			"actor": actor,
 			"position": actor.global_position,
-			"center": center,
-			"aim": aim,
-			"reach_px": reach_px,
-			"radius": radius,
 			"source_ability": source_ability
 		})
+		actor.emit_vfx_event("attack_swung", payload)
+	var max_hits := int(opts.get("max_hits", 0))
 	for target in actor.arena.entities:
-		if not TargetFilter.is_live_damage_target(actor, target):
+		if not TargetFilter.is_live_blind_damage_target(actor, target):
 			continue
-		var to_target: Vector2 = target.global_position - actor.global_position
-		if to_target.length() > radius + target.body_radius:
-			continue
-		if to_target.normalized().dot(aim) < 0.15:
+		if not HitShape.overlaps_melee_arc(shape, target):
 			continue
 		target.take_damage_event(actor.make_damage_event(damage, delivery, plane, source_ability))
 		hits.append(target)
-	actor.damage_enemy_cores_near(center, reach_px, damage, source_ability)
+		if max_hits > 0 and hits.size() >= max_hits:
+			break
+	actor.damage_enemy_cores_near(shape.get("center", actor.global_position), reach_px, damage, source_ability)
 	return hits

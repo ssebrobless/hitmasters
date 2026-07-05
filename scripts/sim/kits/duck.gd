@@ -20,6 +20,7 @@ func setup(actor: Node) -> void:
 	actor.primary_timer = 0.0
 
 func reset_for_respawn(_actor: Node) -> void:
+	_retire_ducklings()
 	chain_index = 0
 	nest_channel = 0.0
 	mobbing_armed = false
@@ -91,3 +92,17 @@ func _prune() -> void:
 	for i in range(ducklings.size() - 1, -1, -1):
 		if ducklings[i] == null or not is_instance_valid(ducklings[i]):
 			ducklings.remove_at(i)
+		elif ducklings[i].has_method("is_alive") and not ducklings[i].is_alive():
+			ducklings.remove_at(i)
+
+func _retire_ducklings() -> void:
+	for duckling in ducklings:
+		if duckling == null or not is_instance_valid(duckling):
+			continue
+		if duckling.has_method("retire"):
+			duckling.retire()
+		else:
+			if duckling.get("arena") != null and duckling.get("arena").has_method("unregister_entity"):
+				duckling.get("arena").unregister_entity(duckling)
+			duckling.queue_free()
+	ducklings.clear()

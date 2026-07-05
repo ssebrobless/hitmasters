@@ -20,6 +20,7 @@ var slot_index := 0
 var peck_timer := 0.0
 var walk_phase := 0.0
 var modifiers: Array[Dictionary] = []
+var retired := false
 
 func setup(pet_arena: Node, pet_owner: Node, pet_team: int, spawn_position: Vector2, slot: int, pet_health: float) -> void:
 	arena = pet_arena
@@ -32,7 +33,7 @@ func setup(pet_arena: Node, pet_owner: Node, pet_team: int, spawn_position: Vect
 	body_radius = 0.3 * SimConstants.UNIT_PX
 
 func is_alive() -> bool:
-	return health > 0.0
+	return not retired and health > 0.0
 
 func is_scored_actor() -> bool:
 	return false
@@ -57,14 +58,25 @@ func heal(amount: float) -> void:
 func take_damage(amount: float, _source_team: int = -1, _source_actor: Node = null) -> void:
 	health -= amount * _modifier_value("damage_taken_mult", 1.0)
 	if health <= 0.0:
-		if arena != null:
-			arena.unregister_entity(self)
-		queue_free()
+		retire()
 
 func take_damage_event(event: Resource) -> void:
 	take_damage(event.amount, -1, event.source_actor)
 
+func retire() -> void:
+	if retired:
+		return
+	retired = true
+	health = 0.0
+	velocity = Vector2.ZERO
+	if arena != null and is_instance_valid(arena) and arena.has_method("unregister_entity"):
+		arena.unregister_entity(self)
+	queue_free()
+
 func _physics_process(delta: float) -> void:
+	if _should_retire_for_owner():
+		retire()
+		return
 	peck_timer = maxf(peck_timer - delta, 0.0)
 	for i in range(modifiers.size() - 1, -1, -1):
 		modifiers[i]["remaining"] = float(modifiers[i]["remaining"]) - delta
@@ -96,6 +108,13 @@ func _physics_process(delta: float) -> void:
 	if arena != null:
 		global_position = arena.resolve_body_position(global_position, body_radius)
 	queue_redraw()
+
+func _should_retire_for_owner() -> bool:
+	if owner_creature == null or not is_instance_valid(owner_creature):
+		return true
+	if owner_creature.has_method("is_alive") and not owner_creature.is_alive():
+		return true
+	return false
 
 func _find_enemy() -> Node:
 	if arena == null:

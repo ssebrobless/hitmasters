@@ -98,9 +98,19 @@ text = "Creature"
 layout_mode = 2
 text = "ROLE | RANGE"
 
+[node name="IdentityLabel" type="Label" parent="Root/Content/Details"]
+layout_mode = 2
+autowrap_mode = 3
+text = "Identity"
+
 [node name="StatLabel" type="Label" parent="Root/Content/Details"]
 layout_mode = 2
 text = "Stats"
+
+[node name="MatchupLabel" type="Label" parent="Root/Content/Details"]
+layout_mode = 2
+autowrap_mode = 3
+text = "Wins / Fears"
 
 [node name="AbilityLabel" type="Label" parent="Root/Content/Details"]
 layout_mode = 2

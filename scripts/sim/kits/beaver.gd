@@ -12,6 +12,9 @@ const DAM_LENGTH_UNITS := 3.0
 const DAM_THICKNESS_UNITS := 0.9
 const MAX_DAMS := 3
 const PLACE_RANGE_UNITS := 4.0
+const GNAW_HEAL_RATIO := 0.05
+const GNAW_COVER_NEAR_PX := 4.0
+const GNAW_SAMPLE_STEPS := 6
 
 var dams: Array[Node] = []
 var rotate_placement := false
@@ -34,7 +37,9 @@ func tick(actor: Node, _delta: float) -> void:
 	context_was_pressed = context_pressed
 
 	if actor.input_frame.is_pressed(InputFrameScript.BUTTON_PRIMARY) and actor.primary_timer <= 0.0:
-		MeleeHit.hit(actor, KitHelpers.range_units(actor.stats, 1.0) * SimConstants.UNIT_PX, float(actor.stats.get("primary_damage", 0.0)), DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "Chomp")
+		var reach_px := KitHelpers.range_units(actor.stats, 1.0) * SimConstants.UNIT_PX
+		MeleeHit.hit(actor, reach_px, float(actor.stats.get("primary_damage", 0.0)), DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "Chomp")
+		_apply_gnawing(actor, reach_px)
 		var rate := float(actor.stats.get("attack_rate_per_sec", 1.0))
 		actor.primary_timer = (1.0 / maxf(rate, 0.05)) / actor.get_modifier_value("attack_speed_mult", 1.0)
 
@@ -80,3 +85,36 @@ func _prune_dams() -> void:
 	for i in range(dams.size() - 1, -1, -1):
 		if dams[i] == null or not is_instance_valid(dams[i]):
 			dams.remove_at(i)
+
+func _apply_gnawing(actor: Node, reach_px: float) -> void:
+	if not _chomp_touches_cover(actor, reach_px):
+		return
+	var heal_ratio: float = actor.get_passive_percent("Gnawing", 0, GNAW_HEAL_RATIO) if actor.has_method("get_passive_percent") else GNAW_HEAL_RATIO
+	actor.heal(actor.max_health * heal_ratio)
+
+func _chomp_touches_cover(actor: Node, reach_px: float) -> bool:
+	var cover_rects := _get_cover_rects(actor)
+	if cover_rects.is_empty():
+		return false
+	var origin: Vector2 = actor.global_position
+	var aim: Vector2 = actor.get_aim_direction()
+	if aim == Vector2.ZERO:
+		aim = Vector2.RIGHT
+	var endpoint := origin + aim.normalized() * reach_px
+	var grow_by: float = actor.body_radius + GNAW_COVER_NEAR_PX
+	for rect: Rect2 in cover_rects:
+		var grown_rect := rect.grow(grow_by)
+		for step in range(GNAW_SAMPLE_STEPS + 1):
+			var t := float(step) / float(GNAW_SAMPLE_STEPS)
+			if grown_rect.has_point(origin.lerp(endpoint, t)):
+				return true
+	return false
+
+func _get_cover_rects(actor: Node) -> Array:
+	if actor.arena != null:
+		var arena_cover_rects: Variant = actor.arena.get("cover_rects")
+		if arena_cover_rects is Array:
+			return arena_cover_rects
+	if actor.terrain_map != null and actor.terrain_map.has_method("get_cover_rects"):
+		return actor.terrain_map.get_cover_rects()
+	return []

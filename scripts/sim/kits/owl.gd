@@ -6,7 +6,6 @@ const MeleeHit := preload("res://scripts/sim/abilities/melee_hit.gd")
 const KitHelpers := preload("res://scripts/sim/kits/kit_helpers.gd")
 const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 const CreatureStateScript := preload("res://scripts/sim/creature_state.gd")
-const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
 
 const SWOOP_RANGE_UNITS := 6.0
 const LOW_WINDOW_SEC := 0.7
@@ -22,14 +21,17 @@ func tick(actor: Node, _delta: float) -> void:
 	if not actor.can_act():
 		return
 
-	# R: perch on cover while flying; R again to resume flight.
+	# R: perch on a nearby tree anchor while flying; R again to resume flight.
 	var context_pressed: bool = actor.input_frame.is_pressed(InputFrameScript.BUTTON_CONTEXT_ACTION)
 	if context_pressed and not context_was_pressed:
 		if actor.state == CreatureStateScript.State.PERCHED:
 			actor.state = CreatureStateScript.State.AIRBORNE
-		elif actor.state == CreatureStateScript.State.AIRBORNE and actor.get_current_zone() == TerrainMapScript.COVER:
-			actor.state = CreatureStateScript.State.PERCHED
-			actor.velocity = Vector2.ZERO
+		elif actor.state == CreatureStateScript.State.AIRBORNE:
+			var perch_anchor: Variant = _nearest_perch_anchor(actor)
+			if typeof(perch_anchor) == TYPE_VECTOR2:
+				actor.global_position = perch_anchor
+				actor.state = CreatureStateScript.State.PERCHED
+				actor.velocity = Vector2.ZERO
 	context_was_pressed = context_pressed
 
 	var elevated: bool = actor.state == CreatureStateScript.State.AIRBORNE or actor.state == CreatureStateScript.State.PERCHED
@@ -77,3 +79,8 @@ func _reveal(actor: Node, radius_px: float) -> void:
 		if entity.has_method("break_stealth"):
 			entity.break_stealth()
 	actor.emit_vfx_event("aura_applied", {"actor": actor, "target": actor, "radius_px": radius_px, "duration": 3.0, "source_ability": "Auditory Mapping", "friendly": true})
+
+func _nearest_perch_anchor(actor: Node) -> Variant:
+	if actor.terrain_map == null or not actor.terrain_map.has_method("get_nearest_perch_anchor"):
+		return null
+	return actor.terrain_map.get_nearest_perch_anchor(actor.global_position)

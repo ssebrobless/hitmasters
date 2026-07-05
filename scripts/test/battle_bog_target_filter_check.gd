@@ -3,6 +3,7 @@ extends SceneTree
 const Aura := preload("res://scripts/sim/abilities/aura.gd")
 const BotBrainScript := preload("res://scripts/ai/bot_brain.gd")
 const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
+const HitShape := preload("res://scripts/sim/combat/hit_shape.gd")
 const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 const MeleeHit := preload("res://scripts/sim/abilities/melee_hit.gd")
 const Projectile := preload("res://scripts/sim/abilities/projectile.gd")
@@ -21,6 +22,7 @@ class FakeEntity extends Node2D:
 	var damage_events := 0
 	var modifiers: Array[Dictionary] = []
 	var stealthed := false
+	var vfx_events: Array[Dictionary] = []
 
 	func is_alive() -> bool:
 		return health > 0.0
@@ -30,7 +32,11 @@ class FakeEntity extends Node2D:
 
 	func take_damage_event(event: Resource) -> void:
 		damage_events += 1
+		break_stealth()
 		health = maxf(health - float(event.amount), 0.0)
+
+	func break_stealth() -> void:
+		stealthed = false
 
 	func add_modifier(source: String, values: Dictionary, duration: float) -> void:
 		modifiers.append({"source": source, "values": values, "duration": duration})
@@ -43,8 +49,10 @@ class FakeEntity extends Node2D:
 		event.setup(amount, delivery, plane, self, source_ability)
 		return event
 
-	func emit_vfx_event(_event_type: String, _payload: Dictionary = {}) -> void:
-		pass
+	func emit_vfx_event(event_type: String, payload: Dictionary = {}) -> void:
+		var event := payload.duplicate()
+		event["type"] = event_type
+		vfx_events.append(event)
 
 	func damage_enemy_cores_near(_center: Vector2, _reach_px: float, _damage: float, _source_ability: String) -> void:
 		pass
@@ -77,13 +85,17 @@ func _initialize() -> void:
 	var direct_ok := _check_direct_filter(failures)
 	var melee_ok := _check_melee_skips_dead(failures)
 	var line_ok := _check_line_skips_dead(failures)
+	var stealth_hit_ok := _check_blind_hits_stealthed(failures)
+	var shape_ok := _check_hit_shape_payload(failures)
 	var aura_ok := _check_aura_skips_dead(failures)
 	var bot_ok := _check_bot_skips_dead_targets(failures)
-	var passed := direct_ok and melee_ok and line_ok and aura_ok and bot_ok
-	print("target_filter direct=%s melee=%s line=%s aura=%s bot=%s" % [
+	var passed := direct_ok and melee_ok and line_ok and stealth_hit_ok and shape_ok and aura_ok and bot_ok
+	print("target_filter direct=%s melee=%s line=%s stealth_hit=%s shape=%s aura=%s bot=%s" % [
 		str(direct_ok),
 		str(melee_ok),
 		str(line_ok),
+		str(stealth_hit_ok),
+		str(shape_ok),
 		str(aura_ok),
 		str(bot_ok)
 	])
@@ -104,8 +116,9 @@ func _check_direct_filter(failures: Array[String]) -> bool:
 	ok = ok and not TargetFilter.is_live_damage_target(actor, ally)
 	ok = ok and TargetFilter.is_live_ally_target(actor, ally, {"require_modifier_api": true})
 	ok = ok and not TargetFilter.is_live_damage_target(actor, stealthed)
+	ok = ok and TargetFilter.is_live_blind_damage_target(actor, stealthed)
 	if not ok:
-		failures.append("direct filter expected only live visible enemies for damage and live allies for ally effects")
+		failures.append("direct filter expected visible damage targeting to skip stealth while blind damage targeting can include it")
 	return ok
 
 func _check_melee_skips_dead(failures: Array[String]) -> bool:
@@ -135,6 +148,53 @@ func _check_line_skips_dead(failures: Array[String]) -> bool:
 			hits.size(),
 			dead_enemy.damage_events,
 			live_enemy.damage_events
+		])
+	return ok
+
+func _check_blind_hits_stealthed(failures: Array[String]) -> bool:
+	var melee_arena := _arena()
+	var melee_actor := melee_arena.add_entity(_entity(0, Vector2.ZERO))
+	var melee_target := melee_arena.add_entity(_entity(1, Vector2(24.0, 0.0)))
+	melee_target.stealthed = true
+	var melee_hits := MeleeHit.hit(melee_actor, 24.0, 10.0, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "test")
+	var melee_ok: bool = melee_hits == [melee_target] and melee_target.damage_events == 1 and not melee_target.is_stealthed()
+
+	var line_arena := _arena()
+	var line_actor := line_arena.add_entity(_entity(0, Vector2.ZERO))
+	var line_target := line_arena.add_entity(_entity(1, Vector2(60.0, 0.0)))
+	line_target.stealthed = true
+	var line_hits := Projectile.instant_line(line_actor, 80.0, 10.0, DamageEventScript.DELIVERY_RANGED, DamageEventScript.PLANE_GROUND, "test")
+	var line_ok: bool = line_hits == [line_target] and line_target.damage_events == 1 and not line_target.is_stealthed()
+
+	var ok := melee_ok and line_ok
+	if not ok:
+		failures.append("blind physical hits expected to damage and reveal stealthed targets; melee hits=%d events=%d stealth=%s line hits=%d events=%d stealth=%s" % [
+			melee_hits.size(),
+			melee_target.damage_events,
+			str(melee_target.is_stealthed()),
+			line_hits.size(),
+			line_target.damage_events,
+			str(line_target.is_stealthed())
+		])
+	return ok
+
+func _check_hit_shape_payload(failures: Array[String]) -> bool:
+	var arena := _arena()
+	var actor := arena.add_entity(_entity(0, Vector2.ZERO))
+	var target := arena.add_entity(_entity(1, Vector2(24.0, 0.0)))
+	var shape := HitShape.melee_arc(actor, 24.0)
+	var shape_contains_target := HitShape.overlaps_melee_arc(shape, target)
+	MeleeHit.hit(actor, 24.0, 10.0, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "shape_test")
+	var event: Dictionary = actor.vfx_events[0] if actor.vfx_events.size() > 0 else {}
+	var ok: bool = shape_contains_target
+	ok = ok and String(event.get("type", "")) == "attack_swung"
+	ok = ok and String(event.get("kind", "")) == "melee_arc"
+	ok = ok and event.get("center", Vector2.ZERO) == shape.get("center", Vector2.ZERO)
+	ok = ok and absf(float(event.get("radius", 0.0)) - float(shape.get("radius", 0.0))) < 0.001
+	if not ok:
+		failures.append("hit shape expected melee payload to match shared shape; contains=%s event=%s" % [
+			str(shape_contains_target),
+			str(event)
 		])
 	return ok
 

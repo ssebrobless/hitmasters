@@ -32,11 +32,11 @@ ACTIVE CREATURE receives WASD / aim / LMB / Q / E / U
 
 - The player owns three unique species slots chosen in the 1v1 Trio select flow.
 - The playable slice is Snapping Turtle, Chorus Frog, Mink, Beaver, Owl, and Duck.
-- Each species is designed to have three stocks; current code shows the stock rail while the dedicated stock manager is still pending.
+- Each species has three stocks managed by the stock manager; the 1v1 Trio HUD shows per-slot stock, KO, and out states.
 - Only the active species receives manual deposit input. Inactive species must never auto-deposit for habitat stat boosts.
 - Inactive species default to safe farming/minion clearing until food and hunger systems come online.
 - The 1v1 format should feel like an action hero game with squad pressure, not RTS-style unit micro.
-- InputMap shell actions exist for `squad_slot_1`, `squad_slot_2`, `squad_slot_3`, `squad_regroup`, and `squad_farm`; Arena integration still owns the live command handling.
+- InputMap actions exist for `squad_slot_1`, `squad_slot_2`, `squad_slot_3`, `squad_regroup`, and `squad_farm`; Arena owns the live command handling.
 
 ## 3v3 Core Clash
 

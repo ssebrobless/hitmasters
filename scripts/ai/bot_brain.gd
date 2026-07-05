@@ -11,11 +11,15 @@ const TargetFilter := preload("res://scripts/sim/combat/target_filter.gd")
 
 const FIGHT_SCAN_RANGE := 620.0
 const RETREAT_HEALTH_RATIO := 0.28
+const RETREAT_EXIT_HEALTH_RATIO := 0.42
 const RETREAT_THREAT_RANGE := 360.0
 const DEFEND_HUT_RADIUS := 430.0
 const DEFEND_ACTOR_RANGE := 980.0
+const TARGET_STICKINESS_BONUS := 60.0
 
 var hooks := {}
+var sticky_targets := {}
+var retreating_actors := {}
 
 func build_frame(actor: Node) -> Resource:
 	var frame := InputFrameScript.new()
@@ -51,27 +55,28 @@ func build_frame(actor: Node) -> Resource:
 
 func _choose_intent(actor: Node) -> Dictionary:
 	var close_threat: Node = _closest_live_enemy(actor, RETREAT_THREAT_RANGE)
-	if _health_ratio(actor) <= RETREAT_HEALTH_RATIO and close_threat != null:
+	var health_ratio := _health_ratio(actor)
+	var should_retreat := close_threat != null and (
+		health_ratio <= RETREAT_HEALTH_RATIO or (
+			_is_retreating(actor) and health_ratio <= RETREAT_EXIT_HEALTH_RATIO
+		)
+	)
+	if should_retreat:
+		_set_retreating(actor, true)
 		return {
 			"mode": "retreat",
 			"target": close_threat,
 			"point": _retreat_point(actor)
 		}
+	_set_retreating(actor, false)
 
 	var defense: Dictionary = _defense_intent(actor)
 	if not defense.is_empty():
 		return defense
 
-	var objective: Node = _objective_target(actor)
-	var enemy: Node = _closest_live_enemy(actor, FIGHT_SCAN_RANGE)
-	if enemy != null and not _is_hut(actor, enemy):
-		return {"mode": "fight", "target": enemy}
-
-	if objective != null:
-		return {"mode": "objective", "target": objective}
-
-	if enemy != null:
-		return {"mode": "fight", "target": enemy}
+	var target_intent := _best_target_intent(actor)
+	if not target_intent.is_empty():
+		return target_intent
 
 	return {"mode": "idle", "point": actor.global_position + Vector2.RIGHT}
 
@@ -104,30 +109,104 @@ func _defense_intent(actor: Node) -> Dictionary:
 		}
 	return {}
 
-func _objective_target(actor: Node) -> Node:
-	var core: Node = actor.arena.get_enemy_core(actor.team) if actor.arena.has_method("get_enemy_core") else null
-	if core != null and (not actor.arena.has_method("can_damage_core") or actor.arena.can_damage_core(core.team)):
-		return core
+func _best_target_intent(actor: Node) -> Dictionary:
+	var best_target: Node = null
+	var best_mode := "fight"
+	var best_score := -INF
+	var sticky_target := _sticky_target(actor)
+	for candidate in _target_candidates(actor):
+		var score := _target_candidate_score(actor, candidate, sticky_target)
+		if score > best_score:
+			best_score = score
+			best_target = candidate
+			best_mode = "objective" if _is_objective_target(actor, candidate) else "fight"
+	if best_target == null:
+		_set_sticky_target(actor, null)
+		return {}
+	_set_sticky_target(actor, best_target)
+	return {"mode": best_mode, "target": best_target}
 
-	var hut: Node = _best_enemy_hut(actor)
-	if hut != null:
-		return hut
+func _target_candidates(actor: Node) -> Array[Node]:
+	var candidates: Array[Node] = []
+	if actor.arena == null:
+		return candidates
+	if actor.arena.get("entities") != null:
+		for entity in actor.arena.entities:
+			if not TargetFilter.is_live_damage_target(actor, entity, {"require_damage_api": false}):
+				continue
+			var distance: float = actor.global_position.distance_to(entity.global_position)
+			if not _is_hut(actor, entity) and distance > FIGHT_SCAN_RANGE:
+				continue
+			candidates.append(entity)
+	var core := _open_enemy_core(actor)
+	if core != null:
+		candidates.append(core)
+	return candidates
+
+func _target_candidate_score(actor: Node, target: Node, sticky_target: Node) -> float:
+	var distance: float = actor.global_position.distance_to(target.global_position)
+	var missing_health := 1.0 - _health_ratio(target)
+	var score := 0.0
+	if _is_core(actor, target):
+		score = 1500.0 - distance * 0.2 + missing_health * 120.0
+	elif _is_hut(actor, target):
+		score = 850.0 - distance * 0.25 + missing_health * 220.0
+	elif _is_combatant_target(target):
+		score = 520.0 - distance * 0.45 + missing_health * 220.0 + _target_threat_score(target)
+	else:
+		score = 140.0 - distance * 0.45 + missing_health * 90.0
+	if target == sticky_target:
+		score += TARGET_STICKINESS_BONUS
+	return score
+
+func _target_threat_score(target: Node) -> float:
+	var score := 0.0
+	if target.has_method("is_scored_actor") and target.is_scored_actor():
+		score += 90.0
+	if _has_property(target, "creature_id") and String(target.get("creature_id")) != "":
+		score += 70.0
+	if _has_property(target, "damage"):
+		score += clampf(float(target.get("damage")) * 2.5, 0.0, 120.0)
+	if _has_property(target, "attack_range"):
+		score += clampf(float(target.get("attack_range")) * 0.25, 0.0, 55.0)
+	if _has_property(target, "kind"):
+		match String(target.get("kind")):
+			"tank":
+				score += 70.0
+			"pebble":
+				score += 60.0
+			"melee":
+				score += 45.0
+			"lane":
+				score += 35.0
+			_:
+				score += 25.0
+	return score
+
+func _open_enemy_core(actor: Node) -> Node:
+	if actor.arena == null or not actor.arena.has_method("get_enemy_core"):
+		return null
+	var core: Node = actor.arena.get_enemy_core(actor.team)
+	if not _valid_target(core) or not _has_property(core, "team") or int(core.get("team")) == actor.team:
+		return null
+	if actor.arena.has_method("can_damage_core") and not actor.arena.can_damage_core(int(core.get("team"))):
+		return null
 	return core
 
-func _best_enemy_hut(actor: Node) -> Node:
-	if actor.arena.get("huts") == null:
-		return null
-	var best_hut: Node = null
-	var best_score: float = INF
-	for hut in actor.arena.huts:
-		if not _valid_target(hut) or hut.team == actor.team:
-			continue
-		var distance: float = actor.global_position.distance_to(hut.global_position)
-		var score: float = distance + _health_ratio(hut) * 320.0
-		if score < best_score:
-			best_score = score
-			best_hut = hut
-	return best_hut
+func _is_objective_target(actor: Node, target: Node) -> bool:
+	return _is_hut(actor, target) or _is_core(actor, target)
+
+func _is_core(actor: Node, target: Node) -> bool:
+	if actor.arena == null or not actor.arena.has_method("get_enemy_core"):
+		return false
+	return target == actor.arena.get_enemy_core(actor.team)
+
+func _is_combatant_target(target: Node) -> bool:
+	if target.has_method("is_scored_actor") and target.is_scored_actor():
+		return true
+	if _has_property(target, "creature_id") and String(target.get("creature_id")) != "":
+		return true
+	return _has_property(target, "kind")
 
 func _closest_enemy_near_point(actor: Node, point: Vector2, radius: float) -> Node:
 	var closest: Node = null
@@ -214,6 +293,31 @@ func _has_property(target: Object, property_name: String) -> bool:
 		if String(property.get("name", "")) == property_name:
 			return true
 	return false
+
+func _sticky_target(actor: Node) -> Node:
+	var key := int(actor.get_instance_id())
+	var target: Node = sticky_targets.get(key, null)
+	if TargetFilter.is_live_damage_target(actor, target, {"require_damage_api": false}):
+		return target
+	sticky_targets.erase(key)
+	return null
+
+func _set_sticky_target(actor: Node, target: Node) -> void:
+	var key := int(actor.get_instance_id())
+	if target == null:
+		sticky_targets.erase(key)
+		return
+	sticky_targets[key] = target
+
+func _is_retreating(actor: Node) -> bool:
+	return bool(retreating_actors.get(int(actor.get_instance_id()), false))
+
+func _set_retreating(actor: Node, retreating: bool) -> void:
+	var key := int(actor.get_instance_id())
+	if retreating:
+		retreating_actors[key] = true
+	else:
+		retreating_actors.erase(key)
 
 func _strafe_direction(direction: Vector2, team: int) -> Vector2:
 	return Vector2(-direction.y, direction.x) * (1.0 if team == 0 else -1.0)

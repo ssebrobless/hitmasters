@@ -9,9 +9,11 @@ const WATER := "water"
 const COVER := "cover"
 const HABITAT_BLUE := "habitat_blue"
 const HABITAT_RED := "habitat_red"
+const PERCH_ANCHOR_RADIUS_UNITS := 2.75
 
 var mode := "3v3"
 var zone_layers: Array[Dictionary] = []
+var perch_anchors: Array[Vector2] = []
 var arena_rect := Rect2()
 var blue_core_position := Vector2.ZERO
 var red_core_position := Vector2.ZERO
@@ -30,6 +32,7 @@ func configure(next_mode: String) -> void:
 		_configure_1v1()
 	else:
 		_configure_3v3()
+	_rebuild_perch_anchors()
 
 func get_zone_at(point: Vector2) -> String:
 	for i in range(zone_layers.size() - 1, -1, -1):
@@ -54,10 +57,34 @@ func get_rects(zone: String) -> Array:
 func get_cover_rects() -> Array:
 	return get_rects(COVER)
 
+func get_perch_anchors() -> Array:
+	return perch_anchors.duplicate()
+
+func get_perch_anchor_radius_px() -> float:
+	return PERCH_ANCHOR_RADIUS_UNITS * SimConstants.UNIT_PX
+
+func get_nearest_perch_anchor(point: Vector2, max_distance_px := -1.0) -> Variant:
+	var nearest := Vector2.ZERO
+	var nearest_distance := INF
+	for anchor in perch_anchors:
+		var distance := point.distance_to(anchor)
+		if distance < nearest_distance:
+			nearest = anchor
+			nearest_distance = distance
+	var allowed_distance := get_perch_anchor_radius_px() if max_distance_px < 0.0 else max_distance_px
+	if nearest_distance <= allowed_distance:
+		return nearest
+	return null
+
 func get_team_habitat_rect(team: int) -> Rect2:
 	var habitat_zone := HABITAT_BLUE if team == 0 else HABITAT_RED
 	var rects := get_rects(habitat_zone)
 	return rects[0] if not rects.is_empty() else Rect2()
+
+func _rebuild_perch_anchors() -> void:
+	perch_anchors.clear()
+	for rect: Rect2 in get_cover_rects():
+		perch_anchors.append(rect.get_center())
 
 func _configure_3v3() -> void:
 	var unit := SimConstants.UNIT_PX

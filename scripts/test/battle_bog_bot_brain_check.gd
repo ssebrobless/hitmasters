@@ -26,6 +26,16 @@ class FakeCore extends Node2D:
 	var max_health := 1000.0
 	var radius := 64.0
 
+class FakeBlocker extends Node2D:
+	var team := 1
+	var health := 100.0
+	var max_health := 100.0
+	var body_radius := 18.0
+	var arena: Node = null
+
+	func is_alive() -> bool:
+		return health > 0.0
+
 class FakeArena extends Node2D:
 	var entities: Array[Node] = []
 	var huts: Array[Node] = []
@@ -69,6 +79,14 @@ class FakeArena extends Node2D:
 		cores[team] = core
 		return core
 
+	func add_blocker(team: int, position: Vector2, health := 100.0) -> Node:
+		var blocker := FakeBlocker.new()
+		blocker.team = team
+		blocker.global_position = position
+		blocker.health = health
+		add_entity(blocker)
+		return blocker
+
 	func get_closest_enemy(source: Node, max_distance: float) -> Node:
 		var closest: Node = null
 		var closest_distance := max_distance
@@ -96,12 +114,16 @@ func _initialize() -> void:
 	var defend_ok := _check_hut_defense(failures)
 	var hut_push_ok := _check_push_hut_before_shielded_core(failures)
 	var core_push_ok := _check_push_core_after_hut_open(failures)
-	var passed := retreat_ok and defend_ok and hut_push_ok and core_push_ok
-	print("bot_brain retreat=%s defend=%s hut_push=%s core_push=%s" % [
+	var objective_score_ok := _check_objective_over_low_value_blocker(failures)
+	var retreat_stability_ok := _check_low_health_retreat_hysteresis(failures)
+	var passed := retreat_ok and defend_ok and hut_push_ok and core_push_ok and objective_score_ok and retreat_stability_ok
+	print("bot_brain retreat=%s defend=%s hut_push=%s core_push=%s objective_score=%s retreat_stability=%s" % [
 		str(retreat_ok),
 		str(defend_ok),
 		str(hut_push_ok),
-		str(core_push_ok)
+		str(core_push_ok),
+		str(objective_score_ok),
+		str(retreat_stability_ok)
 	])
 	for failure in failures:
 		push_error(failure)
@@ -164,4 +186,50 @@ func _check_push_core_after_hut_open(failures: Array[String]) -> bool:
 	var ok: bool = frame.aim.distance_to(core.global_position) < 0.001 and frame.move.dot(Vector2.RIGHT) > 0.9
 	if not ok:
 		failures.append("core_push expected opened-core bot to pressure core; move=%s aim=%s" % [str(frame.move), str(frame.aim)])
+	return ok
+
+func _check_objective_over_low_value_blocker(failures: Array[String]) -> bool:
+	var arena := FakeArena.new()
+	get_root().add_child(arena)
+	var bot := arena.add_creature(0, Vector2(-200.0, 0.0))
+	var blocker := arena.add_blocker(1, Vector2(-130.0, 0.0), 30.0)
+	var enemy_hut := arena.add_hut(1, Vector2(120.0, 0.0), 800.0)
+	arena.add_core(1, Vector2(420.0, 0.0))
+	arena.core_open = false
+	var frame := BotBrainScript.new().build_frame(bot)
+	var ok: bool = frame.aim.distance_to(enemy_hut.global_position) < 0.001 and frame.aim.distance_to(blocker.global_position) > 0.001
+	if not ok:
+		failures.append("objective_score expected hut over nearby low-value blocker; move=%s aim=%s hut=%s blocker=%s" % [
+			str(frame.move),
+			str(frame.aim),
+			str(enemy_hut.global_position),
+			str(blocker.global_position)
+		])
+	return ok
+
+func _check_low_health_retreat_hysteresis(failures: Array[String]) -> bool:
+	var arena := FakeArena.new()
+	get_root().add_child(arena)
+	arena.add_hut(0, Vector2(-220.0, 0.0))
+	var bot := arena.add_creature(0, Vector2(0.0, 0.0), 20.0)
+	var enemy := arena.add_creature(1, Vector2(90.0, 0.0))
+	var brain := BotBrainScript.new()
+	var retreat_direction: Vector2 = (Vector2(-220.0, 0.0) - bot.global_position).normalized()
+	var fight_direction: Vector2 = (enemy.global_position - bot.global_position).normalized()
+	var enter_frame := brain.build_frame(bot)
+	bot.health = 34.0
+	var held_frame := brain.build_frame(bot)
+	bot.health = 50.0
+	var released_frame := brain.build_frame(bot)
+	var entered: bool = enter_frame.move.dot(retreat_direction) > 0.9
+	var held: bool = held_frame.move.dot(retreat_direction) > 0.9
+	var released: bool = released_frame.move.dot(fight_direction) > 0.9
+	var ok: bool = entered and held and released
+	if not ok:
+		failures.append("retreat_stability expected retreat to enter, hold until exit ratio, then release; enter=%s held=%s released=%s aim=%s" % [
+			str(enter_frame.move),
+			str(held_frame.move),
+			str(released_frame.move),
+			str(released_frame.aim)
+		])
 	return ok

@@ -28,7 +28,7 @@ func _draw() -> void:
 		var zone := String(layer["zone"])
 		for rect: Rect2 in layer["rects"]:
 			var mini := Rect2((rect.position - world.position) * map_scale, rect.size * map_scale)
-			draw_rect(mini, _zone_color(zone))
+			draw_rect(mini, VisualGrammar.terrain_color(zone, 1.0, true))
 
 	for hut in arena.huts:
 		if hut == null or not is_instance_valid(hut):
@@ -79,21 +79,6 @@ func _draw() -> void:
 		draw_rect(view_rect.intersection(Rect2(Vector2.ZERO, map_size)), Color(1.0, 1.0, 1.0, 0.35), false, 1.0)
 
 	draw_rect(Rect2(Vector2.ZERO, map_size), Color(0.5, 0.55, 0.45, 0.7), false, 1.5)
-
-func _zone_color(zone: String) -> Color:
-	match zone:
-		TerrainMapScript.WATER:
-			return Color(0.12, 0.3, 0.4)
-		TerrainMapScript.SHALLOW:
-			return Color(0.18, 0.33, 0.28)
-		TerrainMapScript.COVER:
-			return Color(0.1, 0.18, 0.1)
-		TerrainMapScript.HABITAT_BLUE:
-			return Color(0.14, 0.22, 0.32)
-		TerrainMapScript.HABITAT_RED:
-			return Color(0.3, 0.15, 0.13)
-		_:
-			return Color(0.16, 0.2, 0.11)
 
 func _draw_entity_icon(entity: Node, point: Vector2) -> void:
 	var team := _node_team(entity)

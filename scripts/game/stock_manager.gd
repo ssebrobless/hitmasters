@@ -87,6 +87,14 @@ func get_slot(team: int, slot_index: int) -> Dictionary:
 		return {}
 	return slots[key].duplicate(true)
 
+func get_team_slots(team: int) -> Array[Dictionary]:
+	var team_slots: Array[Dictionary] = []
+	for slot: Dictionary in slots.values():
+		if int(slot.get("team", -1)) == team:
+			team_slots.append(slot.duplicate(true))
+	team_slots.sort_custom(Callable(self, "_sort_slots_by_index"))
+	return team_slots
+
 func stocks_remaining(actor: Node) -> int:
 	var slot := get_slot_for_actor(actor)
 	if slot.is_empty():
@@ -132,3 +140,6 @@ func _actor_key(actor: Node) -> String:
 
 func _slot_key(team: int, slot_index: int) -> String:
 	return "%d:%d" % [team, slot_index]
+
+func _sort_slots_by_index(a: Dictionary, b: Dictionary) -> bool:
+	return int(a.get("slot_index", 0)) < int(b.get("slot_index", 0))

@@ -12,6 +12,7 @@ const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 var choke_active := false
 var choke_latch_active := false
 var choke_cooldown_on_release := 0.0
+var choke_contact_resolved := false
 
 func setup(actor: Node) -> void:
 	actor.primary_timer = 0.0
@@ -20,6 +21,7 @@ func reset_for_respawn(_actor: Node) -> void:
 	choke_active = false
 	choke_latch_active = false
 	choke_cooldown_on_release = 0.0
+	choke_contact_resolved = false
 
 func tick(actor: Node, _delta: float) -> void:
 	_update_choke_release_cooldown(actor)
@@ -27,6 +29,7 @@ func tick(actor: Node, _delta: float) -> void:
 		return
 	if not actor.can_act():
 		choke_active = false
+		choke_contact_resolved = false
 		return
 	if choke_active:
 		# The choke bite only connects during the dash itself; missing puts
@@ -34,10 +37,12 @@ func tick(actor: Node, _delta: float) -> void:
 		# cooldown per the roster ("after release, equal to latch duration").
 		if actor.dash_timer <= 0.0:
 			choke_active = false
+			choke_contact_resolved = false
 			actor.q_timer = 3.0
-		else:
-			var hits := MeleeHit.hit(actor, actor.body_radius * 1.5, _choke_damage(actor), DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "Choke")
+		elif not choke_contact_resolved:
+			var hits := MeleeHit.hit(actor, actor.body_radius * 1.5, _choke_damage(actor), DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "Choke", {"max_hits": 1})
 			# Only creatures that can be latched consume the Choke.
+			choke_contact_resolved = not hits.is_empty()
 			var latchable: Node = null
 			for hit in hits:
 				if hit != null and is_instance_valid(hit) and hit.has_method("receive_latch"):
@@ -60,6 +65,7 @@ func tick(actor: Node, _delta: float) -> void:
 		var duration := (distance_units * SimConstants.UNIT_PX) / maxf(actor.get_speed_px() * 2.0, 1.0)
 		Dash.start(actor, actor.get_aim_direction(), distance_units * SimConstants.UNIT_PX, duration)
 		choke_active = true
+		choke_contact_resolved = false
 		actor.q_timer = maxf(duration, 0.2)
 	if actor.input_frame.is_pressed(InputFrameScript.BUTTON_ABILITY_E) and actor.e_timer <= 0.0:
 		var e := KitHelpers.ability(actor.creature_data, "E")

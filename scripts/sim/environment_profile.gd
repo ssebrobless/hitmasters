@@ -21,6 +21,7 @@ const DANGER_WRONG_TERRAIN := "wrong_terrain"
 const SHALLOW_LAND_SPEED_MULTIPLIER := 0.92
 const SHALLOW_COMFORT_SPEED_MULTIPLIER := 1.04
 const DEEP_WATER_SPEED_MULTIPLIER := 1.15
+const DEEP_WATER_LAND_DRAG_MULTIPLIER := 0.62
 const COVER_SPEED_MULTIPLIER := 0.95
 
 static func for_zone(zone: String, movement_tags: Array = [], swim_time_remaining := -1.0) -> Dictionary:
@@ -45,12 +46,13 @@ static func for_zone(zone: String, movement_tags: Array = [], swim_time_remainin
 			profile["preferred_by"] = ["semi_aquatic", "wading", "paddling"]
 			profile["fx_key"] = "shallow_drag"
 		WATER:
+			var wrong_now := _is_deep_water_wrong_now(movement_tags, swim_time_remaining)
 			profile["surface"] = SURFACE_WATER
-			profile["speed_mult"] = DEEP_WATER_SPEED_MULTIPLIER if has_deep_water_speed_bonus(movement_tags) else 1.0
+			profile["speed_mult"] = _deep_water_speed_multiplier(movement_tags, wrong_now)
 			profile["drains_swim"] = has_limited_swim_time(movement_tags)
 			profile["restores_swim"] = false
 			profile["wrong_terrain_if_swim_empty"] = movement_tags.has("semi_aquatic")
-			profile["wrong_terrain_now"] = _is_deep_water_wrong_now(movement_tags, swim_time_remaining)
+			profile["wrong_terrain_now"] = wrong_now
 			profile["danger"] = DANGER_WRONG_TERRAIN if bool(profile["wrong_terrain_now"]) else DANGER_SWIM_PRESSURE
 			profile["preferred_by"] = ["aquatic", "semi_aquatic", "paddling", "wading"]
 			profile["fx_key"] = "deep_water"
@@ -77,6 +79,9 @@ static func has_water_affinity(movement_tags: Array) -> bool:
 static func has_deep_water_speed_bonus(movement_tags: Array) -> bool:
 	return _has_any_tag(movement_tags, ["aquatic", "semi_aquatic"])
 
+static func uses_swim_speed_in_deep_water(movement_tags: Array) -> bool:
+	return has_water_affinity(movement_tags)
+
 static func has_limited_swim_time(movement_tags: Array) -> bool:
 	return movement_tags.has("semi_aquatic")
 
@@ -87,6 +92,13 @@ static func _shallow_speed_multiplier(movement_tags: Array) -> float:
 	if has_water_affinity(movement_tags):
 		return SHALLOW_COMFORT_SPEED_MULTIPLIER
 	return SHALLOW_LAND_SPEED_MULTIPLIER
+
+static func _deep_water_speed_multiplier(movement_tags: Array, wrong_now: bool) -> float:
+	if has_deep_water_speed_bonus(movement_tags):
+		return DEEP_WATER_SPEED_MULTIPLIER
+	if wrong_now:
+		return DEEP_WATER_LAND_DRAG_MULTIPLIER
+	return 1.0
 
 static func _is_deep_water_wrong_now(movement_tags: Array, swim_time_remaining: float) -> bool:
 	if _has_any_tag(movement_tags, ["aquatic", "paddling", "wading"]):
