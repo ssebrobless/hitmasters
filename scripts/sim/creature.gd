@@ -19,6 +19,7 @@ const CrayfishKitScript := preload("res://scripts/sim/kits/crayfish.gd")
 const WaterShrewKitScript := preload("res://scripts/sim/kits/water_shrew.gd")
 const BeaverKitScript := preload("res://scripts/sim/kits/beaver.gd")
 const OwlKitScript := preload("res://scripts/sim/kits/owl.gd")
+const HeronKitScript := preload("res://scripts/sim/kits/great_blue_heron.gd")
 const DuckKitScript := preload("res://scripts/sim/kits/duck.gd")
 
 const WRONG_TERRAIN_GRACE_SEC := 3.0
@@ -553,6 +554,8 @@ func make_damage_event(amount: float, delivery: int, plane: int, source_ability:
 	return event
 
 func add_modifier(source: String, values: Dictionary, duration: float) -> void:
+	if _modifier_value("cc_immune", 1.0) > 1.5 and _is_disruption_modifier(values):
+		return
 	modifiers.append({"source": source, "values": values, "remaining": duration})
 
 func add_capped_modifier(source: String, values: Dictionary, duration: float, max_stacks: int) -> void:
@@ -571,6 +574,12 @@ func add_capped_modifier(source: String, values: Dictionary, duration: float, ma
 func remove_modifiers_from_source(source: String) -> void:
 	for i in range(modifiers.size() - 1, -1, -1):
 		if String(modifiers[i].get("source", "")) == source:
+			modifiers.remove_at(i)
+
+func cleanse_negative_modifiers() -> void:
+	for i in range(modifiers.size() - 1, -1, -1):
+		var values: Dictionary = modifiers[i].get("values", {})
+		if _is_negative_modifier(values):
 			modifiers.remove_at(i)
 
 func get_modifier_value(key: String, fallback: float) -> float:
@@ -840,6 +849,25 @@ func _modifier_value(key: String, fallback: float) -> float:
 			output *= float(values[key])
 	return output
 
+func _is_disruption_modifier(values: Dictionary) -> bool:
+	if values.has("can_act_mult") and float(values["can_act_mult"]) <= 0.5:
+		return true
+	if values.has("ability_use_mult") and float(values["ability_use_mult"]) <= 0.5:
+		return true
+	return values.has("move_speed_mult") and float(values["move_speed_mult"]) <= 0.0
+
+func _is_negative_modifier(values: Dictionary) -> bool:
+	for key in values.keys():
+		var value := float(values[key])
+		match String(key):
+			"can_act_mult", "ability_use_mult", "move_speed_mult", "attack_speed_mult", "damage_dealt_mult", "healing_received_mult":
+				if value < 1.0:
+					return true
+			"damage_taken_mult":
+				if value > 1.0:
+					return true
+	return false
+
 func _passive_percent(passive_name: String, fallback: float) -> float:
 	return get_passive_percent(passive_name, 0, fallback)
 
@@ -886,6 +914,8 @@ func _make_kit() -> RefCounted:
 			return BeaverKitScript.new()
 		"owl":
 			return OwlKitScript.new()
+		"great_blue_heron":
+			return HeronKitScript.new()
 		"duck":
 			return DuckKitScript.new()
 		_:

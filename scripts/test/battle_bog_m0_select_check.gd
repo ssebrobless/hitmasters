@@ -61,4 +61,4 @@ func _run() -> void:
 		str(select_text_ok),
 		str(roster_identity_ok)
 	])
-	quit(0 if creature_buttons == 21 and selectable_buttons == 11 and remembered and select_text_ok and roster_identity_ok else 1)
+	quit(0 if creature_buttons == 21 and selectable_buttons == 12 and remembered and select_text_ok and roster_identity_ok else 1)
