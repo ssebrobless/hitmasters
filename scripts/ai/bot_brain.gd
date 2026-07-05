@@ -43,11 +43,11 @@ func build_frame(actor: Node) -> Resource:
 	frame.aim = _aim_point(actor, target, target_position, mode)
 
 	if mode == "retreat":
-		frame.move = direction
+		frame.move = _steered_move(actor, target_position, direction)
 		return frame
 
 	var hold_range: float = _preferred_range(actor) + _target_radius(target)
-	frame.move = direction if distance > hold_range else _strafe_direction(direction, actor.team)
+	frame.move = _steered_move(actor, target_position, direction) if distance > hold_range else _strafe_direction(direction, actor.team)
 	if _valid_target(target):
 		frame.set_button(InputFrameScript.BUTTON_PRIMARY, distance <= _primary_range(actor, target))
 		_hook(actor).apply(actor, target, frame, distance)
@@ -317,6 +317,15 @@ func _set_retreating(actor: Node, retreating: bool) -> void:
 		retreating_actors[key] = true
 	else:
 		retreating_actors.erase(key)
+
+# Bots route long moves through the arena's cover-aware steering so they
+# slide around walls instead of walking into them (2026-07-05 playtest fix).
+func _steered_move(actor: Node, destination: Vector2, fallback: Vector2) -> Vector2:
+	if actor.arena != null and actor.arena.has_method("get_steering_direction"):
+		var steered: Vector2 = actor.arena.get_steering_direction(actor.global_position, destination, float(actor.body_radius), actor.team)
+		if steered != Vector2.ZERO:
+			return steered
+	return fallback
 
 func _strafe_direction(direction: Vector2, team: int) -> Vector2:
 	return Vector2(-direction.y, direction.x) * (1.0 if team == 0 else -1.0)

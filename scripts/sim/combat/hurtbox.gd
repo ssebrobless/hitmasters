@@ -107,6 +107,24 @@ static func _closest_segment_points(p1: Vector2, q1: Vector2, p2: Vector2, q2: V
 			s = clampf((b - c) / a, 0.0, 1.0)
 	return [p1 + d1 * s, p2 + d2 * t]
 
+# Soft body separation (decision #27): penetration vector pushing `a` away
+# from `b`, ZERO when the hulls don't overlap. Capsule-aware via the core
+# segments; exact coincidence falls back to a deterministic axis.
+static func separation_push(a: Node, b: Node) -> Vector2:
+	return separation_push_hulls(hull_of(a), hull_of(b))
+
+static func separation_push_hulls(hull_a: Dictionary, hull_b: Dictionary) -> Vector2:
+	var a_core: Vector2 = core_closest_point(hull_a, hull_b.center)
+	var b_core: Vector2 = core_closest_point(hull_b, a_core)
+	a_core = core_closest_point(hull_a, b_core)
+	var offset := a_core - b_core
+	var distance := offset.length()
+	var min_distance := float(hull_a.radius) + float(hull_b.radius)
+	if distance >= min_distance:
+		return Vector2.ZERO
+	var direction := offset / distance if distance > 0.001 else Vector2.RIGHT
+	return direction * (min_distance - distance)
+
 static func _get_float(node: Node, property: String, fallback: float) -> float:
 	if node == null or not is_instance_valid(node):
 		return fallback

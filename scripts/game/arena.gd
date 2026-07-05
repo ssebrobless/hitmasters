@@ -176,6 +176,7 @@ func _physics_process(delta: float) -> void:
 	if ui_refresh_accumulator >= 0.2:
 		ui_refresh_accumulator = 0.0
 		_update_ui()
+	resolve_body_separation()
 	if PerfStats.enabled:
 		PerfStats.add("arena_tick", int(Time.get_ticks_usec() - perf_start))
 
@@ -1039,6 +1040,65 @@ func is_inside_arena(point: Vector2) -> bool:
 
 func clamp_to_arena(point: Vector2) -> Vector2:
 	return Vector2(clampf(point.x, arena_rect.position.x + 24.0, arena_rect.end.x - 24.0), clampf(point.y, arena_rect.position.y + 24.0, arena_rect.end.y - 24.0))
+
+# Soft body collision (decision #27): grounded live movers push apart with a
+# capped per-tick correction so bodies read as solid without hard physics.
+# Airborne creatures pass over, dashers ghost through, latch pairs stay
+# attached. Deterministic: entities iterated in registration order.
+const SEPARATION_MAX_PUSH_PX := 2.0
+
+func resolve_body_separation() -> void:
+	var bodies: Array[Node] = []
+	for entity in entities:
+		if entity == null or not is_instance_valid(entity):
+			continue
+		if entity.has_method("is_alive") and not entity.is_alive():
+			continue
+		# Movers only (creatures + minions); huts/cores are terrain-like.
+		if not (entity is CharacterBody2D):
+			continue
+		bodies.append(entity)
+	# PERF: hulls computed once per body, and a squared-distance broad phase
+	# rejects far pairs before any hull math (this pass regressed to
+	# 80 ms/frame without it — see perf_harness before committing changes).
+	var hulls: Array[Dictionary] = []
+	var reaches := PackedFloat32Array()
+	for body in bodies:
+		var hull: Dictionary = HurtboxScript.hull_of(body)
+		hulls.append(hull)
+		reaches.append(float(hull.radius) + float(hull.half_len))
+	for i in bodies.size():
+		for j in range(i + 1, bodies.size()):
+			var a: Node = bodies[i]
+			var b: Node = bodies[j]
+			var max_gap: float = reaches[i] + reaches[j]
+			if a.global_position.distance_squared_to(b.global_position) > max_gap * max_gap:
+				continue
+			if _separation_exempt(a, b):
+				continue
+			var push: Vector2 = HurtboxScript.separation_push_hulls(hulls[i], hulls[j])
+			if push == Vector2.ZERO:
+				continue
+			var half: Vector2 = push * 0.5
+			if half.length() > SEPARATION_MAX_PUSH_PX:
+				half = half.normalized() * SEPARATION_MAX_PUSH_PX
+			a.global_position = resolve_body_position(a.global_position + half, a.body_radius)
+			b.global_position = resolve_body_position(b.global_position - half, b.body_radius)
+
+func _separation_exempt(a: Node, b: Node) -> bool:
+	if _passes_over_bodies(a) or _passes_over_bodies(b):
+		return true
+	if a.get("latch_victim") == b or b.get("latch_victim") == a:
+		return true
+	return false
+
+func _passes_over_bodies(body: Node) -> bool:
+	if body.has_method("is_airborne") and body.is_airborne():
+		return true
+	var dash_value: Variant = body.get("dash_timer")
+	if typeof(dash_value) == TYPE_FLOAT and float(dash_value) > 0.0:
+		return true
+	return false
 
 func resolve_body_position(point: Vector2, radius: float) -> Vector2:
 	var resolved := Vector2(clampf(point.x, arena_rect.position.x + radius, arena_rect.end.x - radius), clampf(point.y, arena_rect.position.y + radius, arena_rect.end.y - radius))

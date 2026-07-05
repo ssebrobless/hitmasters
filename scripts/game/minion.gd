@@ -32,6 +32,7 @@ var leash_hut: Node = null
 var defender_slot := 0
 var target_refresh_timer := 0.0
 var cached_target: Node = null
+var facing := Vector2.RIGHT
 
 func setup(minion_arena: Node, minion_team: int, spawn_position: Vector2, minion_kind := "lane", lane_target := Vector2.ZERO, hut: Node = null, slot := 0) -> void:
 	arena = minion_arena
@@ -108,17 +109,27 @@ func _tick_minion(delta: float) -> void:
 	var distance: float = to_target.length()
 	if distance <= attack_range + target.body_radius:
 		velocity = Vector2.ZERO
+		facing = to_target.normalized() if to_target != Vector2.ZERO else facing
 		if attack_timer <= 0.0:
 			_attack(target)
 			attack_timer = attack_cooldown
 	else:
-		_move_toward_point(target.global_position)
+		# Engagement slots: each minion approaches its own angle around the
+		# target so packs fan out into a fighting ring instead of a stack.
+		_move_toward_point(target.global_position + _engage_offset(target))
 	_request_redraw()
+
+func _engage_offset(target: Node) -> Vector2:
+	var slot := defender_slot if leash_hut != null else int(get_instance_id() % 8)
+	var angle := TAU * float(slot) / 8.0
+	var ring: float = (attack_range + float(target.get("body_radius") if target.get("body_radius") != null else 10.0)) * 0.7
+	return Vector2(cos(angle), sin(angle)) * ring
 
 func _attack(target: Node) -> void:
 	# Attack commit (decision #32): swinging/throwing roots the minion
 	# briefly so it can't hard-chase while hitting.
 	attack_commit_timer = 0.25
+	facing = (target.global_position - global_position).normalized()
 	if kind == "pebble":
 		var direction: Vector2 = (target.global_position - global_position).normalized()
 		if arena != null:
@@ -190,11 +201,24 @@ func take_damage_event(event: Resource) -> void:
 	take_damage(event.amount, -1, event.source_actor)
 
 func _draw() -> void:
+	# Attack-commit lunge (decision #32 readability): the body snaps toward
+	# the target and eases back over the 0.25 s commit, so attack speed is
+	# visible in motion, not just numbers.
+	var lunge := Vector2.ZERO
+	if attack_commit_timer > 0.0:
+		var swing_t := 1.0 - attack_commit_timer / 0.25
+		var punch: float = sin(swing_t * PI) * (body_radius * 0.6)
+		lunge = facing * (punch if kind != "pebble" else -punch * 0.6)
+	draw_set_transform(lunge, 0.0, Vector2.ONE)
 	var pixel_size := 5.0 if kind == "tank" else 4.0
 	VisualStyle.draw_pixel_minion(self, team, pixel_size)
 	if kind == "pebble":
-		draw_circle(Vector2(0.0, -body_radius - 3.0), 3.0, Color(0.6, 0.55, 0.45))
+		# Sling arm: the held pebble whips forward on release.
+		var pebble_rest := Vector2(0.0, -body_radius - 3.0)
+		var pebble_at := pebble_rest if attack_commit_timer <= 0.0 else pebble_rest.lerp(facing * (body_radius + 4.0), 1.0 - attack_commit_timer / 0.25)
+		draw_circle(pebble_at, 3.0, Color(0.6, 0.55, 0.45))
 	elif kind == "tank":
 		draw_arc(Vector2.ZERO, body_radius + 2.0, 0.0, TAU, 20, Color(0.5, 0.45, 0.35), 2.0)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	draw_rect(Rect2(Vector2(-body_radius, -body_radius - 8.0), Vector2(body_radius * 2.0, 4.0)), Color(0.08, 0.08, 0.08))
 	draw_rect(Rect2(Vector2(-body_radius, -body_radius - 8.0), Vector2(body_radius * 2.0 * (health / max_health), 4.0)), Color(0.3, 1.0, 0.45))
