@@ -2,6 +2,7 @@ extends SceneTree
 
 const ARENA_SCENE := "res://scenes/Arena.tscn"
 const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
+const MinionScript := preload("res://scripts/game/minion.gd")
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -32,13 +33,15 @@ func _run() -> void:
 	var follow_ok := _check_follow(arena, failures)
 	var aggro_ok := _check_aggro(arena, failures)
 	var farm_ok := _check_farm_cancel(arena, failures)
-	var passed := spawn_ok and switch_ok and follow_ok and aggro_ok and farm_ok
-	print("m5_squad spawn=%s switch=%s follow=%s aggro=%s farm=%s" % [
+	var proactive_ok := _check_farm_proactive(arena, failures)
+	var passed := spawn_ok and switch_ok and follow_ok and aggro_ok and farm_ok and proactive_ok
+	print("m5_squad spawn=%s switch=%s follow=%s aggro=%s farm=%s proactive=%s" % [
 		str(spawn_ok),
 		str(switch_ok),
 		str(follow_ok),
 		str(aggro_ok),
-		str(farm_ok)
+		str(farm_ok),
+		str(proactive_ok)
 	])
 	for failure in failures:
 		push_error(failure)
@@ -121,5 +124,46 @@ func _check_farm_cancel(arena: Node, failures: Array[String]) -> bool:
 			arena.squad_command,
 			str(arena.squad_aggro_target),
 			frame.buttons
+		])
+	return ok
+
+# Uncontrolled squad members must be proactive in farm mode (2026-07-05
+# fix): advance to the frontline instead of idling at spawn, chase waves
+# from far out, but never contest a wave an enemy creature is holding.
+func _check_farm_proactive(arena: Node, failures: Array[String]) -> bool:
+	arena._issue_squad_farm(false)
+	var inactive: Node = arena.player_squad[1] if arena.player != arena.player_squad[1] else arena.player_squad[0]
+	inactive.health = inactive.max_health
+	inactive.global_position = arena.get_team_spawn(0)
+	for bot in arena.bots:
+		bot.global_position = arena.get_team_spawn(1)
+
+	var idle_frame: Resource = arena._build_squad_ai_frame(inactive)
+	var leaves_spawn: bool = idle_frame.move != Vector2.ZERO
+
+	var minion := MinionScript.new()
+	arena.add_child(minion)
+	minion.setup(arena, 1, inactive.global_position + Vector2(400.0, 0.0), "lane", Vector2.ZERO)
+	arena.register_entity(minion)
+	arena.track_minion(minion)
+	var toward: Vector2 = (minion.global_position - inactive.global_position).normalized()
+	var chase_frame: Resource = arena._build_squad_ai_frame(inactive)
+	var chases_wave: bool = chase_frame.move.dot(toward) > 0.5
+
+	# The frontline fallback can share a direction with the wave, so assert
+	# the contested-guard itself: clear before an enemy arrives, contested
+	# once one is standing on the farm point.
+	var uncontested: bool = not arena._farm_point_contested(inactive, minion.global_position)
+	arena.bots[0].global_position = minion.global_position
+	var respects_danger: bool = uncontested and arena._farm_point_contested(inactive, minion.global_position)
+
+	arena.unregister_entity(minion)
+	minion.queue_free()
+	var ok := leaves_spawn and chases_wave and respects_danger
+	if not ok:
+		failures.append("farm proactive expected leave_spawn/chase/respect_danger, got %s/%s/%s" % [
+			str(leaves_spawn),
+			str(chases_wave),
+			str(respects_danger)
 		])
 	return ok

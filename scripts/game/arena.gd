@@ -28,6 +28,8 @@ const TargetFilter := preload("res://scripts/sim/combat/target_filter.gd")
 const HurtboxScript := preload("res://scripts/sim/combat/hurtbox.gd")
 const PerfOverlayScript := preload("res://scripts/ui/perf_overlay.gd")
 const PerfStats := preload("res://scripts/game/perf_stats.gd")
+const AbilityBarScript := preload("res://scripts/ui/ability_bar.gd")
+const CreatureInfoPanelScript := preload("res://scripts/ui/creature_info_panel.gd")
 const StockManagerScript := preload("res://scripts/game/stock_manager.gd")
 
 const PLAYABLE_CREATURE_POOL := ["snapping_turtle", "chorus_frog", "mink", "beaver", "owl", "duck"]
@@ -92,6 +94,8 @@ var camera_zoom := Vector2(0.9, 0.9)
 var status_label: Label
 var core_label: Label
 var cooldown_label: Label
+var ability_bar: Control
+var info_panel: Control
 var scoreboard_label: Label
 var kill_feed_label: Label
 var end_summary_label: Label
@@ -250,7 +254,11 @@ func _build_ui() -> void:
 	kill_feed_label = Label.new()
 	end_summary_label = Label.new()
 	help_label = Label.new()
-	help_label.text = "WASD move | mouse aim | LMB primary | Q / E abilities | 1/2/3 swap | T regroup | G farm/safe | Space flight | Esc menu"
+	# Full controls + ability text live in the hold-P panel now (UI pass);
+	# the old cooldown text line is superseded by the ability bar but kept
+	# updated (hidden) for check-script compatibility.
+	help_label.text = "hold P — creature info & controls"
+	cooldown_label.visible = false
 
 	root.add_child(status_label)
 	root.add_child(core_label)
@@ -268,6 +276,24 @@ func _build_ui() -> void:
 	minimap.offset_right = -14.0
 	minimap.offset_bottom = 160.0
 	canvas.add_child(minimap)
+
+	ability_bar = AbilityBarScript.new()
+	ability_bar.arena = self
+	ability_bar.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	ability_bar.offset_left = -300.0
+	ability_bar.offset_right = 300.0
+	ability_bar.offset_top = -64.0
+	ability_bar.offset_bottom = -14.0
+	canvas.add_child(ability_bar)
+
+	info_panel = CreatureInfoPanelScript.new()
+	info_panel.arena = self
+	info_panel.set_anchors_preset(Control.PRESET_CENTER_LEFT)
+	info_panel.offset_left = 24.0
+	info_panel.offset_top = -220.0
+	info_panel.offset_right = 560.0
+	info_panel.offset_bottom = 220.0
+	canvas.add_child(info_panel)
 
 	var perf_overlay := PerfOverlayScript.new()
 	perf_overlay.arena = self
@@ -552,11 +578,43 @@ func _follow_active_frame(actor: Node) -> Resource:
 	return _move_to_frame(actor, player.global_position, SQUAD_FOLLOW_RADIUS, player.global_position)
 
 func _safe_farm_frame(actor: Node) -> Resource:
-	var minion_target := _closest_enemy_minion(actor, 520.0)
-	if minion_target != null:
+	# Proactive when uncontrolled (2026-07-05 playtest: 'in gather they just
+	# stand still in spawn'): push out and clear the nearest wave, but never
+	# contest a point an enemy creature is holding — the frontline hut line
+	# is the risk ceiling, and _is_severe_danger retreat still overrides all.
+	var minion_target := _closest_enemy_minion(actor, 900.0)
+	if minion_target != null and not _farm_point_contested(actor, minion_target.global_position):
 		return _direct_target_frame(actor, minion_target, false)
-	var patrol := _safe_patrol_point(actor)
-	return _move_to_frame(actor, patrol, 70.0, patrol)
+	var frontline := _squad_frontline_point(actor)
+	return _move_to_frame(actor, frontline, 70.0, frontline)
+
+# Hold just behind an alive friendly hut (lane split by squad slot) —
+# forward enough to meet waves, safe enough to disengage.
+func _squad_frontline_point(actor: Node) -> Vector2:
+	var own_huts: Array[Node] = []
+	for hut in huts:
+		if hut != null and is_instance_valid(hut) and hut.is_alive() and hut.team == actor.team:
+			own_huts.append(hut)
+	if own_huts.is_empty():
+		return _safe_patrol_point(actor)
+	var slot: int = maxi(player_squad.find(actor), 0)
+	var hut: Node = own_huts[slot % own_huts.size()]
+	return hut.global_position + Vector2(-90.0 if actor.team == BLUE else 90.0, 0.0)
+
+func _farm_point_contested(actor: Node, point: Vector2) -> bool:
+	for entity in entities:
+		if entity == null or not is_instance_valid(entity):
+			continue
+		var creature_id_value: Variant = entity.get("creature_id")
+		if creature_id_value == null or String(creature_id_value) == "":
+			continue
+		if int(entity.get("team")) == actor.team:
+			continue
+		if entity.has_method("is_alive") and not entity.is_alive():
+			continue
+		if entity.global_position.distance_to(point) < SQUAD_DANGER_RANGE:
+			return true
+	return false
 
 func _retreat_frame(actor: Node) -> Resource:
 	var point := _retreat_point(actor)
