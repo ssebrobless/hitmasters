@@ -209,6 +209,10 @@ func take_damage_event(event: Resource) -> void:
 	break_stealth()
 	var amount: float = _modified_incoming_damage(event)
 	health = maxf(health - amount, 0.0)
+	# Struggle hit (decision #33): the victim's melee blows chunk the grip.
+	if latch_victim != null and is_instance_valid(latch_victim) and event.source_actor == latch_victim and event.delivery == DamageEventScript.DELIVERY_MELEE:
+		latch_timer = maxf(latch_timer - 0.75, 0.0)
+		latch_victim.latch_timer = latch_timer
 	# Spike rule (decision #20): a heavy ranged hit grounds a flying bird.
 	if state == CreatureStateScript.State.AIRBORNE and not has_movement("always_flying") and event.delivery == DamageEventScript.DELIVERY_RANGED and amount >= 30.0:
 		state = CreatureStateScript.State.NORMAL
@@ -484,7 +488,8 @@ func receive_latch(attacker: Node, duration: float, source_ability: String) -> v
 	latched_attacker = attacker
 	latch_timer = duration
 	latch_source = source_ability
-	latch_move_multiplier = 0.65
+	# Decision #33: the latched pair moves at 45% of the victim's base speed.
+	latch_move_multiplier = 0.45
 
 func release_latch(_reason: String) -> void:
 	if latch_victim != null:
@@ -608,12 +613,20 @@ func _tick_timers(delta: float) -> void:
 
 func _tick_latch(delta: float) -> void:
 	if latch_victim != null and is_instance_valid(latch_victim):
-		latch_timer = maxf(latch_timer - delta, 0.0)
-		latch_execute_timer = maxf(latch_execute_timer - delta, 0.0)
 		var offset: Vector2 = global_position - latch_victim.global_position
 		if offset == Vector2.ZERO:
 			offset = Vector2.LEFT
 		var drag_direction: Vector2 = offset.normalized()
+		# Grip meter (decision #33): the victim struggling — moving against
+		# the drag — drains the latch 1.5x. Attacker owns the grip; the
+		# victim's timer mirrors it so both sides read the same value.
+		var grip_drain := delta
+		var victim_velocity: Vector2 = latch_victim.velocity
+		if victim_velocity.length() > 8.0 and victim_velocity.normalized().dot(drag_direction) < -0.3:
+			grip_drain = delta * 1.5
+		latch_timer = maxf(latch_timer - grip_drain, 0.0)
+		latch_victim.latch_timer = latch_timer
+		latch_execute_timer = maxf(latch_execute_timer - delta, 0.0)
 		if max_health > latch_victim.max_health:
 			latch_victim.global_position += drag_direction * get_speed_px() * 0.18 * delta
 		global_position = latch_victim.global_position + drag_direction * (body_radius + latch_victim.body_radius * 0.5)
@@ -623,19 +636,24 @@ func _tick_latch(delta: float) -> void:
 		elif latch_timer <= 0.0:
 			release_latch("timeout")
 	elif latched_attacker != null and is_instance_valid(latched_attacker):
-		latch_timer = maxf(latch_timer - delta, 0.0)
-		if latch_timer <= 0.0:
-			# Only release if the attacker is still latched to US — otherwise
-			# our stale timer would cut an unrelated newer latch.
-			if latched_attacker.latch_victim == self:
+		if latched_attacker.latch_victim == self:
+			# Attacker mirrors the grip onto us each tick; no double drain.
+			if latch_timer <= 0.0:
 				latched_attacker.release_latch("timeout")
-			else:
+		else:
+			# Stale link: our attacker moved on to someone else.
+			latch_timer = maxf(latch_timer - delta, 0.0)
+			if latch_timer <= 0.0:
 				latched_attacker = null
 				latch_move_multiplier = 1.0
 
 func _modified_incoming_damage(event: Resource) -> float:
 	var amount: float = event.amount
 	amount *= _modifier_value("damage_taken_mult", 1.0)
+	# Decision #33: while latched on, third parties deal 75% — the victim's
+	# own fight-back stays the premier answer to a latch.
+	if latch_victim != null and is_instance_valid(latch_victim) and event.source_actor != null and event.source_actor != latch_victim:
+		amount *= 0.75
 	if creature_id == "snapping_turtle":
 		amount *= 1.0 - _passive_percent("Protective Shell", 0.0)
 	var source_actor = event.source_actor

@@ -19,11 +19,13 @@ var team := 0
 var kind := "lane"
 var max_health := 80.0
 var health := 80.0
-var speed := 145.0
+# Speeds cut 40% (decision #32): lane 145→87, tank 105→63, pebble 125→75.
+var speed := 87.0
 var damage := 14.0
 var attack_range := 34.0
 var attack_cooldown := 0.9
 var attack_timer := 0.0
+var attack_commit_timer := 0.0
 var body_radius := 13.0
 var march_target := Vector2.ZERO
 var leash_hut: Node = null
@@ -43,13 +45,13 @@ func setup(minion_arena: Node, minion_team: int, spawn_position: Vector2, minion
 		"tank":
 			max_health = 220.0
 			damage = 10.0
-			speed = 105.0
+			speed = 63.0
 			body_radius = 17.0
 			attack_cooldown = 1.2
 		"pebble":
 			max_health = 70.0
 			damage = 10.0
-			speed = 125.0
+			speed = 75.0
 			attack_range = 96.0
 			attack_cooldown = 1.4
 		"melee":
@@ -73,6 +75,7 @@ func _tick_minion(delta: float) -> void:
 		return
 
 	attack_timer = maxf(attack_timer - delta, 0.0)
+	attack_commit_timer = maxf(attack_commit_timer - delta, 0.0)
 	# Re-query targets on a timer, not every frame — O(n) scans are the cost.
 	target_refresh_timer -= delta
 	if target_refresh_timer <= 0.0:
@@ -113,6 +116,9 @@ func _tick_minion(delta: float) -> void:
 	_request_redraw()
 
 func _attack(target: Node) -> void:
+	# Attack commit (decision #32): swinging/throwing roots the minion
+	# briefly so it can't hard-chase while hitting.
+	attack_commit_timer = 0.25
 	if kind == "pebble":
 		var direction: Vector2 = (target.global_position - global_position).normalized()
 		if arena != null:
@@ -148,6 +154,9 @@ func _march(_delta: float) -> void:
 	_move_toward_point(destination)
 
 func _move_toward_point(point: Vector2) -> void:
+	if attack_commit_timer > 0.0:
+		velocity = Vector2.ZERO
+		return
 	var move_direction := (point - global_position).normalized()
 	if arena != null:
 		move_direction = arena.get_steering_direction(global_position, point, body_radius, team)
