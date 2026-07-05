@@ -41,6 +41,7 @@ func _run() -> void:
 func _check_primary_alternates(arena: Node, failures: Array[String]) -> void:
 	var actor: Node = arena.player
 	var target: Node = arena.bots[0]
+	target.apply_creature("cane_toad")
 	actor.global_position = Vector2.ZERO
 	target.global_position = Vector2(18.0, 0.0)
 	target.health = target.max_health
@@ -64,6 +65,7 @@ func _check_primary_alternates(arena: Node, failures: Array[String]) -> void:
 func _check_caridoid_escape(arena: Node, failures: Array[String]) -> void:
 	var actor: Node = arena.player
 	var target: Node = arena.bots[0]
+	target.apply_creature("cane_toad")
 	actor.global_position = Vector2.ZERO
 	target.global_position = Vector2(12.0, 0.0)
 	target.health = target.max_health

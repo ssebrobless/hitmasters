@@ -10,6 +10,7 @@ const HurtboxScript := preload("res://scripts/sim/combat/hurtbox.gd")
 const PerfStats := preload("res://scripts/game/perf_stats.gd")
 const VisualStyle := preload("res://scripts/visual/visual_style.gd")
 const TurtleKitScript := preload("res://scripts/sim/kits/snapping_turtle.gd")
+const WaterSnakeKitScript := preload("res://scripts/sim/kits/water_snake.gd")
 const FrogKitScript := preload("res://scripts/sim/kits/chorus_frog.gd")
 const NewtKitScript := preload("res://scripts/sim/kits/newt.gd")
 const MinkKitScript := preload("res://scripts/sim/kits/mink.gd")
@@ -903,6 +904,8 @@ func _make_kit() -> RefCounted:
 	match creature_id:
 		"snapping_turtle":
 			return TurtleKitScript.new()
+		"water_snake":
+			return WaterSnakeKitScript.new()
 		"chorus_frog":
 			return FrogKitScript.new()
 		"newt":

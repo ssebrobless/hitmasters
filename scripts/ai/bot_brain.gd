@@ -2,6 +2,7 @@ extends RefCounted
 
 const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 const TurtleHook := preload("res://scripts/ai/bot_kit_hooks/snapping_turtle_bot.gd")
+const WaterSnakeHook := preload("res://scripts/ai/bot_kit_hooks/water_snake_bot.gd")
 const FrogHook := preload("res://scripts/ai/bot_kit_hooks/chorus_frog_bot.gd")
 const NewtHook := preload("res://scripts/ai/bot_kit_hooks/newt_bot.gd")
 const MinkHook := preload("res://scripts/ai/bot_kit_hooks/mink_bot.gd")
@@ -344,6 +345,8 @@ func _hook(actor: Node) -> RefCounted:
 	match actor.creature_id:
 		"snapping_turtle":
 			hook = TurtleHook.new()
+		"water_snake":
+			hook = WaterSnakeHook.new()
 		"chorus_frog":
 			hook = FrogHook.new()
 		"newt":
@@ -381,6 +384,8 @@ func _preferred_range(actor: Node) -> float:
 			return 26.0
 		"snapping_turtle":
 			return 24.0
+		"water_snake":
+			return 22.0
 		"mink":
 			return 18.0
 		"bullfrog":
