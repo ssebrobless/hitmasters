@@ -8,11 +8,16 @@ var selected_creature_id := "snapping_turtle"
 var selected_squad_ids: Array[String] = ["snapping_turtle", "chorus_frog", "mink"]
 
 func _ready() -> void:
+	var perf_requested := false
 	for argument in OS.get_cmdline_args():
 		if argument.begins_with("--mode="):
 			selected_mode = argument.trim_prefix("--mode=")
 		elif argument.begins_with("--creature="):
 			set_selected_creature(argument.trim_prefix("--creature="))
+		elif argument == "--bb-perf" or argument.begins_with("--bb-perf-frames="):
+			perf_requested = true
+	if perf_requested:
+		add_child(preload("res://scripts/game/perf_harness.gd").new())
 
 func set_selected_creature(creature_id: String) -> void:
 	var playable_id := _playable_or_default(creature_id)

@@ -288,11 +288,10 @@ func _is_hut(actor: Node, target: Node) -> bool:
 		return false
 	return actor.arena.huts.has(target)
 
+# PERF: O(1) `in` check — see target_filter.gd note; get_property_list()
+# here cost ~110 ms per bot per tick (the 2026-07-05 unplayable-lag bug).
 func _has_property(target: Object, property_name: String) -> bool:
-	for property: Dictionary in target.get_property_list():
-		if String(property.get("name", "")) == property_name:
-			return true
-	return false
+	return property_name in target
 
 func _sticky_target(actor: Node) -> Node:
 	var key := int(actor.get_instance_id())

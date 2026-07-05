@@ -7,6 +7,7 @@ const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
 const EnvironmentProfileScript := preload("res://scripts/sim/environment_profile.gd")
 const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
 const HurtboxScript := preload("res://scripts/sim/combat/hurtbox.gd")
+const PerfStats := preload("res://scripts/game/perf_stats.gd")
 const VisualStyle := preload("res://scripts/visual/visual_style.gd")
 const TurtleKitScript := preload("res://scripts/sim/kits/snapping_turtle.gd")
 const FrogKitScript := preload("res://scripts/sim/kits/chorus_frog.gd")
@@ -129,7 +130,10 @@ func set_input_frame(next_frame: Resource) -> void:
 	input_frame = next_frame
 
 func _physics_process(delta: float) -> void:
+	var perf_start := Time.get_ticks_usec() if PerfStats.enabled else 0
 	tick_sim(delta)
+	if PerfStats.enabled:
+		PerfStats.add("creatures", int(Time.get_ticks_usec() - perf_start))
 
 func _process(delta: float) -> void:
 	render_flash_timer = maxf(render_flash_timer - delta, 0.0)

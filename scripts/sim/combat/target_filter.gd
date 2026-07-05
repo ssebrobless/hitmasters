@@ -59,8 +59,9 @@ static func _has_required_api(target: Node, opts: Dictionary, default_require_da
 		return false
 	return true
 
+# PERF: the `in` operator is an O(1) engine property check. Never use
+# get_property_list() for this — it allocates a Dictionary per property per
+# call and was the root cause of the 2026-07-05 4.5 s/frame arena stall
+# (millions of allocations/frame from bot + minion scan loops).
 static func _has_property(target: Object, property_name: String) -> bool:
-	for property: Dictionary in target.get_property_list():
-		if String(property.get("name", "")) == property_name:
-			return true
-	return false
+	return property_name in target

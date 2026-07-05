@@ -9,6 +9,7 @@ class_name Minion
 # Defenders leash to their hut and respawn via the hut, not here.
 
 const VisualStyle := preload("res://scripts/visual/visual_style.gd")
+const PerfStats := preload("res://scripts/game/perf_stats.gd")
 
 const LEASH_RANGE := 130.0
 const AGGRO_RANGE := 260.0
@@ -62,6 +63,12 @@ func is_alive() -> bool:
 	return health > 0.0
 
 func _physics_process(delta: float) -> void:
+	var perf_start := Time.get_ticks_usec() if PerfStats.enabled else 0
+	_tick_minion(delta)
+	if PerfStats.enabled:
+		PerfStats.add("minions", int(Time.get_ticks_usec() - perf_start))
+
+func _tick_minion(delta: float) -> void:
 	if health <= 0.0:
 		return
 

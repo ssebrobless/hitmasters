@@ -26,6 +26,8 @@ const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
 const SimConstants := preload("res://scripts/sim/sim_constants.gd")
 const TargetFilter := preload("res://scripts/sim/combat/target_filter.gd")
 const HurtboxScript := preload("res://scripts/sim/combat/hurtbox.gd")
+const PerfOverlayScript := preload("res://scripts/ui/perf_overlay.gd")
+const PerfStats := preload("res://scripts/game/perf_stats.gd")
 const StockManagerScript := preload("res://scripts/game/stock_manager.gd")
 
 const PLAYABLE_CREATURE_POOL := ["snapping_turtle", "chorus_frog", "mink", "beaver", "owl", "duck"]
@@ -136,6 +138,7 @@ func _configure_mode() -> void:
 func _physics_process(delta: float) -> void:
 	if match_over:
 		return
+	var perf_start := Time.get_ticks_usec() if PerfStats.enabled else 0
 
 	hut_defend_hint_timer = maxf(hut_defend_hint_timer - delta, 0.0)
 	habitat_deposit_feedback_timer = maxf(habitat_deposit_feedback_timer - delta, 0.0)
@@ -154,9 +157,12 @@ func _physics_process(delta: float) -> void:
 		if player_frame.is_pressed(InputFrameScript.BUTTON_HUT_DEFEND) and hut_defend_hint_timer <= 0.0 and _player_near_own_hut():
 			hut_defend_hint_timer = 2.5
 			add_kill_feed("Hut defense assignment needs a reserve habitat upgrade")
+	var perf_bots_start := Time.get_ticks_usec() if PerfStats.enabled else 0
 	for bot in bots:
 		if bot != null and is_instance_valid(bot) and bot.is_alive():
 			bot.set_input_frame(bot_brain.build_frame(bot))
+	if PerfStats.enabled:
+		PerfStats.add("bot_frames", int(Time.get_ticks_usec() - perf_bots_start))
 
 	elapsed += delta
 	wave_timer -= delta
@@ -170,6 +176,8 @@ func _physics_process(delta: float) -> void:
 	if ui_refresh_accumulator >= 0.2:
 		ui_refresh_accumulator = 0.0
 		_update_ui()
+	if PerfStats.enabled:
+		PerfStats.add("arena_tick", int(Time.get_ticks_usec() - perf_start))
 
 func _process(delta: float) -> void:
 	_update_camera_lead(delta)
@@ -259,6 +267,15 @@ func _build_ui() -> void:
 	minimap.offset_right = -14.0
 	minimap.offset_bottom = 160.0
 	canvas.add_child(minimap)
+
+	var perf_overlay := PerfOverlayScript.new()
+	perf_overlay.arena = self
+	perf_overlay.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	perf_overlay.offset_left = -420.0
+	perf_overlay.offset_top = -34.0
+	perf_overlay.offset_right = -14.0
+	perf_overlay.offset_bottom = -14.0
+	canvas.add_child(perf_overlay)
 
 	squad_hud = SquadHudScript.new()
 	squad_hud.set("arena", self)

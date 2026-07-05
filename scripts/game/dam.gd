@@ -54,9 +54,8 @@ func _collapse() -> void:
 			arena.unregister_dam(self)
 	queue_free()
 
-func _process(_delta: float) -> void:
-	queue_redraw()
-
+# Static drawing: redraws happen on damage/repair only (perf constitution,
+# decision #31) — never per frame.
 func _draw() -> void:
 	var local := Rect2(rect.position - global_position, rect.size)
 	var wood := Color(0.4, 0.28, 0.14)

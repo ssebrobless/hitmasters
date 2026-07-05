@@ -94,9 +94,8 @@ func _spawn_defender(kind: String, slot: int) -> void:
 		if defenders[i] == null or not is_instance_valid(defenders[i]):
 			defenders.remove_at(i)
 
-func _process(_delta: float) -> void:
-	queue_redraw()
-
+# Static drawing: redraws happen on damage/team events only (perf
+# constitution, decision #31) — never per frame.
 func _draw() -> void:
 	var mud := Color(0.42, 0.3, 0.18)
 	var mud_dark := Color(0.28, 0.2, 0.12)
