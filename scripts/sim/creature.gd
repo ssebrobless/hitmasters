@@ -12,6 +12,7 @@ const VisualStyle := preload("res://scripts/visual/visual_style.gd")
 const TurtleKitScript := preload("res://scripts/sim/kits/snapping_turtle.gd")
 const FrogKitScript := preload("res://scripts/sim/kits/chorus_frog.gd")
 const MinkKitScript := preload("res://scripts/sim/kits/mink.gd")
+const BullfrogKitScript := preload("res://scripts/sim/kits/bullfrog.gd")
 const BeaverKitScript := preload("res://scripts/sim/kits/beaver.gd")
 const OwlKitScript := preload("res://scripts/sim/kits/owl.gd")
 const DuckKitScript := preload("res://scripts/sim/kits/duck.gd")
@@ -64,6 +65,7 @@ var q_charges := 0
 var e_charges := 0
 var dash_velocity := Vector2.ZERO
 var dash_timer := 0.0
+var pass_obstacles_timer := 0.0
 var modifiers: Array[Dictionary] = []
 var healing_ticks: Array[Dictionary] = []
 var latched_attacker: Node = null
@@ -383,7 +385,7 @@ func _move_from_input(delta: float) -> void:
 		if is_airborne():
 			# Airborne creatures pass over obstacles; only the arena bounds apply.
 			global_position = arena.clamp_to_arena(global_position)
-		elif arena.has_method("resolve_body_position"):
+		elif pass_obstacles_timer <= 0.0 and arena.has_method("resolve_body_position"):
 			global_position = arena.resolve_body_position(global_position, body_radius)
 	last_move_displacement_px = global_position.distance_to(start_position)
 
@@ -608,6 +610,7 @@ func _respawn() -> void:
 	_reset_terrain_profile()
 	dash_velocity = Vector2.ZERO
 	dash_timer = 0.0
+	pass_obstacles_timer = 0.0
 	primary_timer = 0.4
 	q_timer = maxf(q_timer, 1.0)
 	e_timer = maxf(e_timer, 1.0)
@@ -632,6 +635,7 @@ func _tick_timers(delta: float) -> void:
 	q_timer = maxf(q_timer - delta, 0.0)
 	e_timer = maxf(e_timer - delta, 0.0)
 	dash_timer = maxf(dash_timer - delta, 0.0)
+	pass_obstacles_timer = maxf(pass_obstacles_timer - delta, 0.0)
 	if dash_timer <= 0.0:
 		dash_velocity = Vector2.ZERO
 	for i in range(modifiers.size() - 1, -1, -1):
@@ -758,6 +762,8 @@ func _make_kit() -> RefCounted:
 			return FrogKitScript.new()
 		"mink":
 			return MinkKitScript.new()
+		"bullfrog":
+			return BullfrogKitScript.new()
 		"beaver":
 			return BeaverKitScript.new()
 		"owl":

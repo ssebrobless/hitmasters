@@ -8,7 +8,8 @@ const SLICE_CREATURE_IDS := [
 	"mink",
 	"beaver",
 	"owl",
-	"duck"
+	"duck",
+	"bullfrog"
 ]
 const FAMILY_LABELS := {
 	"amphibian": "Amphibians",
@@ -133,7 +134,7 @@ func _select_creature(index: int) -> void:
 		String(creature.get("family", "family")).to_upper(),
 		", ".join(PackedStringArray(creature.get("role", []))).to_upper()
 	]
-	identity_label.text = String(creature.get("identity_blurb", ""))
+	identity_label.text = String(creature.get("identity_blurb", "Playable Wave 1 creature."))
 	var stats: Dictionary = creature.get("stats", {})
 	var footprint: Dictionary = creature.get("footprint", {})
 	stat_label.text = "HP %s    Speed %s    Diet %s    Footprint %s" % [
@@ -283,9 +284,9 @@ func _format_short_list(value: Variant) -> String:
 			var text := String(item)
 			if not text.is_empty():
 				parts.append(text)
-		return ", ".join(parts) if not parts.is_empty() else "?"
+		return ", ".join(parts) if not parts.is_empty() else "TBD"
 	var text := String(value)
-	return text if not text.is_empty() else "?"
+	return text if not text.is_empty() else "TBD"
 
 func _start_match() -> void:
 	get_tree().change_scene_to_file(ARENA_SCENE)

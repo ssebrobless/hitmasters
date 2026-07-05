@@ -33,7 +33,7 @@ const CreatureInfoPanelScript := preload("res://scripts/ui/creature_info_panel.g
 const StockManagerScript := preload("res://scripts/game/stock_manager.gd")
 const FoodSourceScript := preload("res://scripts/game/food_source.gd")
 
-const PLAYABLE_CREATURE_POOL := ["snapping_turtle", "chorus_frog", "mink", "beaver", "owl", "duck"]
+const PLAYABLE_CREATURE_POOL := ["snapping_turtle", "chorus_frog", "mink", "beaver", "owl", "duck", "bullfrog"]
 const SQUAD_COMMAND_FARM := "farm"
 const SQUAD_COMMAND_FOLLOW := "follow"
 const SQUAD_COMMAND_AGGRO := "aggro"
@@ -1223,6 +1223,9 @@ func _passes_over_bodies(body: Node) -> bool:
 		return true
 	var dash_value: Variant = body.get("dash_timer")
 	if typeof(dash_value) == TYPE_FLOAT and float(dash_value) > 0.0:
+		return true
+	var pass_obstacles_value: Variant = body.get("pass_obstacles_timer")
+	if typeof(pass_obstacles_value) == TYPE_FLOAT and float(pass_obstacles_value) > 0.0:
 		return true
 	return false
 
