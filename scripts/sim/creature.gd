@@ -11,6 +11,7 @@ const PerfStats := preload("res://scripts/game/perf_stats.gd")
 const VisualStyle := preload("res://scripts/visual/visual_style.gd")
 const TurtleKitScript := preload("res://scripts/sim/kits/snapping_turtle.gd")
 const WaterSnakeKitScript := preload("res://scripts/sim/kits/water_snake.gd")
+const AlligatorKitScript := preload("res://scripts/sim/kits/alligator.gd")
 const FrogKitScript := preload("res://scripts/sim/kits/chorus_frog.gd")
 const NewtKitScript := preload("res://scripts/sim/kits/newt.gd")
 const MinkKitScript := preload("res://scripts/sim/kits/mink.gd")
@@ -669,6 +670,8 @@ func on_kill(_victim: Node) -> void:
 	var diet := String(creature_data.get("diet", ""))
 	if diet == "carnivore" or diet == "omnivore":
 		healing_ticks.append({"remaining": 2.0, "amount_remaining": max_health * 0.05})
+	if kit != null and kit.has_method("on_kill"):
+		kit.on_kill(self, _victim)
 
 func damage_enemy_cores_near(center: Vector2, radius: float, damage: float, source_ability: String) -> void:
 	if arena == null or not arena.has_method("record_core_damage"):
@@ -906,6 +909,8 @@ func _make_kit() -> RefCounted:
 			return TurtleKitScript.new()
 		"water_snake":
 			return WaterSnakeKitScript.new()
+		"alligator":
+			return AlligatorKitScript.new()
 		"chorus_frog":
 			return FrogKitScript.new()
 		"newt":
