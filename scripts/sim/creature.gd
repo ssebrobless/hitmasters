@@ -14,6 +14,7 @@ const FrogKitScript := preload("res://scripts/sim/kits/chorus_frog.gd")
 const MinkKitScript := preload("res://scripts/sim/kits/mink.gd")
 const BullfrogKitScript := preload("res://scripts/sim/kits/bullfrog.gd")
 const CaneToadKitScript := preload("res://scripts/sim/kits/cane_toad.gd")
+const CrayfishKitScript := preload("res://scripts/sim/kits/crayfish.gd")
 const BeaverKitScript := preload("res://scripts/sim/kits/beaver.gd")
 const OwlKitScript := preload("res://scripts/sim/kits/owl.gd")
 const DuckKitScript := preload("res://scripts/sim/kits/duck.gd")
@@ -419,6 +420,9 @@ func _move_from_input(delta: float) -> void:
 		move = input_frame.move.normalized()
 		if input_frame.aim != Vector2.ZERO:
 			last_aim_direction = (input_frame.aim - global_position).normalized()
+	if _modifier_value("forward_back_only", 1.0) > 1.5 and move != Vector2.ZERO:
+		var axis := last_aim_direction.normalized()
+		move = axis * move.dot(axis)
 	var speed_multiplier := latch_move_multiplier * _modifier_value("move_speed_mult", 1.0)
 	velocity = (dash_velocity if dash_timer > 0.0 else move * get_speed_px() * speed_multiplier)
 	if Engine.is_in_physics_frame():
@@ -828,6 +832,8 @@ func _make_kit() -> RefCounted:
 			return BullfrogKitScript.new()
 		"cane_toad":
 			return CaneToadKitScript.new()
+		"crayfish":
+			return CrayfishKitScript.new()
 		"beaver":
 			return BeaverKitScript.new()
 		"owl":
