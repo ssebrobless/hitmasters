@@ -11,6 +11,7 @@ const PerfStats := preload("res://scripts/game/perf_stats.gd")
 const VisualStyle := preload("res://scripts/visual/visual_style.gd")
 const TurtleKitScript := preload("res://scripts/sim/kits/snapping_turtle.gd")
 const FrogKitScript := preload("res://scripts/sim/kits/chorus_frog.gd")
+const NewtKitScript := preload("res://scripts/sim/kits/newt.gd")
 const MinkKitScript := preload("res://scripts/sim/kits/mink.gd")
 const BullfrogKitScript := preload("res://scripts/sim/kits/bullfrog.gd")
 const CaneToadKitScript := preload("res://scripts/sim/kits/cane_toad.gd")
@@ -235,11 +236,17 @@ func take_damage_event(event: Resource) -> void:
 		emit_vfx_event("attack_dodged", {"target": self, "position": global_position})
 		return
 	break_stealth()
+	var before_health := health
 	var amount: float = _modified_incoming_damage(event)
+	if health - amount <= 0.0 and kit != null and kit.has_method("intercept_fatal_damage"):
+		if kit.intercept_fatal_damage(self, event, amount):
+			return
 	health = maxf(health - amount, 0.0)
 	if event.delivery == DamageEventScript.DELIVERY_MELEE and event.source_actor != null and is_instance_valid(event.source_actor) and event.source_actor != self:
 		if kit != null and kit.has_method("on_melee_contact_damage"):
 			kit.on_melee_contact_damage(self, event.source_actor, amount, event)
+	if kit != null and kit.has_method("on_damage_taken"):
+		kit.on_damage_taken(self, event, amount, before_health)
 	# Struggle hit (decision #33): the victim's melee blows chunk the grip.
 	if latch_victim != null and is_instance_valid(latch_victim) and event.source_actor == latch_victim and event.delivery == DamageEventScript.DELIVERY_MELEE:
 		latch_timer = maxf(latch_timer - 0.75, 0.0)
@@ -803,6 +810,8 @@ func _tick_latch(delta: float) -> void:
 				latch_move_multiplier = 1.0
 
 func _modified_incoming_damage(event: Resource) -> float:
+	if _modifier_value("invulnerable", 1.0) > 1.5:
+		return 0.0
 	var amount: float = event.amount
 	amount *= _modifier_value("damage_taken_mult", 1.0)
 	# Decision #33: while latched on, third parties deal 75% — the victim's
@@ -861,6 +870,8 @@ func _make_kit() -> RefCounted:
 			return TurtleKitScript.new()
 		"chorus_frog":
 			return FrogKitScript.new()
+		"newt":
+			return NewtKitScript.new()
 		"mink":
 			return MinkKitScript.new()
 		"bullfrog":
