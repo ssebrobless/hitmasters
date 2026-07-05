@@ -22,6 +22,8 @@ const WRONG_TERRAIN_LATE_DPS := 0.05
 const TAKEOFF_DISTANCE_UNITS := 2.0
 const FLIGHT_GROUNDED_LOCKOUT_SEC := 3.0
 const TERRAIN_SPEED_LERP_RATE := 9.0
+const HUNGER_MAX := 100.0
+const HUNGER_FULL_TO_EMPTY_SEC := 105.0
 
 var arena: Node = null
 var terrain_map: RefCounted = null
@@ -85,6 +87,8 @@ var stealth_timer := 0.0
 var low_window_timer := 0.0
 var respawn_timer := 0.0
 var respawn_duration := 5.0
+var hunger := HUNGER_MAX
+var hunger_satiated := false
 
 func setup(creature_arena: Node, creature_team: int, spawn_position: Vector2, next_creature_id: String, next_terrain_map: RefCounted = null) -> void:
 	arena = creature_arena
@@ -124,6 +128,8 @@ func apply_creature(next_creature_id: String) -> void:
 	if kit != null:
 		kit.setup(self)
 	alive = true
+	hunger = HUNGER_MAX
+	hunger_satiated = false
 	queue_redraw()
 
 func set_input_frame(next_frame: Resource) -> void:
@@ -164,6 +170,8 @@ func tick_sim(delta: float) -> void:
 	_update_flight(delta)
 	_update_terrain(delta)
 	_move_from_input(delta)
+	_tick_hunger(delta)
+	_try_auto_eat()
 	_update_takeoff_charge_from_displacement(last_move_displacement_px)
 	_tick_latch(delta)
 	if kit != null and kit.has_method("tick"):
@@ -258,6 +266,33 @@ func heal(amount: float) -> void:
 				"amount": healed,
 				"position": global_position
 			})
+
+func can_eat_food_kind(food_kind: String) -> bool:
+	var diet := String(creature_data.get("diet", "omnivore"))
+	if food_kind == "plant":
+		return diet == "herbivore" or diet == "omnivore" or diet == "nectarivore"
+	if food_kind == "critter":
+		return diet == "carnivore" or diet == "omnivore"
+	return false
+
+func consume_food(kind: String, food_value: float, heal_fraction: float) -> bool:
+	if not alive or not can_eat_food_kind(kind):
+		return false
+	var before := hunger
+	hunger = minf(hunger + food_value, HUNGER_MAX)
+	if hunger >= HUNGER_MAX:
+		hunger_satiated = true
+	heal(max_health * heal_fraction)
+	if arena != null and arena.has_method("record_food_consumed"):
+		arena.record_food_consumed(self, kind, hunger - before)
+	return true
+
+func is_satiated() -> bool:
+	return hunger_satiated
+
+func reset_hunger_after_deposit() -> void:
+	hunger_satiated = false
+	hunger = HUNGER_MAX * 0.7
 
 func emit_vfx_event(event_type: String, payload: Dictionary = {}) -> void:
 	_apply_own_anim(event_type, payload)
@@ -588,6 +623,8 @@ func _respawn() -> void:
 			arena.on_actor_respawned(self)
 		if arena.has_method("add_circle_telegraph"):
 			arena.add_circle_telegraph(global_position, body_radius + 26.0, Color(0.45, 0.72, 1.0, 0.75) if team == 0 else Color(1.0, 0.4, 0.35, 0.75), 0.6, 4.0, true)
+	hunger = HUNGER_MAX
+	hunger_satiated = false
 	queue_redraw()
 
 func _tick_timers(delta: float) -> void:
@@ -610,6 +647,19 @@ func _tick_timers(delta: float) -> void:
 		healing_ticks[i] = tick
 		if float(tick["remaining"]) <= 0.0 or float(tick["amount_remaining"]) <= 0.0:
 			healing_ticks.remove_at(i)
+
+func _tick_hunger(delta: float) -> void:
+	if hunger_satiated:
+		return
+	hunger = maxf(hunger - (HUNGER_MAX / HUNGER_FULL_TO_EMPTY_SEC) * delta, 0.0)
+	if hunger <= 0.0 and alive:
+		var event := DamageEventScript.new()
+		event.setup(max_health * 10.0, DamageEventScript.DELIVERY_RANGED, DamageEventScript.PLANE_GROUND, null, "Starvation")
+		take_damage_event(event)
+
+func _try_auto_eat() -> void:
+	if arena != null and arena.has_method("try_eat_nearby_food"):
+		arena.try_eat_nearby_food(self)
 
 func _tick_latch(delta: float) -> void:
 	if latch_victim != null and is_instance_valid(latch_victim):
@@ -833,6 +883,7 @@ func _draw() -> void:
 		_draw_meter(Vector2(-body_radius, body_radius + 12.0), body_radius * 2.0, get_flight_ratio(), Color(0.9, 0.9, 0.45))
 	if has_latch():
 		draw_rect(Rect2(Vector2(-body_radius, body_radius + 18.0), Vector2(body_radius * 2.0, 3.0)), Color(1.0, 0.35, 0.25))
+	_draw_meter(Vector2(-body_radius, body_radius + 24.0), body_radius * 2.0, clampf(hunger / HUNGER_MAX, 0.0, 1.0), Color(0.92, 0.7, 0.28) if not hunger_satiated else Color(0.45, 1.0, 0.52))
 
 func _draw_meter(start: Vector2, width: float, ratio: float, color: Color) -> void:
 	draw_rect(Rect2(start, Vector2(width, 3.0)), Color(0.06, 0.06, 0.07))

@@ -31,6 +31,7 @@ const PerfStats := preload("res://scripts/game/perf_stats.gd")
 const AbilityBarScript := preload("res://scripts/ui/ability_bar.gd")
 const CreatureInfoPanelScript := preload("res://scripts/ui/creature_info_panel.gd")
 const StockManagerScript := preload("res://scripts/game/stock_manager.gd")
+const FoodSourceScript := preload("res://scripts/game/food_source.gd")
 
 const PLAYABLE_CREATURE_POOL := ["snapping_turtle", "chorus_frog", "mink", "beaver", "owl", "duck"]
 const SQUAD_COMMAND_FARM := "farm"
@@ -41,6 +42,8 @@ const SQUAD_SWITCH_FEEDBACK_SECONDS := 0.85
 const SQUAD_FOLLOW_RADIUS := 5.0 * SimConstants.UNIT_PX
 const SQUAD_DANGER_HEALTH_RATIO := 0.28
 const SQUAD_DANGER_RANGE := 360.0
+const DAY_LENGTH_SEC := 120.0
+const FOOD_EAT_RADIUS_PAD := 8.0
 
 var entities: Array[Node] = []
 var minions: Array[Node] = []
@@ -62,10 +65,13 @@ var telegraphs: Array[Dictionary] = []
 var vfx_events: Array[Dictionary] = []
 var dams: Array[Node] = []
 var huts: Array[Node] = []
+var food_sources: Array[Node] = []
 var huts_lost := {0: 0, 1: 0}
 var hut_defend_hint_timer := 0.0
 var habitat_deposit_feedback_timer := 0.0
 var habitat_deposit_prompt_state := ""
+var day_index := 1
+var day_timer := 0.0
 var ui_refresh_accumulator := 0.0
 var camera: Camera2D = null
 
@@ -153,6 +159,8 @@ func _physics_process(delta: float) -> void:
 		squad_switch_feedback_state = ""
 		squad_switch_feedback_slot_index = -1
 	_tick_squad_command(delta)
+	_tick_day_cycle(delta)
+	stock_manager.tick_breeding_cues(delta)
 	if _is_1v1_trio_mode():
 		_feed_player_squad_inputs()
 	elif player != null and is_instance_valid(player):
@@ -207,6 +215,8 @@ func _draw() -> void:
 
 	draw_string(ThemeDB.fallback_font, blue_core_position + Vector2(-42.0, -110.0), "BLUE HABITAT", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, Color(0.45, 0.72, 1.0))
 	draw_string(ThemeDB.fallback_font, red_core_position + Vector2(-42.0, -110.0), "RED HABITAT", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, Color(1.0, 0.45, 0.4))
+	_draw_habitat_stock_visuals()
+	_draw_breeding_cues()
 	_draw_squad_badges()
 
 func _setup_crosshair_cursor() -> void:
@@ -316,6 +326,8 @@ func _build_ui() -> void:
 func _spawn_match() -> void:
 	_seed_match_rng()
 	stock_manager.reset()
+	day_index = 1
+	day_timer = 0.0
 
 	var blue_core = CoreScript.new()
 	add_child(blue_core)
@@ -352,6 +364,7 @@ func _spawn_match() -> void:
 	camera.position_smoothing_enabled = true
 	_attach_camera_to_player()
 
+	_refresh_food_sources()
 	spawn_wave()
 	_update_ui()
 
@@ -421,7 +434,7 @@ func get_deposit_prompt_state() -> Dictionary:
 		if habitat_deposit_feedback_timer > 0.0 and not habitat_deposit_prompt_state.is_empty():
 			state = habitat_deposit_prompt_state
 		elif in_home:
-			state = "ready"
+			state = "ready" if not player.has_method("is_satiated") or player.is_satiated() else "needs_food"
 		elif near_home:
 			state = "near"
 		visible = state != "hidden"
@@ -791,6 +804,61 @@ func spawn_wave() -> void:
 func track_minion(minion: Node) -> void:
 	if not minions.has(minion):
 		minions.append(minion)
+
+func _tick_day_cycle(delta: float) -> void:
+	day_timer += delta
+	if day_timer < DAY_LENGTH_SEC:
+		return
+	day_timer = fmod(day_timer, DAY_LENGTH_SEC)
+	day_index += 1
+	_refresh_food_sources()
+	add_kill_feed("Dawn %d: wild food refreshed" % day_index)
+
+func _refresh_food_sources() -> void:
+	for food in food_sources:
+		if food != null and is_instance_valid(food):
+			food.queue_free()
+	food_sources.clear()
+	var spawn_points: Array = terrain_map.get_food_spawn_points() if terrain_map.has_method("get_food_spawn_points") else []
+	for entry: Dictionary in spawn_points:
+		var food = FoodSourceScript.new()
+		add_child(food)
+		food.setup(String(entry.get("kind", FoodSourceScript.KIND_PLANT)), entry.get("position", Vector2.ZERO))
+		food_sources.append(food)
+
+func try_eat_nearby_food(actor: Node) -> bool:
+	if actor == null or not is_instance_valid(actor) or not actor.has_method("consume_food"):
+		return false
+	for i in range(food_sources.size() - 1, -1, -1):
+		var food: Node = food_sources[i]
+		if food == null or not is_instance_valid(food):
+			food_sources.remove_at(i)
+			continue
+		var reach := float(actor.get("body_radius") if actor.get("body_radius") != null else 10.0) + float(food.get("body_radius")) + FOOD_EAT_RADIUS_PAD
+		if actor.global_position.distance_to(food.global_position) > reach:
+			continue
+		if actor.consume_food(String(food.get("kind")), float(food.get("food_value")), float(food.get("heal_fraction"))):
+			food.consume()
+			food_sources.remove_at(i)
+			return true
+	return false
+
+func record_food_consumed(actor: Node, food_kind: String, hunger_gain: float) -> void:
+	var food_label := "plant" if food_kind == FoodSourceScript.KIND_PLANT else "critter"
+	var actor_name: String = actor.get_actor_name() if actor != null and actor.has_method("get_actor_name") else "Creature"
+	if hunger_gain > 0.0:
+		add_kill_feed("%s ate %s (+%d hunger)" % [actor_name, food_label, int(round(hunger_gain))])
+	else:
+		add_kill_feed("%s topped off on %s" % [actor_name, food_label])
+
+func get_day_state() -> Dictionary:
+	return {
+		"day": day_index,
+		"elapsed": day_timer,
+		"remaining": maxf(DAY_LENGTH_SEC - day_timer, 0.0),
+		"length": DAY_LENGTH_SEC,
+		"food_sources": food_sources.size()
+	}
 
 func get_lane_destination(attacking_team: int, lane_anchor: Vector2) -> Vector2:
 	# March to the nearest surviving enemy hut on this lane; if none remain,
@@ -1529,6 +1597,63 @@ func _draw_squad_badges() -> void:
 		draw_string(ThemeDB.fallback_font, position + Vector2(1.5, 1.5), text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(0.02, 0.02, 0.02, 0.85))
 		draw_string(ThemeDB.fallback_font, position, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, color)
 
+func get_habitat_stock_visuals(team := -1) -> Array[Dictionary]:
+	var visuals: Array[Dictionary] = []
+	if stock_manager == null or not stock_manager.has_method("get_team_slots"):
+		return visuals
+	var teams := [BLUE, RED] if team < 0 else [team]
+	for draw_team in teams:
+		var habitat: Rect2 = terrain_map.get_team_habitat_rect(draw_team)
+		if habitat.size.x <= 0.0 or habitat.size.y <= 0.0:
+			continue
+		var slots: Array[Dictionary] = stock_manager.get_team_slots(draw_team)
+		for slot: Dictionary in slots:
+			var slot_index := int(slot.get("slot_index", 0))
+			var stocks := int(slot.get("stocks_remaining", StockManagerScript.MAX_STOCKS))
+			var state := String(slot.get("state", StockManagerScript.STATE_FIELD))
+			var reserves := maxi(0, stocks - (0 if state == StockManagerScript.STATE_RESPAWNING else 1))
+			for reserve_index in mini(reserves, StockManagerScript.MAX_STOCKS - 1):
+				visuals.append({
+					"team": draw_team,
+					"slot_index": slot_index,
+					"reserve_index": reserve_index,
+					"creature_id": String(slot.get("creature_id", "")),
+					"state": state,
+					"position": _habitat_reserve_position(habitat, draw_team, slot_index, reserve_index)
+				})
+	return visuals
+
+func _habitat_reserve_position(habitat: Rect2, team: int, slot_index: int, reserve_index: int) -> Vector2:
+	var x_side := -1.0 if team == BLUE else 1.0
+	var center := habitat.get_center()
+	var row_y := (float(slot_index) - 1.0) * 32.0
+	var col_x := x_side * (34.0 + float(reserve_index) * 26.0)
+	return center + Vector2(col_x, row_y)
+
+func _draw_habitat_stock_visuals() -> void:
+	for visual: Dictionary in get_habitat_stock_visuals():
+		var position: Vector2 = visual.get("position", Vector2.ZERO)
+		var team := int(visual.get("team", BLUE))
+		var team_color := Color(0.42, 0.72, 1.0, 0.84) if team == BLUE else Color(1.0, 0.38, 0.32, 0.84)
+		draw_circle(position, 10.0, Color(0.04, 0.05, 0.045, 0.82))
+		draw_circle(position, 7.0, team_color)
+		draw_arc(position, 11.5, 0.0, TAU, 20, Color(0.88, 0.92, 0.82, 0.45), 1.5)
+		draw_string(ThemeDB.fallback_font, position + Vector2(-5.0, 4.0), str(int(visual.get("slot_index", 0)) + 1), HORIZONTAL_ALIGNMENT_LEFT, 10.0, 9, Color(0.02, 0.025, 0.02, 0.95))
+
+func _draw_breeding_cues() -> void:
+	for cue: Dictionary in stock_manager.get_breeding_cues():
+		var team := int(cue.get("team", BLUE))
+		var habitat: Rect2 = terrain_map.get_team_habitat_rect(team)
+		if habitat.size.x <= 0.0 or habitat.size.y <= 0.0:
+			continue
+		var slot_index := int(cue.get("slot_index", 0))
+		var center := habitat.get_center() + Vector2(0.0, (float(slot_index) - 1.0) * 32.0)
+		var remaining := clampf(float(cue.get("remaining", 0.0)), 0.0, 45.0)
+		var progress := 1.0 - remaining / 45.0
+		var color := Color(0.9, 0.75, 0.28, 0.85)
+		draw_arc(center, 24.0, -PI * 0.5, -PI * 0.5 + TAU * progress, 36, color, 4.0)
+		draw_string(ThemeDB.fallback_font, center + Vector2(-16.0, -28.0), "%ds" % ceili(remaining), HORIZONTAL_ALIGNMENT_LEFT, 36.0, 10, color)
+
 func _squad_badge_text(member: Node, index: int) -> String:
 	if member == player:
 		return "%d ACTIVE" % (index + 1)
@@ -1590,7 +1715,8 @@ func _update_ui() -> void:
 	if not match_over:
 		var mode_text := "1v1 Trio" if _is_1v1_trio_mode() else GameConfig.selected_mode
 		var active_text := "Slot %d %s" % [active_squad_index + 1, creature_name] if _is_1v1_trio_mode() else creature_name
-		status_label.text = "%s | %s | Active: %s | Bots: %d | Next wave: %ds" % [mode_text, _format_match_time(elapsed), active_text, bots.size(), ceili(wave_timer)]
+		var hunger_text := "Hunger %d%%" % int(round(float(player.get("hunger")))) if player != null and player.get("hunger") != null else "Hunger --"
+		status_label.text = "%s | %s | Day %d dawn %ds | Active: %s | %s | Bots: %d | Next wave: %ds" % [mode_text, _format_match_time(elapsed), day_index, ceili(maxf(DAY_LENGTH_SEC - day_timer, 0.0)), active_text, hunger_text, bots.size(), ceili(wave_timer)]
 	core_label.text = "Blue Core %d / %d    Red Core %d / %d" % [blue_core.health, blue_core.max_health, red_core.health, red_core.max_health]
 	cooldown_label.text = _get_cooldown_text()
 	scoreboard_label.text = _get_scoreboard_text()
@@ -1726,10 +1852,16 @@ func _try_manual_habitat_deposit(actor: Node) -> bool:
 		habitat_deposit_prompt_state = "needs_habitat"
 		add_kill_feed("U: enter home habitat to deposit")
 		return false
+	if actor.has_method("is_satiated") and not actor.is_satiated():
+		habitat_deposit_prompt_state = "needs_food"
+		add_kill_feed("U: eat wild food until satiated first")
+		return false
 	if uses_stock_respawn(actor):
 		stock_manager.record_habitat_visit(actor)
+	if actor.has_method("reset_hunger_after_deposit") and actor.has_method("is_satiated") and actor.is_satiated():
+		actor.reset_hunger_after_deposit()
 	habitat_deposit_prompt_state = "accepted"
-	add_kill_feed("%s checked into habitat; deposit reward queued for ecology pass" % actor.get_actor_name())
+	add_kill_feed("%s deposited at habitat; breeding cue started" % actor.get_actor_name())
 	return true
 
 func _is_actor_in_home_habitat(actor: Node) -> bool:

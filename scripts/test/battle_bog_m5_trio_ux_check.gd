@@ -129,13 +129,17 @@ func _check_deposit_prompt(arena: Node, failures: Array[String]) -> bool:
 		failures.append("blue habitat rect missing; cannot check deposit prompt state.")
 		return false
 	arena.player.global_position = rect.position + rect.size * 0.5
+	var needs_food: Dictionary = arena.get_deposit_prompt_state()
+	arena.player.hunger = 100.0
+	arena.player.hunger_satiated = true
 	var ready: Dictionary = arena.get_deposit_prompt_state()
 	var accepted_result: bool = arena._try_manual_habitat_deposit(arena.player)
 	var accepted: Dictionary = arena.get_deposit_prompt_state()
-	var ok := bool(ready.get("visible", false)) and String(ready.get("state", "")) == "ready" and bool(ready.get("in_home_habitat", false))
+	var ok := bool(needs_food.get("visible", false)) and String(needs_food.get("state", "")) == "needs_food" and bool(needs_food.get("in_home_habitat", false))
+	ok = ok and bool(ready.get("visible", false)) and String(ready.get("state", "")) == "ready" and bool(ready.get("in_home_habitat", false))
 	ok = ok and accepted_result and String(accepted.get("state", "")) == "accepted" and float(accepted.get("timer", 0.0)) > 0.0
 	if not ok:
-		failures.append("deposit prompt expected ready then accepted states; ready=%s accepted=%s result=%s" % [str(ready), str(accepted), str(accepted_result)])
+		failures.append("deposit prompt expected needs_food -> ready -> accepted states; needs_food=%s ready=%s accepted=%s result=%s" % [str(needs_food), str(ready), str(accepted), str(accepted_result)])
 	return ok
 
 func _check_dense_rail_removed(arena: Node, failures: Array[String]) -> bool:

@@ -25,6 +25,7 @@ var wave_minion_offsets: Array[Vector2] = []
 var objective_position := Vector2.ZERO
 var objective_radius := 0.0
 var hut_positions := {}
+var food_spawn_points: Array[Dictionary] = []
 
 func configure(next_mode: String) -> void:
 	mode = next_mode
@@ -80,6 +81,9 @@ func get_team_habitat_rect(team: int) -> Rect2:
 	var habitat_zone := HABITAT_BLUE if team == 0 else HABITAT_RED
 	var rects := get_rects(habitat_zone)
 	return rects[0] if not rects.is_empty() else Rect2()
+
+func get_food_spawn_points() -> Array[Dictionary]:
+	return food_spawn_points.duplicate(true)
 
 func _rebuild_perch_anchors() -> void:
 	perch_anchors.clear()
@@ -148,6 +152,16 @@ func _configure_3v3() -> void:
 		0: [Vector2(-78.0 * unit, -34.0 * unit), Vector2(-78.0 * unit, 34.0 * unit)],
 		1: [Vector2(78.0 * unit, -34.0 * unit), Vector2(78.0 * unit, 34.0 * unit)]
 	}
+	food_spawn_points = [
+		{"kind": "plant", "position": Vector2(-64.0 * unit, -50.0 * unit)},
+		{"kind": "plant", "position": Vector2(64.0 * unit, 50.0 * unit)},
+		{"kind": "plant", "position": Vector2(-36.0 * unit, 28.0 * unit)},
+		{"kind": "plant", "position": Vector2(36.0 * unit, -28.0 * unit)},
+		{"kind": "critter", "position": Vector2(-26.0 * unit, -36.0 * unit)},
+		{"kind": "critter", "position": Vector2(26.0 * unit, 36.0 * unit)},
+		{"kind": "critter", "position": Vector2(-12.0 * unit, 16.0 * unit)},
+		{"kind": "critter", "position": Vector2(12.0 * unit, -16.0 * unit)}
+	]
 
 func _configure_1v1() -> void:
 	var unit := SimConstants.UNIT_PX
@@ -194,6 +208,14 @@ func _configure_1v1() -> void:
 		0: [Vector2(-45.0 * unit, 0.0)],
 		1: [Vector2(45.0 * unit, 0.0)]
 	}
+	food_spawn_points = [
+		{"kind": "plant", "position": Vector2(-34.0 * unit, -24.0 * unit)},
+		{"kind": "plant", "position": Vector2(34.0 * unit, 24.0 * unit)},
+		{"kind": "plant", "position": Vector2(-20.0 * unit, 18.0 * unit)},
+		{"kind": "plant", "position": Vector2(20.0 * unit, -18.0 * unit)},
+		{"kind": "critter", "position": Vector2(-18.0 * unit, -10.0 * unit)},
+		{"kind": "critter", "position": Vector2(18.0 * unit, 10.0 * unit)}
+	]
 
 func _rect_units(x: float, y: float, width: float, height: float) -> Rect2:
 	var unit := SimConstants.UNIT_PX

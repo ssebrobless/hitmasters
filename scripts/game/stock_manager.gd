@@ -8,11 +8,13 @@ const STATE_EXHAUSTED := "exhausted"
 var slots: Dictionary = {}
 var actor_keys: Dictionary = {}
 var habitat_visits: Array[Dictionary] = []
+var breeding_cues: Array[Dictionary] = []
 
 func reset() -> void:
 	slots.clear()
 	actor_keys.clear()
 	habitat_visits.clear()
+	breeding_cues.clear()
 
 func register_slot(team: int, slot_index: int, creature_id: String, actor: Node, max_stocks := MAX_STOCKS) -> void:
 	var key := _slot_key(team, slot_index)
@@ -123,12 +125,29 @@ func team_exhausted(team: int) -> bool:
 
 func record_habitat_visit(actor: Node) -> void:
 	var slot := get_slot_for_actor(actor)
-	habitat_visits.append({
+	var cue := {
 		"team": int(slot.get("team", actor.team if actor != null else -1)),
 		"slot_index": int(slot.get("slot_index", -1)),
 		"creature_id": String(slot.get("creature_id", actor.creature_id if actor != null else "")),
-		"actor": actor
-	})
+		"actor": actor,
+		"remaining": 45.0
+	}
+	habitat_visits.append(cue.duplicate())
+	breeding_cues.append(cue)
+
+func tick_breeding_cues(delta: float) -> void:
+	for i in range(breeding_cues.size() - 1, -1, -1):
+		breeding_cues[i]["remaining"] = float(breeding_cues[i].get("remaining", 0.0)) - delta
+		if float(breeding_cues[i]["remaining"]) <= 0.0:
+			breeding_cues.remove_at(i)
+
+func get_breeding_cues(team := -1) -> Array[Dictionary]:
+	var cues: Array[Dictionary] = []
+	for cue: Dictionary in breeding_cues:
+		if team >= 0 and int(cue.get("team", -1)) != team:
+			continue
+		cues.append(cue.duplicate(true))
+	return cues
 
 func _key_for_actor(actor: Node) -> String:
 	if actor == null:

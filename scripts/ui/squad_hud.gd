@@ -131,6 +131,9 @@ func _draw_prompt_strip(data: Dictionary, rect: Rect2) -> void:
 		"needs_habitat":
 			prompt_text = "ENTER HABITAT"
 			prompt_color = Color(1.0, 0.58, 0.36, 0.95)
+		"needs_food":
+			prompt_text = "EAT TO DEPOSIT"
+			prompt_color = Color(0.95, 0.72, 0.3, 0.95)
 		"near":
 			prompt_text = "HOME HABITAT NEAR"
 		_:
