@@ -8,6 +8,7 @@ const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
 
 const BOX_SIZE := Vector2(126.0, 46.0)
 const BOX_GAP := 8.0
+const RESOURCE_BAR_SIZE := Vector2(160.0, 8.0)
 const UPDATE_INTERVAL := 0.1
 
 var arena: Node = null
@@ -55,6 +56,23 @@ func get_ability_slots() -> Array[Dictionary]:
 		})
 	return slots
 
+func get_secondary_meter() -> Dictionary:
+	if arena == null or not is_instance_valid(arena):
+		return {"visible": false, "label": "", "value": 0.0, "max": 0.0, "ratio": 0.0}
+	var player: Node = arena.get("player")
+	if player == null or not is_instance_valid(player):
+		return {"visible": false, "label": "", "value": 0.0, "max": 0.0, "ratio": 0.0}
+	if player.has_method("get_secondary_resource_state"):
+		return player.get_secondary_resource_state()
+	var max_value := float(player.get("secondary_resource_max")) if player.get("secondary_resource_max") != null else 0.0
+	return {
+		"visible": max_value > 0.0,
+		"label": String(player.get("secondary_resource_label")),
+		"value": clampf(float(player.get("secondary_resource")), 0.0, max_value),
+		"max": max_value,
+		"ratio": clampf(float(player.get("secondary_resource")) / max_value, 0.0, 1.0) if max_value > 0.0 else 0.0
+	}
+
 func _draw() -> void:
 	var player: Node = arena.get("player") if arena != null and is_instance_valid(arena) else null
 	if player == null or not is_instance_valid(player):
@@ -66,8 +84,22 @@ func _draw() -> void:
 	var slots := get_ability_slots()
 	var total_width := float(slots.size()) * BOX_SIZE.x + float(slots.size() - 1) * BOX_GAP
 	var origin_x := (size.x - total_width) * 0.5
+	var meter := get_secondary_meter()
+	var slot_y := 0.0
+	if bool(meter.visible):
+		_draw_secondary_meter(Vector2((size.x - RESOURCE_BAR_SIZE.x) * 0.5, 0.0), meter, player)
+		slot_y = 14.0
 	for i in slots.size():
-		_draw_slot(Vector2(origin_x + float(i) * (BOX_SIZE.x + BOX_GAP), 0.0), slots[i], player)
+		_draw_slot(Vector2(origin_x + float(i) * (BOX_SIZE.x + BOX_GAP), slot_y), slots[i], player)
+
+func _draw_secondary_meter(at: Vector2, meter: Dictionary, player: Node) -> void:
+	var rect := Rect2(at, RESOURCE_BAR_SIZE)
+	var team_col: Color = VisualGrammar.team_color(int(player.team))
+	draw_rect(rect, Color(0.04, 0.05, 0.045, 0.9))
+	draw_rect(Rect2(rect.position, Vector2(rect.size.x * float(meter.ratio), rect.size.y)), team_col.darkened(0.1))
+	draw_rect(rect, team_col, false, 1.0)
+	draw_string(ThemeDB.fallback_font, rect.position + Vector2(5.0, 7.0), String(meter.label), HORIZONTAL_ALIGNMENT_LEFT, 70.0, 8, Color(0.88, 0.95, 0.82))
+	draw_string(ThemeDB.fallback_font, rect.position + Vector2(rect.size.x - 60.0, 7.0), "%d/%d" % [roundi(float(meter.value)), roundi(float(meter.max))], HORIZONTAL_ALIGNMENT_RIGHT, 55.0, 8, Color(0.88, 0.95, 0.82))
 
 func _draw_slot(at: Vector2, slot: Dictionary, player: Node) -> void:
 	var rect := Rect2(at, BOX_SIZE)

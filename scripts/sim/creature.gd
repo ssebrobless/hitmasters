@@ -13,6 +13,7 @@ const TurtleKitScript := preload("res://scripts/sim/kits/snapping_turtle.gd")
 const FrogKitScript := preload("res://scripts/sim/kits/chorus_frog.gd")
 const MinkKitScript := preload("res://scripts/sim/kits/mink.gd")
 const BullfrogKitScript := preload("res://scripts/sim/kits/bullfrog.gd")
+const CaneToadKitScript := preload("res://scripts/sim/kits/cane_toad.gd")
 const BeaverKitScript := preload("res://scripts/sim/kits/beaver.gd")
 const OwlKitScript := preload("res://scripts/sim/kits/owl.gd")
 const DuckKitScript := preload("res://scripts/sim/kits/duck.gd")
@@ -68,6 +69,10 @@ var dash_timer := 0.0
 var pass_obstacles_timer := 0.0
 var modifiers: Array[Dictionary] = []
 var healing_ticks: Array[Dictionary] = []
+var damage_ticks: Array[Dictionary] = []
+var secondary_resource_label := ""
+var secondary_resource := 0.0
+var secondary_resource_max := 0.0
 var latched_attacker: Node = null
 var latch_victim: Node = null
 var latch_timer := 0.0
@@ -121,6 +126,10 @@ func apply_creature(next_creature_id: String) -> void:
 	actor_name = String(creature_data.get("name", creature_id))
 	modifiers.clear()
 	healing_ticks.clear()
+	damage_ticks.clear()
+	secondary_resource_label = ""
+	secondary_resource = 0.0
+	secondary_resource_max = 0.0
 	latched_attacker = null
 	latch_victim = null
 	latch_timer = 0.0
@@ -219,6 +228,9 @@ func take_damage_event(event: Resource) -> void:
 	break_stealth()
 	var amount: float = _modified_incoming_damage(event)
 	health = maxf(health - amount, 0.0)
+	if event.delivery == DamageEventScript.DELIVERY_MELEE and event.source_actor != null and is_instance_valid(event.source_actor) and event.source_actor != self:
+		if kit != null and kit.has_method("on_melee_contact_damage"):
+			kit.on_melee_contact_damage(self, event.source_actor, amount, event)
 	# Struggle hit (decision #33): the victim's melee blows chunk the grip.
 	if latch_victim != null and is_instance_valid(latch_victim) and event.source_actor == latch_victim and event.delivery == DamageEventScript.DELIVERY_MELEE:
 		latch_timer = maxf(latch_timer - 0.75, 0.0)
@@ -268,6 +280,38 @@ func heal(amount: float) -> void:
 				"amount": healed,
 				"position": global_position
 			})
+
+func apply_dot(source_actor: Node, source_ability: String, total_damage: float, duration: float, max_stacks := 0) -> void:
+	if not alive or total_damage <= 0.0 or duration <= 0.0:
+		return
+	if max_stacks > 0:
+		var matching := 0
+		var oldest_index := -1
+		for i in damage_ticks.size():
+			var tick: Dictionary = damage_ticks[i]
+			if String(tick.get("source_ability", "")) == source_ability and tick.get("source_actor", null) == source_actor:
+				matching += 1
+				if oldest_index < 0:
+					oldest_index = i
+		if matching >= max_stacks and oldest_index >= 0:
+			damage_ticks.remove_at(oldest_index)
+	damage_ticks.append({
+		"remaining": duration,
+		"amount_remaining": total_damage,
+		"per_second": total_damage / duration,
+		"source_actor": source_actor,
+		"source_ability": source_ability
+	})
+
+func get_secondary_resource_state() -> Dictionary:
+	var max_value := maxf(secondary_resource_max, 0.0)
+	return {
+		"visible": max_value > 0.0,
+		"label": secondary_resource_label,
+		"value": clampf(secondary_resource, 0.0, max_value),
+		"max": max_value,
+		"ratio": clampf(secondary_resource / max_value, 0.0, 1.0) if max_value > 0.0 else 0.0
+	}
 
 func can_eat_food_kind(food_kind: String) -> bool:
 	var diet := String(creature_data.get("diet", "omnivore"))
@@ -598,6 +642,7 @@ func _respawn() -> void:
 	health = max_health
 	modifiers.clear()
 	healing_ticks.clear()
+	damage_ticks.clear()
 	if kit != null and kit.has_method("reset_for_respawn"):
 		kit.reset_for_respawn(self)
 	swim_time_remaining = swim_time_max
@@ -651,6 +696,23 @@ func _tick_timers(delta: float) -> void:
 		healing_ticks[i] = tick
 		if float(tick["remaining"]) <= 0.0 or float(tick["amount_remaining"]) <= 0.0:
 			healing_ticks.remove_at(i)
+	for i in range(damage_ticks.size() - 1, -1, -1):
+		if not alive:
+			break
+		var tick: Dictionary = damage_ticks[i]
+		var tick_amount: float = minf(float(tick["amount_remaining"]), float(tick["per_second"]) * delta)
+		if tick_amount > 0.0:
+			var source_actor: Node = tick.get("source_actor", null)
+			if source_actor != null and not is_instance_valid(source_actor):
+				source_actor = null
+			var event := DamageEventScript.new()
+			event.setup(tick_amount, DamageEventScript.DELIVERY_RANGED, DamageEventScript.PLANE_GROUND, source_actor, String(tick.get("source_ability", "")))
+			take_damage_event(event)
+		tick["amount_remaining"] = float(tick["amount_remaining"]) - tick_amount
+		tick["remaining"] = float(tick["remaining"]) - delta
+		damage_ticks[i] = tick
+		if float(tick["remaining"]) <= 0.0 or float(tick["amount_remaining"]) <= 0.0:
+			damage_ticks.remove_at(i)
 
 func _tick_hunger(delta: float) -> void:
 	if hunger_satiated:
@@ -764,6 +826,8 @@ func _make_kit() -> RefCounted:
 			return MinkKitScript.new()
 		"bullfrog":
 			return BullfrogKitScript.new()
+		"cane_toad":
+			return CaneToadKitScript.new()
 		"beaver":
 			return BeaverKitScript.new()
 		"owl":

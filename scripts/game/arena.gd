@@ -33,7 +33,7 @@ const CreatureInfoPanelScript := preload("res://scripts/ui/creature_info_panel.g
 const StockManagerScript := preload("res://scripts/game/stock_manager.gd")
 const FoodSourceScript := preload("res://scripts/game/food_source.gd")
 
-const PLAYABLE_CREATURE_POOL := ["snapping_turtle", "chorus_frog", "mink", "beaver", "owl", "duck", "bullfrog"]
+const PLAYABLE_CREATURE_POOL := ["snapping_turtle", "chorus_frog", "mink", "beaver", "owl", "duck", "bullfrog", "cane_toad"]
 const SQUAD_COMMAND_FARM := "farm"
 const SQUAD_COMMAND_FOLLOW := "follow"
 const SQUAD_COMMAND_AGGRO := "aggro"
@@ -292,7 +292,7 @@ func _build_ui() -> void:
 	ability_bar.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	ability_bar.offset_left = -300.0
 	ability_bar.offset_right = 300.0
-	ability_bar.offset_top = -64.0
+	ability_bar.offset_top = -78.0
 	ability_bar.offset_bottom = -14.0
 	canvas.add_child(ability_bar)
 
