@@ -74,7 +74,7 @@ static func for_zone(zone: String, movement_tags: Array = [], swim_time_remainin
 	return profile
 
 static func has_water_affinity(movement_tags: Array) -> bool:
-	return _has_any_tag(movement_tags, ["aquatic", "semi_aquatic", "wading", "paddling"])
+	return _has_any_tag(movement_tags, ["aquatic", "semi_aquatic", "wading", "paddling", "water_walk"])
 
 static func has_deep_water_speed_bonus(movement_tags: Array) -> bool:
 	return _has_any_tag(movement_tags, ["aquatic", "semi_aquatic"])
@@ -83,6 +83,8 @@ static func uses_swim_speed_in_deep_water(movement_tags: Array) -> bool:
 	return has_water_affinity(movement_tags)
 
 static func has_limited_swim_time(movement_tags: Array) -> bool:
+	if movement_tags.has("water_walk"):
+		return false
 	return movement_tags.has("semi_aquatic")
 
 static func is_deep_water_safe(movement_tags: Array, swim_time_remaining: float) -> bool:
@@ -101,7 +103,7 @@ static func _deep_water_speed_multiplier(movement_tags: Array, wrong_now: bool) 
 	return 1.0
 
 static func _is_deep_water_wrong_now(movement_tags: Array, swim_time_remaining: float) -> bool:
-	if _has_any_tag(movement_tags, ["aquatic", "paddling", "wading"]):
+	if _has_any_tag(movement_tags, ["aquatic", "paddling", "wading", "water_walk"]):
 		return false
 	if movement_tags.has("semi_aquatic"):
 		return swim_time_remaining >= 0.0 and swim_time_remaining <= 0.0

@@ -15,6 +15,7 @@ const MinkKitScript := preload("res://scripts/sim/kits/mink.gd")
 const BullfrogKitScript := preload("res://scripts/sim/kits/bullfrog.gd")
 const CaneToadKitScript := preload("res://scripts/sim/kits/cane_toad.gd")
 const CrayfishKitScript := preload("res://scripts/sim/kits/crayfish.gd")
+const WaterShrewKitScript := preload("res://scripts/sim/kits/water_shrew.gd")
 const BeaverKitScript := preload("res://scripts/sim/kits/beaver.gd")
 const OwlKitScript := preload("res://scripts/sim/kits/owl.gd")
 const DuckKitScript := preload("res://scripts/sim/kits/duck.gd")
@@ -187,7 +188,11 @@ func tick_sim(delta: float) -> void:
 	_update_takeoff_charge_from_displacement(last_move_displacement_px)
 	_tick_latch(delta)
 	if kit != null and kit.has_method("tick"):
+		var original_input_frame: Resource = input_frame
+		if input_frame != null and not can_use_abilities():
+			input_frame = _without_ability_buttons(input_frame)
 		kit.tick(self, delta)
+		input_frame = original_input_frame
 	_commit_flight_toggle_edge()
 
 func take_damage(amount: float, _source_team: int = -1, _source_actor: Node = null) -> void:
@@ -207,6 +212,9 @@ func is_stealthed() -> bool:
 func can_act() -> bool:
 	# Stun/self-lock modifiers (e.g. Lingual Lure) zero out can_act_mult.
 	return alive and _modifier_value("can_act_mult", 1.0) > 0.5
+
+func can_use_abilities() -> bool:
+	return can_act() and _modifier_value("ability_use_mult", 1.0) > 0.5
 
 func open_low_window(duration: float) -> void:
 	low_window_timer = duration
@@ -540,8 +548,35 @@ func make_damage_event(amount: float, delivery: int, plane: int, source_ability:
 func add_modifier(source: String, values: Dictionary, duration: float) -> void:
 	modifiers.append({"source": source, "values": values, "remaining": duration})
 
+func add_capped_modifier(source: String, values: Dictionary, duration: float, max_stacks: int) -> void:
+	if max_stacks > 0:
+		var matching := 0
+		var oldest_index := -1
+		for i in modifiers.size():
+			if String(modifiers[i].get("source", "")) == source:
+				matching += 1
+				if oldest_index < 0:
+					oldest_index = i
+		if matching >= max_stacks and oldest_index >= 0:
+			modifiers.remove_at(oldest_index)
+	add_modifier(source, values, duration)
+
+func remove_modifiers_from_source(source: String) -> void:
+	for i in range(modifiers.size() - 1, -1, -1):
+		if String(modifiers[i].get("source", "")) == source:
+			modifiers.remove_at(i)
+
 func get_modifier_value(key: String, fallback: float) -> float:
 	return _modifier_value(key, fallback)
+
+func _without_ability_buttons(frame: Resource) -> Resource:
+	var filtered := InputFrameScript.new()
+	filtered.move = frame.move
+	filtered.aim = frame.aim
+	filtered.buttons = int(frame.buttons)
+	filtered.set_button(InputFrameScript.BUTTON_ABILITY_Q, false)
+	filtered.set_button(InputFrameScript.BUTTON_ABILITY_E, false)
+	return filtered
 
 func break_latch(_reason: String) -> void:
 	if latched_attacker != null and is_instance_valid(latched_attacker) and latched_attacker.has_method("release_latch"):
@@ -834,6 +869,8 @@ func _make_kit() -> RefCounted:
 			return CaneToadKitScript.new()
 		"crayfish":
 			return CrayfishKitScript.new()
+		"water_shrew":
+			return WaterShrewKitScript.new()
 		"beaver":
 			return BeaverKitScript.new()
 		"owl":
@@ -849,10 +886,10 @@ func _is_wrong_terrain() -> bool:
 	return bool(current_environment_profile.get("wrong_terrain_now", false))
 
 func _uses_deep_water_swim_speed() -> bool:
-	return EnvironmentProfileScript.uses_swim_speed_in_deep_water(movement_tags)
+	return EnvironmentProfileScript.uses_swim_speed_in_deep_water(_effective_movement_tags())
 
 func _has_limited_swim_time() -> bool:
-	return EnvironmentProfileScript.has_limited_swim_time(movement_tags) and swim_time_max > 0.0
+	return EnvironmentProfileScript.has_limited_swim_time(_effective_movement_tags()) and swim_time_max > 0.0
 
 func _reset_terrain_profile() -> void:
 	current_terrain_zone = get_current_zone()
@@ -863,8 +900,14 @@ func _reset_terrain_profile() -> void:
 
 func _environment_profile_for_zone(zone: String) -> Dictionary:
 	if terrain_map != null and terrain_map.has_method("get_environment_profile_for_zone"):
-		return terrain_map.get_environment_profile_for_zone(zone, movement_tags, swim_time_remaining)
-	return EnvironmentProfileScript.for_zone(zone, movement_tags, swim_time_remaining)
+		return terrain_map.get_environment_profile_for_zone(zone, _effective_movement_tags(), swim_time_remaining)
+	return EnvironmentProfileScript.for_zone(zone, _effective_movement_tags(), swim_time_remaining)
+
+func _effective_movement_tags() -> Array:
+	var tags := movement_tags.duplicate()
+	if _modifier_value("water_walk", 1.0) > 1.5 and not tags.has("water_walk"):
+		tags.append("water_walk")
+	return tags
 
 func _terrain_target_speed_px(zone: String) -> float:
 	var profile := _environment_profile_for_zone(zone)
