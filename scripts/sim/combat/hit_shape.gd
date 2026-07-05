@@ -1,5 +1,7 @@
 extends RefCounted
 
+const Hurtbox := preload("res://scripts/sim/combat/hurtbox.gd")
+
 const DEFAULT_MELEE_DOT_MIN := 0.15
 
 static func melee_arc(actor: Node, reach_px: float, facing_dot_min := DEFAULT_MELEE_DOT_MIN) -> Dictionary:
@@ -31,27 +33,27 @@ static func instant_line(actor: Node, range_px: float, half_width_px: float) -> 
 		"half_width_px": half_width_px
 	}
 
+# Overlap checks resolve against the target's hurtbox hull (decision #21):
+# circles behave exactly as the old center+radius math; capsule bodies
+# (Water Snake, Alligator) are hittable along their full length.
 static func overlaps_melee_arc(shape: Dictionary, target: Node) -> bool:
 	if target == null or not is_instance_valid(target):
 		return false
 	var origin: Vector2 = shape.get("origin", Vector2.ZERO)
 	var aim: Vector2 = shape.get("aim", Vector2.RIGHT)
-	var to_target: Vector2 = target.global_position - origin
-	if to_target.length() > float(shape.get("radius", 0.0)) + _body_radius(target):
+	var hull := Hurtbox.hull_of(target)
+	if Hurtbox.distance_to_hull(hull, origin) > float(shape.get("radius", 0.0)):
 		return false
+	var to_target: Vector2 = Hurtbox.core_closest_point(hull, origin) - origin
 	return to_target.normalized().dot(aim) >= float(shape.get("facing_dot_min", DEFAULT_MELEE_DOT_MIN))
 
 static func overlaps_line(shape: Dictionary, target: Node) -> bool:
 	if target == null or not is_instance_valid(target):
 		return false
-	var origin: Vector2 = shape.get("origin", Vector2.ZERO)
-	var aim: Vector2 = shape.get("aim", Vector2.RIGHT)
-	var offset: Vector2 = target.global_position - origin
-	var along := offset.dot(aim)
-	if along < 0.0 or along > float(shape.get("range_px", 0.0)):
-		return false
-	var lateral := absf(offset.cross(aim))
-	return lateral <= _body_radius(target) + float(shape.get("half_width_px", 0.0))
+	var from: Vector2 = shape.get("from", shape.get("origin", Vector2.ZERO))
+	var to: Vector2 = shape.get("to", from)
+	var hull := Hurtbox.hull_of(target)
+	return Hurtbox.segment_hit(hull, from, to, float(shape.get("half_width_px", 0.0))).hit
 
 static func _aim_direction(actor: Node) -> Vector2:
 	if actor != null and is_instance_valid(actor) and actor.has_method("get_aim_direction"):

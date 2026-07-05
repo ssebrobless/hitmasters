@@ -25,6 +25,7 @@ const WaterLayerScript := preload("res://scripts/game/water_layer.gd")
 const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
 const SimConstants := preload("res://scripts/sim/sim_constants.gd")
 const TargetFilter := preload("res://scripts/sim/combat/target_filter.gd")
+const HurtboxScript := preload("res://scripts/sim/combat/hurtbox.gd")
 const StockManagerScript := preload("res://scripts/game/stock_manager.gd")
 
 const PLAYABLE_CREATURE_POOL := ["snapping_turtle", "chorus_frog", "mink", "beaver", "owl", "duck"]
@@ -830,7 +831,8 @@ func resolve_projectile_hits(projectile: Node) -> void:
 			continue
 		if not TargetFilter.is_live_damage_target(projectile, entity, {"require_damage_api": false}):
 			continue
-		if entity.global_position.distance_to(projectile.global_position) <= projectile.radius + entity.body_radius:
+		# Hull test (decision #21): capsule bodies are hittable along their length.
+		if HurtboxScript.overlaps_circle(HurtboxScript.hull_of(entity), projectile.global_position, projectile.radius):
 			# Projectiles are RANGED (decision #1) — flying targets are hit
 			# normally and heavy shots can spike birds (decision #20).
 			if entity.has_method("take_damage_event"):
@@ -879,7 +881,7 @@ func damage_enemies_in_radius(source_team: int, center: Vector2, radius: float, 
 			continue
 		if cover_blocks_point(center, entity.global_position, minf(radius, 18.0)):
 			continue
-		if entity.global_position.distance_to(center) <= radius + entity.body_radius:
+		if HurtboxScript.overlaps_circle(HurtboxScript.hull_of(entity), center, radius):
 			entity.take_damage(damage, source_team, source_actor)
 
 	for core_team in cores.keys():

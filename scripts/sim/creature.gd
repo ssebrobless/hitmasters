@@ -6,6 +6,7 @@ const CreatureStateScript := preload("res://scripts/sim/creature_state.gd")
 const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
 const EnvironmentProfileScript := preload("res://scripts/sim/environment_profile.gd")
 const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
+const HurtboxScript := preload("res://scripts/sim/combat/hurtbox.gd")
 const VisualStyle := preload("res://scripts/visual/visual_style.gd")
 const TurtleKitScript := preload("res://scripts/sim/kits/snapping_turtle.gd")
 const FrogKitScript := preload("res://scripts/sim/kits/chorus_frog.gd")
@@ -33,6 +34,7 @@ var input_frame: Resource = null
 var max_health := 1.0
 var health := 1.0
 var body_radius := 8.0
+var body_capsule_half_len_px := 0.0
 var base_speed_px := 0.0
 var terrain_speed_px := 0.0
 var terrain_speed_target_px := 0.0
@@ -98,6 +100,7 @@ func apply_creature(next_creature_id: String) -> void:
 	max_health = _stat_float("health", 1.0)
 	health = max_health
 	body_radius = _footprint_radius_px()
+	body_capsule_half_len_px = _footprint_capsule_half_len_px()
 	base_speed_px = _speed_px_for_ground()
 	swim_time_max = _numeric_stat("swim_time_sec", 0.0)
 	swim_time_remaining = swim_time_max
@@ -751,6 +754,19 @@ func _attack_interval_sec() -> float:
 func _footprint_radius_px() -> float:
 	var footprint: Dictionary = creature_data.get("footprint", {})
 	return _catalog().units_to_px(float(footprint.get("radius_units", 0.5)))
+
+# Capsule bodies (decision #19: Water Snake 0.4x2.5, Alligator 0.9x3.0) keep
+# body_radius as the capsule radius and expose the core-segment half length
+# so the hurtbox hull (decision #21) covers the full designed body.
+func _footprint_capsule_half_len_px() -> float:
+	var footprint: Dictionary = creature_data.get("footprint", {})
+	if String(footprint.get("shape", "circle")) != "capsule":
+		return 0.0
+	var length_px: float = _catalog().units_to_px(float(footprint.get("length_units", 0.0)))
+	return maxf(0.0, length_px * 0.5 - _footprint_radius_px())
+
+func get_hurtbox_hull() -> Dictionary:
+	return HurtboxScript.hull_of(self)
 
 func _stat_float(key: String, fallback: float) -> float:
 	return _numeric_stat(key, fallback)
