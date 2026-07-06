@@ -393,16 +393,21 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 	var turtle_swim_intensity := clampf(float(anim.get("turtle_swim_intensity", 0.0)), 0.0, 1.25)
 	var bog_creep := String(anim.get("creature_id", "")) == "bog_turtle" and bool(anim.get("bog_turtle_creep_pose", false))
 	var bog_creep_intensity := clampf(float(anim.get("bog_turtle_creep_intensity", 0.0)), 0.0, 1.25)
-	var shell_stability := float(anim.get("shell_stability", 0.0)) + turtle_swim_intensity * 0.1 + bog_creep_intensity * 0.12
-	var turtle_water := Color(0.42, 0.68, 0.82, 0.22 + 0.1 * turtle_swim_intensity)
+	var bog_paddle := String(anim.get("creature_id", "")) == "bog_turtle" and bool(anim.get("bog_turtle_paddle_pose", false))
+	var bog_paddle_intensity := clampf(float(anim.get("bog_turtle_paddle_intensity", 0.0)), 0.0, 1.25)
+	var swim_intensity := maxf(turtle_swim_intensity, bog_paddle_intensity * 0.82)
+	var shell_stability := float(anim.get("shell_stability", 0.0)) + turtle_swim_intensity * 0.1 + bog_creep_intensity * 0.12 + bog_paddle_intensity * 0.08
+	var turtle_water := Color(0.42, 0.68, 0.82, 0.22 + 0.1 * swim_intensity)
 	var bog_scuff := Color(0.48, 0.37, 0.24, 0.16 + 0.1 * bog_creep_intensity)
+	var bog_water := Color(0.38, 0.62, 0.76, 0.16 + 0.1 * bog_paddle_intensity)
 
 	var tail_direction := (-forward).rotated(sin(walk_phase * 0.5) * 0.15 * maxf(turtle_stride, 0.2))
-	if turtle_swim:
+	if turtle_swim or bog_paddle:
 		for wake_side: float in [-1.0, 1.0]:
-			var wake_origin := -forward * radius * (0.2 + 0.12 * turtle_swim_intensity) + side * wake_side * radius * 0.72
-			canvas.draw_arc(wake_origin, radius * (0.42 + 0.12 * turtle_swim_intensity), -0.55, 0.95, 12, turtle_water, 1.4 + turtle_swim_intensity * 0.5)
-			canvas.draw_line(wake_origin - forward * radius * 0.2, wake_origin - forward * radius * (0.95 + 0.22 * turtle_swim_intensity) + side * wake_side * radius * 0.18, Color(turtle_water.r, turtle_water.g, turtle_water.b, turtle_water.a * 0.7), maxf(radius * 0.06, 1.3))
+			var wake_origin := -forward * radius * (0.2 + 0.12 * swim_intensity) + side * wake_side * radius * (0.62 if bog_paddle else 0.72)
+			var wake_color := bog_water if bog_paddle else turtle_water
+			canvas.draw_arc(wake_origin, radius * (0.34 + 0.12 * swim_intensity), -0.55, 0.95, 12, wake_color, 1.2 + swim_intensity * 0.45)
+			canvas.draw_line(wake_origin - forward * radius * 0.2, wake_origin - forward * radius * (0.78 + 0.2 * swim_intensity) + side * wake_side * radius * 0.16, Color(wake_color.r, wake_color.g, wake_color.b, wake_color.a * 0.7), maxf(radius * 0.055, 1.1))
 	if bog_creep:
 		for scuff_side: float in [-1.0, 1.0]:
 			var scuff_center := -forward * radius * 0.55 + side * scuff_side * radius * 0.48
@@ -415,7 +420,7 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 		if bog_creep:
 			step *= 0.55
 		var leg_side := 1.0 if angle > 0.0 else -1.0
-		var paddle_sweep := sin(walk_phase * 1.15 + (PI if leg_index % 2 == 0 else 0.0)) * radius * 0.18 * turtle_swim_intensity if turtle_swim else 0.0
+		var paddle_sweep := sin(walk_phase * 1.15 + (PI if leg_index % 2 == 0 else 0.0)) * radius * 0.18 * swim_intensity if turtle_swim or bog_paddle else 0.0
 		var leg_center := (forward.rotated(angle) * radius * 0.92) + forward * step + side * leg_side * paddle_sweep
 		canvas.draw_circle(leg_center, radius * 0.26, skin_dark)
 		canvas.draw_circle(leg_center, radius * 0.2, skin_color)
@@ -424,6 +429,8 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 			canvas.draw_line(leg_center + claw_direction.rotated((float(claw) - 1.0) * 0.35) * radius * 0.18, leg_center + claw_direction.rotated((float(claw) - 1.0) * 0.35) * radius * 0.34, Color(0.85, 0.82, 0.7), 1.5)
 		if turtle_swim:
 			canvas.draw_circle(leg_center - forward * radius * 0.08, maxf(radius * (0.07 + 0.02 * turtle_swim_intensity), 1.2), turtle_water.lightened(0.18))
+		if bog_paddle:
+			canvas.draw_circle(leg_center - forward * radius * 0.08, maxf(radius * (0.055 + 0.02 * bog_paddle_intensity), 1.0), bog_water.lightened(0.2))
 		if bog_creep:
 			canvas.draw_line(leg_center - forward * radius * 0.08, leg_center - forward * radius * (0.28 + 0.08 * bog_creep_intensity), bog_scuff, 1.0)
 
@@ -440,6 +447,8 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 		head_reach = radius * (1.05 - 0.45 * windup_t)
 	elif bog_creep:
 		head_reach = radius * (0.88 + 0.05 * sin(walk_phase))
+	elif bog_paddle:
+		head_reach = radius * (0.98 + 0.04 * sin(walk_phase * 0.8))
 	var head_center := head_direction * head_reach
 	var head_side := Vector2(-head_direction.y, head_direction.x)
 	canvas.draw_colored_polygon(PackedVector2Array([
@@ -468,8 +477,9 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 		var shell_angle := TAU * float(i) / 18.0
 		shell_points.append(forward * cos(shell_angle) * radius * (1.02 + shell_stability * 0.03) + side * sin(shell_angle) * radius * (0.88 + shell_stability * 0.02))
 	canvas.draw_colored_polygon(shell_points, shell_rim)
-	if turtle_swim:
-		canvas.draw_arc(-forward * radius * 0.1, radius * (0.94 + turtle_swim_intensity * 0.04), PI * 0.9, PI * 2.1, 18, Color(turtle_water.r, turtle_water.g, turtle_water.b, turtle_water.a * 0.75), maxf(radius * 0.07, 1.4))
+	if turtle_swim or bog_paddle:
+		var shell_wake_color := bog_water if bog_paddle else turtle_water
+		canvas.draw_arc(-forward * radius * 0.1, radius * (0.9 + swim_intensity * 0.04), PI * 0.9, PI * 2.1, 18, Color(shell_wake_color.r, shell_wake_color.g, shell_wake_color.b, shell_wake_color.a * 0.75), maxf(radius * 0.06, 1.2))
 	if bog_creep:
 		canvas.draw_arc(-forward * radius * 0.08, radius * (0.76 + bog_creep_intensity * 0.03), PI * 0.08, PI * 0.92, 12, bog_scuff, maxf(radius * 0.06, 1.0))
 	var inner_points := PackedVector2Array()

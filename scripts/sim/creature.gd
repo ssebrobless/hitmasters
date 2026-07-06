@@ -655,8 +655,9 @@ func get_render_motion_state() -> Dictionary:
 	var water_slither_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if water_snake_swim else 0.0
 	var turtle_swim := creature_id == "snapping_turtle" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var turtle_swim_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if turtle_swim else 0.0
-	var bog_turtle_creep := creature_id == "bog_turtle" and moving and not is_airborne()
-	var bog_turtle_creep_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if bog_turtle_creep else 0.0
+	var bog_turtle_creep := creature_id == "bog_turtle" and surface != EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
+	var bog_turtle_paddle := creature_id == "bog_turtle" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
+	var bog_turtle_motion_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if bog_turtle_creep or bog_turtle_paddle else 0.0
 	var wolf_spider_lunge := creature_id == "wolf_spider" and kit != null and bool(kit.get("lunge_active"))
 	var wolf_spider_burrowed := creature_id == "wolf_spider" and state == CreatureStateScript.State.BURROWED
 	var wolf_spider_latched := creature_id == "wolf_spider" and latch_victim != null and latch_source == "Bite"
@@ -718,7 +719,9 @@ func get_render_motion_state() -> Dictionary:
 		"turtle_swim_pose": turtle_swim,
 		"turtle_swim_intensity": turtle_swim_intensity,
 		"bog_turtle_creep_pose": bog_turtle_creep,
-		"bog_turtle_creep_intensity": bog_turtle_creep_intensity,
+		"bog_turtle_creep_intensity": bog_turtle_motion_intensity if bog_turtle_creep else 0.0,
+		"bog_turtle_paddle_pose": bog_turtle_paddle,
+		"bog_turtle_paddle_intensity": bog_turtle_motion_intensity if bog_turtle_paddle else 0.0,
 		"spider_lunge_pose": wolf_spider_lunge,
 		"spider_burrowed_pose": wolf_spider_burrowed,
 		"spider_latch_pose": wolf_spider_latched,

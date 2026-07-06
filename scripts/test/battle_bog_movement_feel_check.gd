@@ -464,16 +464,26 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
 	var bog_creep_state: Dictionary = actor.get_render_motion_state()
-	var bog_creep: bool = bool(bog_creep_state.get("bog_turtle_creep_pose", false)) and float(bog_creep_state.get("bog_turtle_creep_intensity", 0.0)) > 0.25
+	var bog_creep: bool = bool(bog_creep_state.get("bog_turtle_creep_pose", false)) and not bool(bog_creep_state.get("bog_turtle_paddle_pose", false)) and float(bog_creep_state.get("bog_turtle_creep_intensity", 0.0)) > 0.25
+	actor.current_environment_profile = {"surface": "water"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var bog_paddle_state: Dictionary = actor.get_render_motion_state()
+	var bog_paddle: bool = bool(bog_paddle_state.get("bog_turtle_paddle_pose", false)) and not bool(bog_paddle_state.get("bog_turtle_creep_pose", false)) and float(bog_paddle_state.get("bog_turtle_paddle_intensity", 0.0)) > 0.25
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
 	var bog_idle_state: Dictionary = actor.get_render_motion_state()
-	var bog_idle_clear: bool = not bool(bog_idle_state.get("bog_turtle_creep_pose", false)) and float(bog_idle_state.get("bog_turtle_creep_intensity", 1.0)) <= 0.001
-	if not bog_creep or not bog_idle_clear:
-		failures.append("moving bog turtle should expose tiny-creep render pose and clear when idle; moving=%s idle=%s state=%s/%s" % [
+	var bog_idle_clear: bool = not bool(bog_idle_state.get("bog_turtle_creep_pose", false)) \
+		and not bool(bog_idle_state.get("bog_turtle_paddle_pose", false)) \
+		and float(bog_idle_state.get("bog_turtle_creep_intensity", 1.0)) <= 0.001 \
+		and float(bog_idle_state.get("bog_turtle_paddle_intensity", 1.0)) <= 0.001
+	if not bog_creep or not bog_paddle or not bog_idle_clear:
+		failures.append("moving bog turtle should expose mutually exclusive land creep and water paddle render poses, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
 			str(bog_creep),
+			str(bog_paddle),
 			str(bog_idle_clear),
 			str(bog_creep_state),
+			str(bog_paddle_state),
 			str(bog_idle_state)
 		])
 	actor.apply_creature("mink")
