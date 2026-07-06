@@ -39,6 +39,8 @@ const HUNGER_MAX := 100.0
 const HUNGER_FULL_TO_EMPTY_SEC := 105.0
 const HITSTOP_SEC := 3.0 / 60.0
 const COUNTER_HIT_MULT := 1.2
+const RESIDUAL_DASH_DECAY_PER_TICK := 0.68
+const RESIDUAL_DASH_STOP_SPEED := 3.0
 
 var arena: Node = null
 var terrain_map: RefCounted = null
@@ -78,8 +80,10 @@ var q_timer := 0.0
 var e_timer := 0.0
 var q_charges := 0
 var e_charges := 0
+var steering_velocity := Vector2.ZERO
 var dash_velocity := Vector2.ZERO
 var dash_timer := 0.0
+var residual_velocity := Vector2.ZERO
 var pass_obstacles_timer := 0.0
 var modifiers: Array[Dictionary] = []
 var healing_ticks: Array[Dictionary] = []
@@ -153,6 +157,8 @@ func apply_creature(next_creature_id: String) -> void:
 	latch_timer = 0.0
 	latch_source = ""
 	latch_execute_timer = 0.0
+	steering_velocity = Vector2.ZERO
+	residual_velocity = Vector2.ZERO
 	body_heading = last_aim_direction.normalized() if last_aim_direction != Vector2.ZERO else Vector2.RIGHT
 	kit = _make_kit()
 	if kit != null:
@@ -508,9 +514,11 @@ func _move_from_input(delta: float) -> void:
 	last_move_displacement_px = 0.0
 	if state == CreatureStateScript.State.BURROWED:
 		velocity = Vector2.ZERO
+		steering_velocity = Vector2.ZERO
 		return
 	if state == CreatureStateScript.State.PERCHED:
 		velocity = Vector2.ZERO
+		steering_velocity = Vector2.ZERO
 		if input_frame != null and input_frame.aim != Vector2.ZERO:
 			last_aim_direction = (input_frame.aim - global_position).normalized()
 		return
@@ -525,8 +533,12 @@ func _move_from_input(delta: float) -> void:
 	var speed_multiplier := latch_move_multiplier * _modifier_value("move_speed_mult", 1.0)
 	if dash_timer > 0.0:
 		velocity = dash_velocity
+		steering_velocity = Vector2.ZERO
 	else:
-		velocity = MovementFeelScript.profiled_velocity(velocity, move, get_speed_px() * speed_multiplier, delta, _active_movement_profile(), last_aim_direction)
+		if residual_velocity == Vector2.ZERO:
+			steering_velocity = velocity
+		steering_velocity = MovementFeelScript.profiled_velocity(steering_velocity, move, get_speed_px() * speed_multiplier, delta, _active_movement_profile(), last_aim_direction)
+		velocity = steering_velocity + residual_velocity
 	if Engine.is_in_physics_frame():
 		move_and_slide()
 	else:
@@ -810,8 +822,10 @@ func _respawn() -> void:
 	flight_toggle_requires_release = false
 	wrong_terrain_seconds = 0.0
 	_reset_terrain_profile()
+	steering_velocity = Vector2.ZERO
 	dash_velocity = Vector2.ZERO
 	dash_timer = 0.0
+	residual_velocity = Vector2.ZERO
 	pass_obstacles_timer = 0.0
 	primary_timer = 0.4
 	q_timer = maxf(q_timer, 1.0)
@@ -836,8 +850,16 @@ func _tick_timers(delta: float) -> void:
 	primary_timer = maxf(primary_timer - delta, 0.0)
 	q_timer = maxf(q_timer - delta, 0.0)
 	e_timer = maxf(e_timer - delta, 0.0)
+	var previous_dash_timer := dash_timer
+	var previous_dash_velocity := dash_velocity
 	dash_timer = maxf(dash_timer - delta, 0.0)
 	pass_obstacles_timer = maxf(pass_obstacles_timer - delta, 0.0)
+	if residual_velocity.length() > 0.0:
+		residual_velocity *= pow(RESIDUAL_DASH_DECAY_PER_TICK, delta * 60.0)
+		if residual_velocity.length() < RESIDUAL_DASH_STOP_SPEED:
+			residual_velocity = Vector2.ZERO
+	if previous_dash_timer > 0.0 and dash_timer <= 0.0 and previous_dash_velocity.length() > RESIDUAL_DASH_STOP_SPEED:
+		residual_velocity = previous_dash_velocity
 	if dash_timer <= 0.0:
 		dash_velocity = Vector2.ZERO
 	for i in range(modifiers.size() - 1, -1, -1):

@@ -28,6 +28,7 @@ func _run() -> void:
 	_check_capsule_body_heading(arena, failures)
 	_check_directional_scuttle(arena, failures)
 	_check_dash_bypass(arena, failures)
+	_check_dash_residual_bleed(arena, failures)
 	_check_render_profile_keys(arena, failures)
 	_check_water_profile_overlay(arena, failures)
 	_check_wave4_profile_seeds(failures)
@@ -125,6 +126,31 @@ func _check_dash_bypass(arena: Node, failures: Array[String]) -> void:
 		failures.append("dash velocity should bypass movement feel acceleration; velocity=%s" % str(actor.velocity))
 	actor.dash_timer = 0.0
 	actor.dash_velocity = Vector2.ZERO
+
+func _check_dash_residual_bleed(arena: Node, failures: Array[String]) -> void:
+	var actor: Node = arena.player
+	actor.apply_creature("bullfrog")
+	actor.global_position = Vector2(420.0, 300.0)
+	actor.velocity = Vector2.ZERO
+	actor.residual_velocity = Vector2.ZERO
+	actor.dash_velocity = Vector2.RIGHT * 600.0
+	actor.dash_timer = 1.0 / 60.0
+	actor.set_input_frame(_move_frame(Vector2.LEFT))
+	actor.tick_sim(1.0 / 60.0)
+	var captured: bool = actor.dash_timer <= 0.0 and actor.dash_velocity == Vector2.ZERO and actor.residual_velocity.x > 590.0 and actor.velocity.x > 550.0
+	var first_residual: float = actor.residual_velocity.length()
+	actor.tick_sim(1.0 / 60.0)
+	var decayed_once: bool = actor.residual_velocity.length() < first_residual * 0.70 and actor.residual_velocity.length() > first_residual * 0.65
+	var moving_after_dash: bool = actor.velocity.x > 250.0
+	if not captured or not decayed_once or not moving_after_dash:
+		failures.append("dash residual should capture on expiry and decay deterministically; captured=%s decayed=%s moving=%s residual=%.2f velocity=%s" % [
+			str(captured),
+			str(decayed_once),
+			str(moving_after_dash),
+			actor.residual_velocity.length(),
+			str(actor.velocity)
+		])
+	actor.residual_velocity = Vector2.ZERO
 
 func _check_render_profile_keys(arena: Node, failures: Array[String]) -> void:
 	var frog: Node = arena.player
