@@ -48,6 +48,10 @@ const DAY_LENGTH_SEC := 120.0
 const FOOD_EAT_RADIUS_PAD := 8.0
 const BOSS_BREED_INTERVAL := 5
 const ANIMAL_ZONE_TICK_SEC := 0.2
+const WILDLIFE_HUNGER_REWARD := 18.0
+const WILDLIFE_HEAL_FRACTION := 0.05
+const BOSS_WILDLIFE_HUNGER_REWARD := 48.0
+const BOSS_WILDLIFE_HEAL_FRACTION := 0.12
 
 var entities: Array[Node] = []
 var minions: Array[Node] = []
@@ -494,6 +498,10 @@ func _setup_animal_zones() -> void:
 		state["alive_occupants"] = []
 		state["alive_count"] = 0
 		state["defeated_count"] = 0
+		state["blue_defeats"] = 0
+		state["red_defeats"] = 0
+		state["last_defeat_team"] = -1
+		state["cleared_team"] = -1
 		state["wildlife_count"] = 0
 		state["blue_count"] = 0
 		state["red_count"] = 0
@@ -534,6 +542,10 @@ func _activate_boss_zones() -> void:
 		zone["alive_occupants"] = []
 		zone["alive_count"] = 0
 		zone["defeated_count"] = 0
+		zone["blue_defeats"] = 0
+		zone["red_defeats"] = 0
+		zone["last_defeat_team"] = -1
+		zone["cleared_team"] = -1
 		zone["last_bred_count"] = bred_animal_count
 		_spawn_wildlife_for_zone(zone)
 		animal_zone_states[i] = zone
@@ -591,6 +603,7 @@ func _clear_wildlife_for_zone(target_zone_id: String) -> void:
 func on_wildlife_defeated(encounter: Node, source_actor: Node = null) -> void:
 	wildlife_encounters.erase(encounter)
 	unregister_entity(encounter)
+	var defeat_team := _wildlife_defeat_team(source_actor)
 	var zone_index := _animal_zone_index(String(encounter.get("zone_id")))
 	if zone_index >= 0:
 		var zone: Dictionary = animal_zone_states[zone_index]
@@ -603,12 +616,43 @@ func on_wildlife_defeated(encounter: Node, source_actor: Node = null) -> void:
 		zone["alive_count"] = alive_occupants.size()
 		zone["wildlife_count"] = alive_occupants.size()
 		zone["defeated_count"] = int(zone.get("defeated_count", 0)) + 1
+		if defeat_team == BLUE:
+			zone["blue_defeats"] = int(zone.get("blue_defeats", 0)) + 1
+		elif defeat_team == RED:
+			zone["red_defeats"] = int(zone.get("red_defeats", 0)) + 1
+		if defeat_team >= 0:
+			zone["last_defeat_team"] = defeat_team
+		if alive_occupants.is_empty() and defeat_team >= 0:
+			zone["cleared_team"] = defeat_team
 		if bool(zone.get("boss", false)) and alive_occupants.is_empty():
 			zone["active"] = false
 		animal_zone_states[zone_index] = zone
+	var reward: Dictionary = _grant_wildlife_reward(encounter, source_actor)
 	var source_name: String = source_actor.get_actor_name() if source_actor != null and is_instance_valid(source_actor) and source_actor.has_method("get_actor_name") else "A creature"
 	var wildlife_name: String = encounter.get_actor_name() if encounter.has_method("get_actor_name") else "wildlife"
-	add_kill_feed("%s drove off %s" % [source_name, wildlife_name])
+	var reward_text := " (+%d hunger)" % int(round(float(reward.get("hunger_gain", 0.0)))) if float(reward.get("hunger_gain", 0.0)) > 0.0 else ""
+	add_kill_feed("%s drove off %s%s" % [source_name, wildlife_name, reward_text])
+
+func _wildlife_defeat_team(source_actor: Node) -> int:
+	if source_actor == null or not is_instance_valid(source_actor):
+		return -1
+	if not ("team" in source_actor):
+		return -1
+	return int(source_actor.get("team"))
+
+func _grant_wildlife_reward(encounter: Node, source_actor: Node) -> Dictionary:
+	if source_actor == null or not is_instance_valid(source_actor) or not source_actor.has_method("consume_food"):
+		return {"accepted": false, "hunger_gain": 0.0}
+	var before_hunger := float(source_actor.get("hunger")) if source_actor.get("hunger") != null else 0.0
+	var hunger_reward := BOSS_WILDLIFE_HUNGER_REWARD if bool(encounter.get("boss")) else WILDLIFE_HUNGER_REWARD
+	var heal_fraction := BOSS_WILDLIFE_HEAL_FRACTION if bool(encounter.get("boss")) else WILDLIFE_HEAL_FRACTION
+	var accepted: bool = source_actor.consume_food(FoodSourceScript.KIND_CRITTER, hunger_reward, heal_fraction)
+	var after_hunger := float(source_actor.get("hunger")) if source_actor.get("hunger") != null else before_hunger
+	return {
+		"accepted": accepted,
+		"hunger_gain": maxf(after_hunger - before_hunger, 0.0),
+		"hunger_reward": hunger_reward
+	}
 
 func _animal_zone_index(target_zone_id: String) -> int:
 	for i in animal_zone_states.size():

@@ -77,6 +77,9 @@ func _check_wildlife_encounters(arena: Node, failures: Array[String]) -> void:
 		return
 	var filtered_by_default := not TargetFilter.is_live_damage_target(actor, wildlife, {"require_damage_api": false})
 	var targetable_by_attack := TargetFilter.is_live_damage_target(actor, wildlife, {"require_damage_api": false, "allow_wildlife": true})
+	actor.hunger = 40.0
+	actor.hunger_satiated = false
+	var before_hunger := float(actor.get("hunger"))
 	actor.global_position = wildlife.global_position - Vector2(float(actor.get("body_radius")) + float(wildlife.get("body_radius")) + 6.0, 0.0)
 	actor.input_frame = null
 	actor.last_aim_direction = Vector2.RIGHT
@@ -86,14 +89,32 @@ func _check_wildlife_encounters(arena: Node, failures: Array[String]) -> void:
 	var state_updated: bool = int(after_zone.get("alive_count", -1)) == int(blue_a.get("alive_count", 0)) - 1 \
 		and int(after_zone.get("defeated_count", 0)) == 1 \
 		and (after_zone.get("alive_occupants", []) as Array).size() == 4
-	if not filtered_by_default or not targetable_by_attack or hits.is_empty() or not defeated or not state_updated:
-		failures.append("wildlife should be attack-interactable without becoming a default target; filtered=%s targetable=%s hits=%d defeated=%s before=%s after=%s" % [
+	var rewarded: bool = float(actor.get("hunger")) > before_hunger \
+		and int(after_zone.get("blue_defeats", 0)) == 1 \
+		and int(after_zone.get("last_defeat_team", -1)) == 0
+	for _i in 4:
+		var next_wildlife: Node = _wildlife_for_zone(arena, "blue:A")
+		if next_wildlife == null:
+			break
+		next_wildlife.take_damage(float(next_wildlife.get("health")) + 10.0, actor.team, actor)
+	var clear_zone := _zone(arena.get_animal_zone_state(), "blue", "A")
+	var cleared: bool = int(clear_zone.get("alive_count", -1)) == 0 \
+		and int(clear_zone.get("cleared_team", -1)) == 0 \
+		and int(clear_zone.get("blue_defeats", 0)) == 5 \
+		and int(clear_zone.get("defeated_count", 0)) == 5
+	if not filtered_by_default or not targetable_by_attack or hits.is_empty() or not defeated or not state_updated or not rewarded or not cleared:
+		failures.append("wildlife should be attack-interactable, reward compatible diets, and track team clears; filtered=%s targetable=%s hits=%d defeated=%s rewarded=%s cleared=%s before=%s after=%s clear=%s hunger %.2f->%.2f" % [
 			str(filtered_by_default),
 			str(targetable_by_attack),
 			hits.size(),
 			str(defeated),
+			str(rewarded),
+			str(cleared),
 			str(blue_a),
-			str(after_zone)
+			str(after_zone),
+			str(clear_zone),
+			before_hunger,
+			float(actor.get("hunger"))
 		])
 
 func _check_zone_occupancy(arena: Node, failures: Array[String]) -> void:
