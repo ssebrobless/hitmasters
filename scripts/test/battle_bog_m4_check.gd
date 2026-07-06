@@ -8,11 +8,13 @@ extends SceneTree
 const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
 const MudHutScript := preload("res://scripts/game/mud_hut.gd")
 const MinionScript := preload("res://scripts/game/minion.gd")
+const SimConstants := preload("res://scripts/sim/sim_constants.gd")
 
 class StubArena extends Node2D:
 	var entities: Array[Node] = []
 	var destroyed_huts: Array[Node] = []
 	var tracked := 0
+	var last_enemy_query_range := 0.0
 	func register_entity(entity: Node) -> void:
 		if not entities.has(entity):
 			entities.append(entity)
@@ -22,7 +24,8 @@ class StubArena extends Node2D:
 		tracked += 1
 	func on_hut_destroyed(hut: Node) -> void:
 		destroyed_huts.append(hut)
-	func get_closest_enemy(_source: Node, _max_distance: float) -> Node:
+	func get_closest_enemy(_source: Node, max_distance: float) -> Node:
+		last_enemy_query_range = max_distance
 		return null
 	func resolve_body_position(point: Vector2, _radius: float) -> Vector2:
 		return point
@@ -34,6 +37,7 @@ class StubArena extends Node2D:
 func _initialize() -> void:
 	# Terrain declares shared-map hut anchors: 2/side in both 3v3 and 1v1.
 	var terrain := TerrainMapScript.new()
+	var unit := SimConstants.UNIT_PX
 	terrain.configure("3v3")
 	var huts_3v3: bool = terrain.hut_positions[0].size() == 2 and terrain.hut_positions[1].size() == 2
 	terrain.configure("1v1")
@@ -51,6 +55,16 @@ func _initialize() -> void:
 		if entity is MinionScript:
 			kinds[entity.kind] = int(kinds.get(entity.kind, 0)) + 1
 	var squad_ok: bool = kinds["tank"] == 1 and kinds["melee"] == 2 and kinds["pebble"] == 2 and stub.tracked == 5
+	var defender: Node = null
+	for entity in stub.entities:
+		if entity is MinionScript and entity.leash_hut == hut:
+			defender = entity
+			break
+	if defender != null:
+		defender._physics_process(0.25)
+	var patrol_radius_ok: bool = absf(MinionScript.DEFENDER_PATROL_RADIUS / unit - 20.0) < 0.001 \
+		and absf(MinionScript.DEFENDER_IDLE_RETURN_RADIUS / unit - 10.0) < 0.001 \
+		and absf(stub.last_enemy_query_range - MinionScript.DEFENDER_AGGRO_RANGE) < 0.001
 
 	# Defender death queues a 5s respawn; hut respawns it after the delay.
 	var victim: Node = null
@@ -80,8 +94,8 @@ func _initialize() -> void:
 	tank.setup(stub, 0, Vector2.ZERO, "tank")
 	var kinds_ok: bool = pebble.attack_range > 90.0 and tank.max_health > 200.0 and tank.speed < 145.0
 
-	var passed := huts_3v3 and huts_1v1 and squad_ok and respawn_ok and destroy_ok and kinds_ok
-	print("m4 huts3v3=%s huts1v1=%s squad=%s respawn=%s destroy=%s kinds=%s" % [
-		str(huts_3v3), str(huts_1v1), str(squad_ok), str(respawn_ok), str(destroy_ok), str(kinds_ok)
+	var passed := huts_3v3 and huts_1v1 and squad_ok and patrol_radius_ok and respawn_ok and destroy_ok and kinds_ok
+	print("m4 huts3v3=%s huts1v1=%s squad=%s patrol=%s respawn=%s destroy=%s kinds=%s" % [
+		str(huts_3v3), str(huts_1v1), str(squad_ok), str(patrol_radius_ok), str(respawn_ok), str(destroy_ok), str(kinds_ok)
 	])
 	quit(0 if passed else 1)

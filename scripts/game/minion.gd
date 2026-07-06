@@ -10,9 +10,12 @@ class_name Minion
 
 const VisualStyle := preload("res://scripts/visual/visual_style.gd")
 const PerfStats := preload("res://scripts/game/perf_stats.gd")
+const SimConstants := preload("res://scripts/sim/sim_constants.gd")
 
-const LEASH_RANGE := 130.0
 const AGGRO_RANGE := 260.0
+const DEFENDER_PATROL_RADIUS := 20.0 * SimConstants.UNIT_PX
+const DEFENDER_AGGRO_RANGE := DEFENDER_PATROL_RADIUS
+const DEFENDER_IDLE_RETURN_RADIUS := 10.0 * SimConstants.UNIT_PX
 
 var arena: Node = null
 var team := 0
@@ -80,7 +83,8 @@ func _tick_minion(delta: float) -> void:
 	# Re-query targets on a timer, not every frame — O(n) scans are the cost.
 	target_refresh_timer -= delta
 	if target_refresh_timer <= 0.0:
-		cached_target = arena.get_closest_enemy(self, AGGRO_RANGE) if arena != null else null
+		var query_range := DEFENDER_AGGRO_RANGE if leash_hut != null and is_instance_valid(leash_hut) else AGGRO_RANGE
+		cached_target = arena.get_closest_enemy(self, query_range) if arena != null else null
 		target_refresh_timer = 0.2 + float(get_instance_id() % 7) * 0.015
 	if cached_target != null and (not is_instance_valid(cached_target) or (cached_target.has_method("is_alive") and not cached_target.is_alive())):
 		cached_target = null
@@ -89,7 +93,7 @@ func _tick_minion(delta: float) -> void:
 	# Defenders stay home: drop distant targets and walk back when leashed out.
 	if leash_hut != null and is_instance_valid(leash_hut):
 		var from_home: float = global_position.distance_to(leash_hut.global_position)
-		if from_home > LEASH_RANGE:
+		if from_home > DEFENDER_PATROL_RADIUS:
 			target = null
 			_move_toward_point(leash_hut.global_position)
 			_request_redraw()
@@ -98,7 +102,7 @@ func _tick_minion(delta: float) -> void:
 	if target == null:
 		if kind == "lane":
 			_march(delta)
-		elif leash_hut != null and is_instance_valid(leash_hut) and global_position.distance_to(leash_hut.global_position) > 60.0:
+		elif leash_hut != null and is_instance_valid(leash_hut) and global_position.distance_to(leash_hut.global_position) > DEFENDER_IDLE_RETURN_RADIUS:
 			_move_toward_point(leash_hut.global_position)
 		else:
 			velocity = Vector2.ZERO
