@@ -30,6 +30,7 @@ func _run() -> void:
 
 	_check_primary_field_and_blood(arena, failures)
 	_check_breeding_trail(arena, failures)
+	_check_swarm_render_state(arena, failures)
 	_check_deposit(arena, failures)
 	_check_unswattable(arena, failures)
 	_check_bot_hook(arena, failures)
@@ -101,6 +102,32 @@ func _check_breeding_trail(arena: Node, failures: Array[String]) -> void:
 			str(cooldown),
 			actor.kit.fields.size(),
 			actor.q_timer
+		])
+
+func _check_swarm_render_state(arena: Node, failures: Array[String]) -> void:
+	var actor: Node = arena.player
+	actor.kit._retire_all()
+	actor.q_timer = 0.0
+	actor.secondary_resource = actor.secondary_resource_max * 0.75
+	var q := InputFrameScript.new()
+	q.move = Vector2.RIGHT
+	q.set_button(InputFrameScript.BUTTON_ABILITY_Q, true)
+	actor.set_input_frame(q)
+	actor.tick_sim(0.05)
+	var trail_state: Dictionary = actor.get_render_motion_state()
+	var trail_read: bool = bool(trail_state.get("mosquito_trail_pose", false))
+	var blood_read: bool = float(trail_state.get("mosquito_blood_ratio", 0.0)) > 0.7
+	actor.kit.trail_timer = 0.0
+	actor.secondary_resource = 0.0
+	var clear_state: Dictionary = actor.get_render_motion_state()
+	var clear_read: bool = not bool(clear_state.get("mosquito_trail_pose", false)) and float(clear_state.get("mosquito_blood_ratio", 1.0)) <= 0.001
+	if not trail_read or not blood_read or not clear_read:
+		failures.append("Mosquito Swarm should expose breeding-trail and blood-engorged render state; trail=%s blood=%s clear=%s state=%s/%s" % [
+			str(trail_read),
+			str(blood_read),
+			str(clear_read),
+			str(trail_state),
+			str(clear_state)
 		])
 
 func _check_deposit(arena: Node, failures: Array[String]) -> void:

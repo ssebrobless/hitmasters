@@ -804,15 +804,29 @@ static func _base_swarm(canvas: CanvasItem, radius: float, skin: Dictionary, wal
 	var dark: Color = skin.get("dark", Color(0.2, 0.2, 0.22))
 	var radius_mult := float(anim.get("swarm_radius_mult", 1.0))
 	var jitter := float(anim.get("swarm_jitter", 0.0)) * (1.0 if moving else 0.45)
-	canvas.draw_circle(Vector2.ZERO, radius * radius_mult, Color(dark.r, dark.g, dark.b, 0.22))
+	var trail_pose := bool(anim.get("mosquito_trail_pose", false))
+	var blood_ratio := clampf(float(anim.get("mosquito_blood_ratio", 0.0)), 0.0, 1.0)
+	var engorged := Color(0.58, 0.12, 0.12)
+	var swarm_dark := dark.lerp(engorged, blood_ratio * 0.55)
+	var swarm_main := main.lerp(Color(0.72, 0.22, 0.18), blood_ratio * 0.45)
+	var cloud_radius := radius * radius_mult * (1.0 + blood_ratio * 0.12)
+	if trail_pose:
+		for trail_index in 4:
+			var t := float(trail_index + 1) / 4.0
+			var trail_center := Vector2(-radius * (0.55 + t * 0.75), sin(walk_phase * 1.3 + t * 2.6) * radius * 0.24)
+			canvas.draw_circle(trail_center, radius * radius_mult * (0.34 + t * 0.16), Color(swarm_dark.r, swarm_dark.g, swarm_dark.b, 0.10 + t * 0.035))
+	canvas.draw_circle(Vector2.ZERO, cloud_radius, Color(swarm_dark.r, swarm_dark.g, swarm_dark.b, 0.22 + blood_ratio * 0.06))
 	var time_now := Time.get_ticks_msec() * 0.001
 	for i in 12:
 		var orbit_angle := time_now * (1.2 + float(i % 4) * 0.35) + float(i) * TAU / 12.0
+		var trail_pull := -0.22 if trail_pose and i % 3 == 0 else 0.0
 		var pulse := sin(walk_phase * 1.7 + float(i) * 2.31) * jitter
-		var orbit_radius := radius * radius_mult * (0.3 + 0.6 * float((i * 7) % 10) / 10.0 + pulse * 0.12)
+		var orbit_radius := cloud_radius * (0.3 + 0.6 * float((i * 7) % 10) / 10.0 + pulse * 0.12)
 		var dot := Vector2(cos(orbit_angle), sin(orbit_angle)) * orbit_radius
-		canvas.draw_circle(dot, maxf(radius * 0.09, 1.6), dark)
-		canvas.draw_line(dot + Vector2(-2.0, -1.0), dot + Vector2(2.0, -1.0), Color(main.r, main.g, main.b, 0.6), 1.0)
+		dot.x += trail_pull * radius
+		var dot_radius := maxf(radius * (0.09 + blood_ratio * 0.025), 1.6)
+		canvas.draw_circle(dot, dot_radius, swarm_dark)
+		canvas.draw_line(dot + Vector2(-2.0, -1.0), dot + Vector2(2.0, -1.0), Color(swarm_main.r, swarm_main.g, swarm_main.b, 0.6), 1.0)
 
 static func _base_cluster(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, anim: Dictionary = {}) -> void:
 	var main: Color = skin.get("main", Color(0.27, 0.11, 0.08))
