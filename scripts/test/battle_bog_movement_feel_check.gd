@@ -391,9 +391,23 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.velocity = Vector2.ZERO
 	actor.dash_timer = 0.0
 	actor.dash_velocity = Vector2.ZERO
+	actor.current_environment_profile = {"surface": "land"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var bullfrog_hop_state: Dictionary = actor.get_render_motion_state()
+	var bullfrog_hop: bool = bool(bullfrog_hop_state.get("bullfrog_heavy_hop_pose", false)) \
+		and float(bullfrog_hop_state.get("bullfrog_heavy_hop_intensity", 0.0)) > 0.25 \
+		and not bool(bullfrog_hop_state.get("bullfrog_coil_pose", false)) \
+		and not bool(bullfrog_hop_state.get("bullfrog_lunge_pose", false)) \
+		and not bool(bullfrog_hop_state.get("camouflage_eye_cue", false))
+	actor.velocity = Vector2.ZERO
+	actor.set_input_frame(InputFrameScript.new())
 	actor.begin_stealth(2.0, "Camouflage")
 	var bullfrog_camouflage_state: Dictionary = actor.get_render_motion_state()
-	var bullfrog_camouflage: bool = bool(bullfrog_camouflage_state.get("bullfrog_coil_pose", false)) and bool(bullfrog_camouflage_state.get("camouflage_eye_cue", false)) and float(bullfrog_camouflage_state.get("bullfrog_coil_intensity", 0.0)) > 0.9
+	var bullfrog_camouflage: bool = bool(bullfrog_camouflage_state.get("bullfrog_coil_pose", false)) \
+		and bool(bullfrog_camouflage_state.get("camouflage_eye_cue", false)) \
+		and float(bullfrog_camouflage_state.get("bullfrog_coil_intensity", 0.0)) > 0.9 \
+		and not bool(bullfrog_camouflage_state.get("bullfrog_heavy_hop_pose", false))
 	actor.break_stealth()
 	actor.kit.lunge_active = true
 	actor.dash_timer = 0.18
@@ -401,19 +415,28 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.velocity = actor.dash_velocity
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
 	var bullfrog_lunge_state: Dictionary = actor.get_render_motion_state()
-	var bullfrog_lunge: bool = bool(bullfrog_lunge_state.get("bullfrog_lunge_pose", false)) and bool(bullfrog_lunge_state.get("bullfrog_coil_pose", false)) and float(bullfrog_lunge_state.get("bullfrog_lunge_intensity", 0.0)) > 0.9
+	var bullfrog_lunge: bool = bool(bullfrog_lunge_state.get("bullfrog_lunge_pose", false)) \
+		and bool(bullfrog_lunge_state.get("bullfrog_coil_pose", false)) \
+		and float(bullfrog_lunge_state.get("bullfrog_lunge_intensity", 0.0)) > 0.9 \
+		and not bool(bullfrog_lunge_state.get("bullfrog_heavy_hop_pose", false))
 	actor.kit.lunge_active = false
 	actor.dash_timer = 0.0
 	actor.dash_velocity = Vector2.ZERO
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
 	var bullfrog_idle_state: Dictionary = actor.get_render_motion_state()
-	var bullfrog_idle_clear: bool = not bool(bullfrog_idle_state.get("bullfrog_coil_pose", false)) and not bool(bullfrog_idle_state.get("bullfrog_lunge_pose", false)) and not bool(bullfrog_idle_state.get("camouflage_eye_cue", false))
-	if not bullfrog_camouflage or not bullfrog_lunge or not bullfrog_idle_clear:
-		failures.append("bullfrog should expose camouflaged coil and lunge render poses that clear when idle; camouflage=%s lunge=%s idle=%s state=%s/%s/%s" % [
+	var bullfrog_idle_clear: bool = not bool(bullfrog_idle_state.get("bullfrog_heavy_hop_pose", false)) \
+		and not bool(bullfrog_idle_state.get("bullfrog_coil_pose", false)) \
+		and not bool(bullfrog_idle_state.get("bullfrog_lunge_pose", false)) \
+		and not bool(bullfrog_idle_state.get("camouflage_eye_cue", false)) \
+		and float(bullfrog_idle_state.get("bullfrog_heavy_hop_intensity", 1.0)) <= 0.001
+	if not bullfrog_hop or not bullfrog_camouflage or not bullfrog_lunge or not bullfrog_idle_clear:
+		failures.append("bullfrog should expose normal heavy hop, suppress it during camouflage/lunge, and clear when idle; hop=%s camouflage=%s lunge=%s idle=%s state=%s/%s/%s/%s" % [
+			str(bullfrog_hop),
 			str(bullfrog_camouflage),
 			str(bullfrog_lunge),
 			str(bullfrog_idle_clear),
+			str(bullfrog_hop_state),
 			str(bullfrog_camouflage_state),
 			str(bullfrog_lunge_state),
 			str(bullfrog_idle_state)

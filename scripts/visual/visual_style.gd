@@ -260,6 +260,8 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var bullfrog_coil_intensity := clampf(float(anim.get("bullfrog_coil_intensity", 0.0)), 0.0, 1.25)
 	var bullfrog_lunge := String(anim.get("creature_id", "")) == "bullfrog" and bool(anim.get("bullfrog_lunge_pose", false))
 	var bullfrog_lunge_intensity := clampf(float(anim.get("bullfrog_lunge_intensity", 0.0)), 0.0, 1.25)
+	var bullfrog_heavy_hop := String(anim.get("creature_id", "")) == "bullfrog" and bool(anim.get("bullfrog_heavy_hop_pose", false))
+	var bullfrog_heavy_hop_intensity := clampf(float(anim.get("bullfrog_heavy_hop_intensity", 0.0)), 0.0, 1.25)
 	var camouflage_eye_cue := String(anim.get("creature_id", "")) == "bullfrog" and bool(anim.get("camouflage_eye_cue", false))
 	var cane_squat_hop := String(anim.get("creature_id", "")) == "cane_toad" and bool(anim.get("cane_squat_hop_pose", false))
 	var cane_squat_hop_intensity := clampf(float(anim.get("cane_squat_hop_intensity", 0.0)), 0.0, 1.25)
@@ -270,6 +272,8 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var leg_extend := 0.55 + hop * 0.55 * float(anim.get("hop_leg_scale", 1.0))
 	if chorus_hop:
 		leg_extend += 0.16 * chorus_hop_intensity * (0.35 + hop)
+	if bullfrog_heavy_hop:
+		leg_extend += 0.14 * bullfrog_heavy_hop_intensity * (0.4 + hop)
 	if bullfrog_coil:
 		leg_extend = maxf(0.32, leg_extend - 0.22 * bullfrog_coil_intensity)
 	if bullfrog_lunge:
@@ -279,6 +283,8 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 	if rooted_pose:
 		leg_extend = 0.38
 	var landing_squash := (1.0 - hop) * float(anim.get("landing_squash", 0.0)) if moving else 0.0
+	if bullfrog_heavy_hop:
+		landing_squash = maxf(landing_squash, 0.08 * bullfrog_heavy_hop_intensity * (1.0 - hop * 0.25))
 	if bullfrog_coil:
 		landing_squash = maxf(landing_squash, 0.16 * bullfrog_coil_intensity)
 	if cane_squat_hop:
@@ -299,6 +305,12 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 			var streak_start := -forward * radius * (0.45 + 0.12 * bullfrog_lunge_intensity) + side * streak_side * radius
 			var streak_end := streak_start - forward * radius * (0.52 + 0.18 * bullfrog_lunge_intensity)
 			canvas.draw_line(streak_start, streak_end, Color(belly.r, belly.g, belly.b, 0.2 + 0.1 * bullfrog_lunge_intensity), maxf(radius * 0.055, 1.0))
+	if bullfrog_heavy_hop:
+		var thump_color := Color(dark.r, dark.g, dark.b, 0.14 + 0.08 * bullfrog_heavy_hop_intensity)
+		for thump_side: float in [-1.0, 1.0]:
+			var thump_center := -forward * radius * 0.42 + side * thump_side * radius * 0.42
+			canvas.draw_arc(thump_center, radius * (0.34 + 0.1 * bullfrog_heavy_hop_intensity), PI * 0.08, PI * 0.92, 10, thump_color, maxf(radius * 0.055, 1.0))
+		canvas.draw_line(-forward * radius * 0.7, -forward * radius * (1.16 + 0.18 * bullfrog_heavy_hop_intensity), Color(thump_color.r, thump_color.g, thump_color.b, thump_color.a * 0.72), maxf(radius * 0.06, 1.1))
 	if chorus_hop:
 		var pulse_alpha := 0.14 + 0.08 * chorus_hop_intensity
 		for pulse_side: float in [-1.0, 0.0, 1.0]:
@@ -312,6 +324,9 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 		if bullfrog_coil:
 			var coil_shadow := foot - forward * radius * (0.12 + 0.1 * bullfrog_coil_intensity)
 			canvas.draw_arc(coil_shadow, radius * (0.22 + 0.04 * bullfrog_coil_intensity), -0.25, PI * 0.85, 8, Color(dark.r, dark.g, dark.b, 0.2 + 0.08 * bullfrog_coil_intensity), maxf(radius * 0.045, 1.0))
+		if bullfrog_heavy_hop:
+			var heel_drag := foot - forward * radius * (0.2 + 0.12 * bullfrog_heavy_hop_intensity)
+			canvas.draw_line(foot, heel_drag + side * leg_side * radius * 0.06, Color(dark.r, dark.g, dark.b, 0.26 + 0.08 * bullfrog_heavy_hop_intensity), maxf(radius * 0.055, 1.0))
 		if chorus_hop:
 			var toe_trail := foot - forward * radius * (0.22 + 0.12 * chorus_hop_intensity)
 			canvas.draw_line(foot, toe_trail + side * leg_side * radius * 0.08, Color(dark.r, dark.g, dark.b, 0.32 + 0.12 * chorus_hop_intensity), maxf(radius * 0.06, 1.1))
