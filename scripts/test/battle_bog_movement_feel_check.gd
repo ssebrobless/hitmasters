@@ -1104,6 +1104,14 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(leech_land_state.get("water_snake_land_slither_pose", false)) \
 		and not bool(leech_land_state.get("crayfish_scuttle_pose", false)) \
 		and not bool(leech_land_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and not bool(leech_land_state.get("shrew_land_skitter_pose", false)) \
+		and not bool(leech_land_state.get("bog_turtle_creep_pose", false)) \
+		and not bool(leech_land_state.get("turtle_plod_pose", false)) \
+		and not bool(leech_land_state.get("duck_waddle_pose", false)) \
+		and not bool(leech_land_state.get("beaver_lumber_pose", false)) \
+		and not bool(leech_land_state.get("mink_bound_pose", false)) \
+		and not bool(leech_land_state.get("otter_land_slide_pose", false)) \
+		and not bool(leech_land_state.get("high_walk_pose", false)) \
 		and float(leech_land_state.get("leech_motion_intensity", 0.0)) > 0.25
 	actor.current_environment_profile = {"surface": "water"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
@@ -1117,6 +1125,15 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(leech_water_state.get("water_snake_land_slither_pose", false)) \
 		and not bool(leech_water_state.get("crayfish_scuttle_pose", false)) \
 		and not bool(leech_water_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and not bool(leech_water_state.get("surface_walk", false)) \
+		and not bool(leech_water_state.get("submerged_shrew_pose", false)) \
+		and not bool(leech_water_state.get("bog_turtle_paddle_pose", false)) \
+		and not bool(leech_water_state.get("turtle_swim_pose", false)) \
+		and not bool(leech_water_state.get("duck_paddle_pose", false)) \
+		and not bool(leech_water_state.get("beaver_swim_pose", false)) \
+		and not bool(leech_water_state.get("mink_swim_pose", false)) \
+		and not bool(leech_water_state.get("otter_swim_pose", false)) \
+		and not bool(leech_water_state.get("alligator_water_cruise_pose", false)) \
 		and float(leech_water_state.get("leech_motion_intensity", 0.0)) > 0.25
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
@@ -1129,9 +1146,26 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(leech_idle_state.get("water_snake_land_slither_pose", false)) \
 		and not bool(leech_idle_state.get("crayfish_scuttle_pose", false)) \
 		and not bool(leech_idle_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and not bool(leech_idle_state.get("shrew_land_skitter_pose", false)) \
+		and not bool(leech_idle_state.get("surface_walk", false)) \
+		and not bool(leech_idle_state.get("submerged_shrew_pose", false)) \
+		and not bool(leech_idle_state.get("bog_turtle_creep_pose", false)) \
+		and not bool(leech_idle_state.get("bog_turtle_paddle_pose", false)) \
+		and not bool(leech_idle_state.get("turtle_plod_pose", false)) \
+		and not bool(leech_idle_state.get("turtle_swim_pose", false)) \
+		and not bool(leech_idle_state.get("duck_waddle_pose", false)) \
+		and not bool(leech_idle_state.get("duck_paddle_pose", false)) \
+		and not bool(leech_idle_state.get("beaver_lumber_pose", false)) \
+		and not bool(leech_idle_state.get("beaver_swim_pose", false)) \
+		and not bool(leech_idle_state.get("mink_bound_pose", false)) \
+		and not bool(leech_idle_state.get("mink_swim_pose", false)) \
+		and not bool(leech_idle_state.get("otter_land_slide_pose", false)) \
+		and not bool(leech_idle_state.get("otter_swim_pose", false)) \
+		and not bool(leech_idle_state.get("high_walk_pose", false)) \
+		and not bool(leech_idle_state.get("alligator_water_cruise_pose", false)) \
 		and float(leech_idle_state.get("leech_motion_intensity", 1.0)) <= 0.001
 	if not leech_inchworm or not leech_undulate or not leech_idle_clear:
-		failures.append("moving leech should expose suction inchworm and water undulate without newt/snake/crayfish overlap, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
+		failures.append("moving leech should expose suction inchworm and thin water undulate without crawler, swimmer, turtle, duck, mammal, snake, shrew, gator, or crustacean overlap, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
 			str(leech_inchworm),
 			str(leech_undulate),
 			str(leech_idle_clear),

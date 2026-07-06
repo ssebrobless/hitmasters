@@ -1592,6 +1592,7 @@ static func _base_cluster(canvas: CanvasItem, radius: float, forward: Vector2, s
 			var t := float(ripple_index) / 2.0
 			var ripple_center := -forward * radius * (0.18 + t * 0.72) + side * sin(walk_phase * 1.25 + t * 2.4) * radius * 0.22
 			canvas.draw_arc(ripple_center, radius * (0.18 + t * 0.08 + 0.05 * leech_motion_intensity), -0.35, TAU * 0.65, 12, Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.75), maxf(radius * 0.04, 1.0))
+			canvas.draw_line(ripple_center - forward * radius * 0.12, ripple_center - forward * radius * (0.34 + 0.12 * leech_motion_intensity), Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.52), maxf(radius * 0.035, 1.0))
 	if leech_inchworm:
 		cluster_spread = maxf(0.45, cluster_spread - 0.12 * leech_motion_intensity)
 		inchworm_pulse += 0.22 * leech_motion_intensity
@@ -1601,6 +1602,7 @@ static func _base_cluster(canvas: CanvasItem, radius: float, forward: Vector2, s
 			var anchor_center := forward * radius * (0.32 * anchor_side + 0.08 * sucker_phase * anchor_side)
 			canvas.draw_arc(anchor_center, radius * (0.18 + 0.04 * leech_motion_intensity), 0.0, TAU, 14, Color(dark.r, dark.g, dark.b, 0.28 + 0.08 * leech_motion_intensity), maxf(radius * 0.045, 1.0))
 			canvas.draw_line(anchor_center - forward * radius * 0.12, anchor_center - forward * radius * (0.36 + 0.12 * leech_motion_intensity), Color(dark.r, dark.g, dark.b, 0.18 + 0.06 * leech_motion_intensity), maxf(radius * 0.04, 1.0))
+			canvas.draw_circle(anchor_center + forward * radius * 0.08, maxf(radius * (0.045 + 0.02 * leech_motion_intensity), 1.0), Color(dark.r, dark.g, dark.b, 0.24 + 0.08 * leech_motion_intensity))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 11
 	var wriggle := Time.get_ticks_msec() * 0.002 * tail_wave
