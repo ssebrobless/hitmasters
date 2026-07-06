@@ -1006,6 +1006,8 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 		for wake_side: float in [-1.0, 1.0]:
 			var wake_center := -forward * radius * 0.2 + side * wake_side * radius * 0.56
 			canvas.draw_arc(wake_center, radius * (0.38 + duck_paddle_intensity * 0.12), -0.35, 0.92, 14, water_color, 1.2 + duck_paddle_intensity * 0.6)
+			var v_start := -forward * radius * 0.42 + side * wake_side * radius * 0.22
+			canvas.draw_line(v_start, v_start - forward * radius * (0.74 + duck_paddle_intensity * 0.18) + side * wake_side * radius * 0.34, Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.72), maxf(radius * 0.055, 1.0))
 		canvas.draw_line(-forward * radius * 0.8, -forward * radius * (1.45 + duck_paddle_intensity * 0.16), Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.75), maxf(radius * 0.08, 1.3))
 	if duck_waddle:
 		var dust_color := Color(0.46, 0.36, 0.22, 0.16 + duck_waddle_intensity * 0.08)
@@ -1049,7 +1051,9 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 				var paddle_step := sin(walk_phase * 1.8 + (PI if leg_side > 0.0 else 0.0)) * radius * (0.16 + 0.08 * duck_paddle_intensity)
 				var hip := -forward * radius * 0.12 + side * leg_side * radius * 0.18
 				var foot := -forward * radius * 0.48 + side * leg_side * radius * 0.42 + forward * paddle_step
+				var paddle_water := Color(0.48, 0.74, 0.86, 0.24 + duck_paddle_intensity * 0.08)
 				canvas.draw_line(hip, foot, beak.darkened(0.25), 1.4)
+				canvas.draw_arc(foot - forward * radius * 0.08, radius * (0.2 + 0.06 * duck_paddle_intensity), -0.35, TAU * 0.72, 14, paddle_water, maxf(radius * 0.045, 1.0))
 				canvas.draw_colored_polygon(PackedVector2Array([
 					foot + forward * radius * 0.08,
 					foot - forward * radius * 0.12 + side * leg_side * radius * 0.18,

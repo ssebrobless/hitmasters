@@ -1089,6 +1089,12 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var duck_water_state: Dictionary = actor.get_render_motion_state()
 	var duck_paddle: bool = bool(duck_water_state.get("duck_paddle_pose", false)) \
 		and not bool(duck_water_state.get("duck_waddle_pose", false)) \
+		and not bool(duck_water_state.get("wading_pose", false)) \
+		and not bool(duck_water_state.get("heron_stalk_pose", false)) \
+		and not bool(duck_water_state.get("beaver_swim_pose", false)) \
+		and not bool(duck_water_state.get("mink_swim_pose", false)) \
+		and not bool(duck_water_state.get("otter_swim_pose", false)) \
+		and not bool(duck_water_state.get("turtle_swim_pose", false)) \
 		and float(duck_water_state.get("duck_paddle_intensity", 0.0)) > 0.25 \
 		and float(duck_water_state.get("duck_waddle_intensity", 1.0)) <= 0.001
 	actor.velocity = Vector2.ZERO
@@ -1096,6 +1102,12 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var duck_idle_state: Dictionary = actor.get_render_motion_state()
 	var duck_idle_clear: bool = not bool(duck_idle_state.get("duck_paddle_pose", false)) \
 		and not bool(duck_idle_state.get("duck_waddle_pose", false)) \
+		and not bool(duck_idle_state.get("wading_pose", false)) \
+		and not bool(duck_idle_state.get("heron_stalk_pose", false)) \
+		and not bool(duck_idle_state.get("beaver_swim_pose", false)) \
+		and not bool(duck_idle_state.get("mink_swim_pose", false)) \
+		and not bool(duck_idle_state.get("otter_swim_pose", false)) \
+		and not bool(duck_idle_state.get("turtle_swim_pose", false)) \
 		and float(duck_idle_state.get("duck_paddle_intensity", 1.0)) <= 0.001 \
 		and float(duck_idle_state.get("duck_waddle_intensity", 1.0)) <= 0.001
 	actor.current_environment_profile = {"surface": "land"}
@@ -1103,10 +1115,16 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var duck_land_state: Dictionary = actor.get_render_motion_state()
 	var duck_waddle: bool = bool(duck_land_state.get("duck_waddle_pose", false)) \
 		and not bool(duck_land_state.get("duck_paddle_pose", false)) \
+		and not bool(duck_land_state.get("wading_pose", false)) \
+		and not bool(duck_land_state.get("heron_stalk_pose", false)) \
+		and not bool(duck_land_state.get("beaver_lumber_pose", false)) \
+		and not bool(duck_land_state.get("mink_bound_pose", false)) \
+		and not bool(duck_land_state.get("otter_land_slide_pose", false)) \
+		and not bool(duck_land_state.get("turtle_plod_pose", false)) \
 		and float(duck_land_state.get("duck_waddle_intensity", 0.0)) > 0.25 \
 		and float(duck_land_state.get("duck_paddle_intensity", 1.0)) <= 0.001
 	if not duck_paddle or not duck_idle_clear or not duck_waddle:
-		failures.append("moving duck should expose water paddle and land waddle render poses, then clear when idle; water=%s idle=%s land=%s state=%s/%s/%s" % [
+		failures.append("moving duck should expose web-foot water paddle and land waddle without heron/mammal/turtle overlap, then clear when idle; water=%s idle=%s land=%s state=%s/%s/%s" % [
 			str(duck_paddle),
 			str(duck_idle_clear),
 			str(duck_waddle),
