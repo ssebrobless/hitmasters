@@ -45,18 +45,29 @@ const LANDING_TELL_SEC := 0.16
 const TOXIC_RECOIL_TELL_SEC := 0.22
 const ESCAPE_CURL_TELL_SEC := 0.24
 const PLUNGE_TELL_SEC := 0.20
+const LOW_WINDOW_VISUAL_MAX_SEC := 0.7
 const VISUAL_SIZE_PROFILES := {
-	"great_blue_heron": {"model_scale": 1.22, "height_units": 1.45, "flight_height_units": 1.65, "height_class": "tall_wader"},
-	"owl": {"model_scale": 1.06, "height_units": 0.85, "flight_height_units": 1.35, "height_class": "raptor"},
-	"kingfisher": {"model_scale": 0.95, "height_units": 0.65, "flight_height_units": 1.15, "height_class": "small_diver"},
-	"duck": {"model_scale": 1.0, "height_units": 0.45, "flight_height_units": 0.95, "height_class": "low_paddler"},
-	"firefly": {"model_scale": 0.78, "height_units": 0.55, "flight_height_units": 0.9, "height_class": "tiny_hoverer"},
-	"mosquito_swarm": {"model_scale": 1.0, "height_units": 0.65, "flight_height_units": 0.85, "height_class": "swarm"},
-	"alligator": {"model_scale": 1.15, "height_units": 0.35, "height_class": "long_low"},
-	"snapping_turtle": {"model_scale": 1.0, "height_units": 0.28, "height_class": "heavy_low"},
-	"bog_turtle": {"model_scale": 0.82, "height_units": 0.2, "height_class": "tiny_low"},
+	"bullfrog": {"model_scale": 1.12, "height_units": 0.32, "height_class": "large_squat"},
+	"chorus_frog": {"model_scale": 0.88, "height_units": 0.26, "height_class": "small_hopper"},
+	"newt": {"model_scale": 0.9, "height_units": 0.18, "height_class": "slick_low"},
 	"cane_toad": {"model_scale": 1.05, "height_units": 0.25, "height_class": "squat"},
-	"water_shrew": {"model_scale": 0.85, "height_units": 0.22, "height_class": "tiny_low"}
+	"snapping_turtle": {"model_scale": 1.0, "height_units": 0.28, "height_class": "heavy_low"},
+	"water_snake": {"model_scale": 0.96, "height_units": 0.16, "height_class": "long_low"},
+	"bog_turtle": {"model_scale": 0.82, "height_units": 0.2, "height_class": "tiny_low"},
+	"alligator": {"model_scale": 1.18, "height_units": 0.35, "height_class": "long_low"},
+	"owl": {"model_scale": 1.08, "height_units": 0.85, "flight_height_units": 1.45, "low_window_height_units": 0.42, "height_class": "raptor"},
+	"great_blue_heron": {"model_scale": 1.28, "height_units": 1.55, "flight_height_units": 1.8, "low_window_height_units": 0.72, "height_class": "tall_wader"},
+	"kingfisher": {"model_scale": 0.92, "height_units": 0.55, "flight_height_units": 1.22, "low_window_height_units": 0.34, "height_class": "small_diver"},
+	"duck": {"model_scale": 1.0, "height_units": 0.45, "flight_height_units": 0.95, "low_window_height_units": 0.36, "height_class": "low_paddler"},
+	"water_shrew": {"model_scale": 0.85, "height_units": 0.22, "height_class": "tiny_low"},
+	"beaver": {"model_scale": 1.18, "height_units": 0.35, "height_class": "heavy_swimmer"},
+	"otter": {"model_scale": 1.08, "height_units": 0.3, "height_class": "sleek_swimmer"},
+	"mink": {"model_scale": 0.96, "height_units": 0.28, "height_class": "small_mustelid"},
+	"leech": {"model_scale": 0.75, "height_units": 0.08, "height_class": "flat_cluster"},
+	"crayfish": {"model_scale": 0.98, "height_units": 0.18, "height_class": "low_crustacean"},
+	"mosquito_swarm": {"model_scale": 1.0, "height_units": 0.65, "flight_height_units": 0.85, "height_class": "swarm"},
+	"wolf_spider": {"model_scale": 0.95, "height_units": 0.18, "height_class": "low_sprawler"},
+	"firefly": {"model_scale": 0.78, "height_units": 0.55, "flight_height_units": 0.9, "height_class": "tiny_hoverer"}
 }
 
 var arena: Node = null
@@ -189,6 +200,8 @@ func apply_creature(next_creature_id: String) -> void:
 	render_toxic_recoil_timer = 0.0
 	render_escape_curl_timer = 0.0
 	render_plunge_timer = 0.0
+	low_window_timer = 0.0
+	counter_hit_window_timer = 0.0
 	body_heading = last_aim_direction.normalized() if last_aim_direction != Vector2.ZERO else Vector2.RIGHT
 	kit = _make_kit()
 	if kit != null:
@@ -595,12 +608,18 @@ func get_render_motion_state() -> Dictionary:
 	var leech_inchworm := creature_id == "leech" and surface != EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var leech_motion_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if leech_undulate or leech_inchworm else 0.0
 	var visual_size_profile := _visual_size_profile()
+	var visual_height_units := _visual_height_units(visual_size_profile)
+	var low_window_t := _low_window_render_t()
 	return {
 		"creature_id": creature_id,
 		"terrain_surface": surface,
 		"model_scale": float(visual_size_profile.get("model_scale", 1.0)),
-		"height_units": _visual_height_units(visual_size_profile),
+		"height_units": visual_height_units,
 		"height_class": String(visual_size_profile.get("height_class", "mid")),
+		"height_band": _visual_height_band(visual_height_units),
+		"low_window_t": low_window_t,
+		"low_window_active": low_window_t > 0.0,
+		"air_attack_readable": is_airborne() and low_window_t > 0.0,
 		"in_water": surface == EnvironmentProfileScript.SURFACE_WATER,
 		"surface_walk": surface_walk,
 		"surface_wake_intensity": wake_intensity,
@@ -662,11 +681,28 @@ func _visual_size_profile() -> Dictionary:
 
 func _visual_height_units(profile: Dictionary) -> float:
 	var base_height := float(profile.get("height_units", 0.45))
+	var elevated_height := base_height
 	if state == CreatureStateScript.State.PERCHED:
-		return maxf(base_height, float(profile.get("perch_height_units", 1.0)))
-	if is_airborne():
-		return maxf(base_height, float(profile.get("flight_height_units", base_height + 0.45)))
-	return base_height
+		elevated_height = maxf(base_height, float(profile.get("perch_height_units", 1.0)))
+	elif is_airborne():
+		elevated_height = maxf(base_height, float(profile.get("flight_height_units", base_height + 0.45)))
+	if low_window_timer > 0.0 and (state == CreatureStateScript.State.PERCHED or is_airborne()):
+		return minf(elevated_height, maxf(0.0, float(profile.get("low_window_height_units", base_height))))
+	return elevated_height
+
+func _low_window_render_t() -> float:
+	if low_window_timer <= 0.0:
+		return 0.0
+	return clampf(low_window_timer / LOW_WINDOW_VISUAL_MAX_SEC, 0.0, 1.0)
+
+func _visual_height_band(height_units: float) -> String:
+	if height_units >= 1.25:
+		return "high"
+	if height_units >= 0.55:
+		return "raised"
+	if height_units >= 0.25:
+		return "body"
+	return "low"
 
 func get_swim_ratio() -> float:
 	if swim_time_max <= 0.0:

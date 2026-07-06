@@ -54,6 +54,8 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 	var visual_radius := maxf(radius * model_scale, radius * 0.5)
 	var height_units := maxf(float(anim.get("height_units", 0.45)), 0.0)
 	var air_lift_px := maxf(radius * 0.5, height_units * SimConstants.UNIT_PX) if airborne else 0.0
+	var low_window_t := clampf(float(anim.get("low_window_t", 0.0)), 0.0, 1.0)
+	var readable_air_attack := airborne and low_window_t > 0.0
 
 	var attack_t := float(anim.get("attack_t", -1.0))
 	var windup_t := float(anim.get("windup_t", -1.0))
@@ -91,16 +93,27 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 	var shake_offset: Vector2 = origin + anim.get("shake_offset", Vector2.ZERO)
 	if airborne:
 		var height_ratio := clampf(air_lift_px / maxf(radius, 1.0), 0.0, 2.4)
-		var shadow_alpha := clampf(0.32 - height_ratio * 0.07, 0.12, 0.3)
-		var shadow_radius := visual_radius * clampf(0.82 + height_ratio * 0.08, 0.75, 1.02)
+		var shadow_alpha := clampf(0.32 - height_ratio * 0.07 + low_window_t * 0.18, 0.12, 0.46)
+		var shadow_radius := visual_radius * clampf(0.82 + height_ratio * 0.08 + low_window_t * 0.18, 0.75, 1.22)
 		canvas.draw_set_transform(shake_offset, 0.0, Vector2.ONE)
 		canvas.draw_circle(Vector2(0.0, visual_radius * 0.55), shadow_radius, _with_alpha(Color(0.0, 0.0, 0.0, shadow_alpha), alpha))
+		if readable_air_attack:
+			var cue_color := _with_alpha(Color(1.0, 0.84, 0.34, 0.54 * low_window_t), alpha)
+			var cue_radius := visual_radius * (1.12 + low_window_t * 0.22)
+			canvas.draw_arc(Vector2.ZERO, cue_radius, 0.0, TAU, 44, cue_color, maxf(2.0, visual_radius * 0.13))
+			canvas.draw_arc(Vector2.ZERO, cue_radius * 0.62, 0.0, TAU, 36, Color(cue_color.r, cue_color.g, cue_color.b, cue_color.a * 0.48), maxf(1.4, visual_radius * 0.07))
+			canvas.draw_line(
+				Vector2.ZERO,
+				Vector2(0.0, -air_lift_px + visual_radius * 0.24),
+				Color(cue_color.r, cue_color.g, cue_color.b, cue_color.a * 0.72),
+				maxf(1.6, visual_radius * 0.07)
+			)
 		if height_units >= 0.75:
 			canvas.draw_line(
 				Vector2.ZERO,
 				Vector2(0.0, -air_lift_px + visual_radius * 0.22),
-				_with_alpha(Color(0.72, 0.84, 0.95, 0.18), alpha),
-				maxf(1.0, visual_radius * 0.05)
+				_with_alpha(Color(0.72, 0.84, 0.95, 0.18 + low_window_t * 0.2), alpha),
+				maxf(1.0, visual_radius * (0.05 + low_window_t * 0.03))
 			)
 	elif landing_t > 0.0 and landing_impact > 0.0:
 		var thump_color := _with_alpha(Color(0.58, 0.64, 0.42, 0.24 * landing_t * landing_impact), alpha)
@@ -601,6 +614,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var owl_glide := String(anim.get("creature_id", "")) == "owl" and bool(anim.get("owl_glide_pose", false))
 	var owl_glide_intensity := clampf(float(anim.get("owl_glide_intensity", 0.0)), 0.0, 1.25)
 	var owl_silent := String(anim.get("creature_id", "")) == "owl" and bool(anim.get("owl_silent_flight_pose", false))
+	var low_window_t := clampf(float(anim.get("low_window_t", 0.0)), 0.0, 1.0)
 
 	# Tail fan.
 	canvas.draw_colored_polygon(PackedVector2Array([
@@ -617,7 +631,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 		for wing_side: float in [-1.0, 1.0]:
 			var glide_width := 0.52 * owl_glide_intensity if owl_glide else 0.0
 			var glide_forward := -0.18 * owl_glide_intensity if owl_glide else 0.0
-			var wing_tip := side * wing_side * radius * (1.9 + glide_width - plunge_t * 0.45) + forward * radius * (0.1 + glide_forward + flap * wing_side * wing_side + plunge_t * 0.32)
+			var wing_tip := side * wing_side * radius * (1.9 + glide_width - plunge_t * 0.45 - low_window_t * 0.32) + forward * radius * (0.1 + glide_forward + flap * wing_side * wing_side + plunge_t * 0.32 + low_window_t * 0.28)
 			canvas.draw_colored_polygon(PackedVector2Array([
 				forward * radius * 0.35 + side * wing_side * radius * 0.3,
 				wing_tip + forward * radius * (0.25 + flap),
@@ -733,6 +747,10 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 		canvas.draw_line(head_center + forward * radius * 0.7, head_center + forward * radius * (1.85 + 0.45 * plunge_t), streak_color, maxf(radius * 0.12, 2.0))
 		for streak_side: float in [-1.0, 1.0]:
 			canvas.draw_line(-forward * radius * 0.1 + side * streak_side * radius * 0.72, -forward * radius * (0.92 + plunge_t * 0.22) + side * streak_side * radius * 1.05, Color(streak_color.r, streak_color.g, streak_color.b, streak_color.a * 0.75), maxf(radius * 0.08, 1.4))
+	if airborne and low_window_t > 0.0:
+		var strike_cue := Color(1.0, 0.86, 0.38, 0.32 * low_window_t)
+		canvas.draw_line(head_center + forward * radius * 0.3, head_center + forward * radius * (1.28 + 0.28 * low_window_t), strike_cue, maxf(radius * 0.12, 2.0))
+		canvas.draw_arc(Vector2.ZERO, radius * (1.0 + 0.16 * low_window_t), -PI * 0.15, PI * 1.15, 26, Color(strike_cue.r, strike_cue.g, strike_cue.b, strike_cue.a * 0.78), maxf(radius * 0.08, 1.4))
 
 static func _base_serpent(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, anim: Dictionary = {}) -> void:
 	var main: Color = skin.get("main", Color(0.36, 0.26, 0.15))

@@ -541,24 +541,56 @@ func _check_visual_height_profiles(arena: Node, failures: Array[String]) -> void
 	actor.apply_creature("owl")
 	actor.state = CreatureStateScript.State.AIRBORNE
 	var owl_air_state: Dictionary = actor.get_render_motion_state()
+	actor.open_low_window(0.7)
+	var owl_low_state: Dictionary = actor.get_render_motion_state()
 	actor.state = CreatureStateScript.State.NORMAL
+	actor.low_window_timer = 0.0
 	var owl_ground_state: Dictionary = actor.get_render_motion_state()
+	actor.apply_creature("kingfisher")
+	actor.state = CreatureStateScript.State.AIRBORNE
+	var kingfisher_air_state: Dictionary = actor.get_render_motion_state()
+	actor.open_low_window(0.7)
+	var kingfisher_low_state: Dictionary = actor.get_render_motion_state()
 	actor.apply_creature("bog_turtle")
 	var bog_state: Dictionary = actor.get_render_motion_state()
 	actor.apply_creature("firefly")
 	var firefly_state: Dictionary = actor.get_render_motion_state()
 	var tall_heron: bool = float(heron_state.get("model_scale", 1.0)) > 1.15 and float(heron_state.get("height_units", 0.0)) > 1.3 and String(heron_state.get("height_class", "")) == "tall_wader"
 	var owl_lift: bool = float(owl_air_state.get("height_units", 0.0)) > float(owl_ground_state.get("height_units", 0.0)) + 0.25
+	var owl_low_read: bool = float(owl_low_state.get("height_units", 1.0)) < float(owl_air_state.get("height_units", 0.0)) - 0.55 \
+		and bool(owl_low_state.get("air_attack_readable", false)) \
+		and float(owl_low_state.get("low_window_t", 0.0)) > 0.9 \
+		and String(owl_low_state.get("height_band", "")) == "body"
+	var kingfisher_low_read: bool = float(kingfisher_low_state.get("height_units", 1.0)) < float(kingfisher_air_state.get("height_units", 0.0)) - 0.55 \
+		and bool(kingfisher_low_state.get("air_attack_readable", false)) \
+		and String(kingfisher_low_state.get("height_band", "")) == "body"
 	var tiny_low: bool = float(bog_state.get("model_scale", 1.0)) < 0.9 and float(bog_state.get("height_units", 1.0)) < 0.3
 	var tiny_hover: bool = float(firefly_state.get("model_scale", 1.0)) < 0.85 and float(firefly_state.get("height_units", 0.0)) >= 0.9
-	if not tall_heron or not owl_lift or not tiny_low or not tiny_hover:
-		failures.append("visual height profiles should distinguish tall, airborne, low, and tiny hover creatures; heron=%s owl=%s/%s bog=%s firefly=%s" % [
+	var roster_profiled := _all_roster_creatures_have_height_profile(arena)
+	if not tall_heron or not owl_lift or not owl_low_read or not kingfisher_low_read or not tiny_low or not tiny_hover or not roster_profiled:
+		failures.append("visual height profiles should distinguish tall, airborne, hittable low-window, low, and tiny hover creatures; heron=%s owl=%s/%s/%s kingfisher=%s/%s bog=%s firefly=%s roster_profiled=%s" % [
 			str(heron_state),
 			str(owl_air_state),
+			str(owl_low_state),
 			str(owl_ground_state),
+			str(kingfisher_air_state),
+			str(kingfisher_low_state),
 			str(bog_state),
-			str(firefly_state)
+			str(firefly_state),
+			str(roster_profiled)
 		])
+
+func _all_roster_creatures_have_height_profile(arena: Node) -> bool:
+	var actor: Node = arena.player
+	var roster := [
+		"bullfrog", "chorus_frog", "newt", "cane_toad", "snapping_turtle", "water_snake", "bog_turtle", "alligator", "owl", "great_blue_heron", "kingfisher", "duck", "water_shrew", "beaver", "otter", "mink", "leech", "crayfish", "mosquito_swarm", "wolf_spider", "firefly"
+	]
+	for creature_id: String in roster:
+		actor.apply_creature(creature_id)
+		var state: Dictionary = actor.get_render_motion_state()
+		if String(state.get("height_class", "mid")) == "mid" or String(state.get("height_band", "")) == "" or float(state.get("height_units", 0.0)) <= 0.0:
+			return false
+	return true
 
 func _move_frame(direction: Vector2) -> Resource:
 	var frame := InputFrameScript.new()
