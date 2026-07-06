@@ -159,6 +159,7 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var belly: Color = skin.get("belly", main.lightened(0.25))
 	var eye_color: Color = skin.get("eye", Color(0.8, 0.7, 0.3))
 	var rooted_pose := bool(anim.get("rooted_pose", false))
+	var toxic_recoil_t := clampf(float(anim.get("toxic_recoil_t", 0.0)), 0.0, 1.0)
 
 	var raw_hop := sin(walk_phase * 1.2) * 0.5 + 0.5 if moving and not rooted_pose else 0.0
 	var ground_contact := clampf(float(anim.get("ground_contact", 0.6)), 0.1, 0.95)
@@ -210,9 +211,16 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 		rng.seed = 7
 		for i in 9:
 			var wart := forward * rng.randf_range(-0.6, 0.5) * radius + side * rng.randf_range(-0.5, 0.5) * radius
-			canvas.draw_circle(wart, maxf(radius * rng.randf_range(0.05, 0.09), 1.2), dark.lightened(0.12))
+			var wart_radius := maxf(radius * rng.randf_range(0.05, 0.09), 1.2)
+			if toxic_recoil_t > 0.0:
+				canvas.draw_circle(wart, wart_radius * (1.8 + toxic_recoil_t * 0.6), Color(0.48, 0.9, 0.28, 0.18 * toxic_recoil_t))
+			canvas.draw_circle(wart, wart_radius, dark.lightened(0.12 + toxic_recoil_t * 0.18))
 		for gland_side: float in [-1.0, 1.0]:
-			canvas.draw_circle(forward * radius * 0.35 + side * gland_side * radius * 0.42, radius * 0.16, dark.lightened(0.06))
+			var gland := forward * radius * 0.35 + side * gland_side * radius * 0.42
+			if toxic_recoil_t > 0.0:
+				canvas.draw_circle(gland, radius * (0.34 + toxic_recoil_t * 0.18), Color(0.58, 1.0, 0.34, 0.28 * toxic_recoil_t))
+				canvas.draw_line(gland, gland + side * gland_side * radius * (0.55 + toxic_recoil_t * 0.16), Color(0.58, 1.0, 0.34, 0.35 * toxic_recoil_t), maxf(radius * 0.08, 1.5))
+			canvas.draw_circle(gland, radius * (0.16 + toxic_recoil_t * 0.04), dark.lightened(0.06 + toxic_recoil_t * 0.18))
 	if bool(skin.get("tympanum", false)):
 		for ear_side: float in [-1.0, 1.0]:
 			canvas.draw_arc(forward * radius * 0.42 + side * ear_side * radius * 0.5, radius * 0.12, 0.0, TAU, 12, dark, 1.5)

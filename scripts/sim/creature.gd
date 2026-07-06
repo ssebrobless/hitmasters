@@ -42,6 +42,7 @@ const COUNTER_HIT_MULT := 1.2
 const RESIDUAL_DASH_DECAY_PER_TICK := 0.68
 const RESIDUAL_DASH_STOP_SPEED := 3.0
 const LANDING_TELL_SEC := 0.16
+const TOXIC_RECOIL_TELL_SEC := 0.22
 
 var arena: Node = null
 var terrain_map: RefCounted = null
@@ -114,6 +115,7 @@ var anim_windup_duration := 0.001
 var render_landing_timer := 0.0
 var render_landing_impact := 0.0
 var render_last_hop_airborne := false
+var render_toxic_recoil_timer := 0.0
 var last_move_displacement_px := 0.0
 var stealth_timer := 0.0
 var low_window_timer := 0.0
@@ -167,6 +169,7 @@ func apply_creature(next_creature_id: String) -> void:
 	render_landing_timer = 0.0
 	render_landing_impact = 0.0
 	render_last_hop_airborne = false
+	render_toxic_recoil_timer = 0.0
 	body_heading = last_aim_direction.normalized() if last_aim_direction != Vector2.ZERO else Vector2.RIGHT
 	kit = _make_kit()
 	if kit != null:
@@ -193,6 +196,7 @@ func _process(delta: float) -> void:
 		return
 	render_flash_timer = maxf(render_flash_timer - delta, 0.0)
 	render_shake_timer = maxf(render_shake_timer - delta, 0.0)
+	render_toxic_recoil_timer = maxf(render_toxic_recoil_timer - delta, 0.0)
 	anim_attack_timer = maxf(anim_attack_timer - delta, 0.0)
 	anim_windup_timer = maxf(anim_windup_timer - delta, 0.0)
 	if velocity.length() > 4.0:
@@ -249,6 +253,10 @@ func begin_render_hitstop(duration := HITSTOP_SEC) -> void:
 
 func begin_counter_hit_window(duration: float) -> void:
 	counter_hit_window_timer = maxf(counter_hit_window_timer, duration)
+
+func begin_render_toxic_recoil(duration := TOXIC_RECOIL_TELL_SEC) -> void:
+	render_toxic_recoil_timer = maxf(render_toxic_recoil_timer, duration)
+	queue_redraw()
 
 func begin_stealth(duration: float, _source: String) -> void:
 	stealth_timer = duration
@@ -513,6 +521,7 @@ func get_render_motion_state() -> Dictionary:
 	var water_walk_active: bool = get_modifier_value("water_walk", 1.0) > 1.5
 	var backward_dash := dash_timer > 0.0 and dash_velocity.length() > 0.0 and dash_velocity.normalized().dot(-last_aim_direction.normalized()) > 0.55
 	var landing_t := clampf(render_landing_timer / LANDING_TELL_SEC, 0.0, 1.0) if LANDING_TELL_SEC > 0.0 else 0.0
+	var toxic_recoil_t := clampf(render_toxic_recoil_timer / TOXIC_RECOIL_TELL_SEC, 0.0, 1.0) if TOXIC_RECOIL_TELL_SEC > 0.0 else 0.0
 	return {
 		"creature_id": creature_id,
 		"terrain_surface": surface,
@@ -526,7 +535,8 @@ func get_render_motion_state() -> Dictionary:
 		"off_balance_pose": _has_modifier_source("Whiff Recovery"),
 		"perched_pose": state == CreatureStateScript.State.PERCHED,
 		"landing_t": landing_t,
-		"landing_impact": render_landing_impact
+		"landing_impact": render_landing_impact,
+		"toxic_recoil_t": toxic_recoil_t
 	}
 
 func get_swim_ratio() -> float:
@@ -859,6 +869,7 @@ func _respawn() -> void:
 	render_landing_timer = 0.0
 	render_landing_impact = 0.0
 	render_last_hop_airborne = false
+	render_toxic_recoil_timer = 0.0
 	pass_obstacles_timer = 0.0
 	primary_timer = 0.4
 	q_timer = maxf(q_timer, 1.0)

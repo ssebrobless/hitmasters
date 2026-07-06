@@ -88,6 +88,9 @@ func _check_melee_retaliation(arena: Node, failures: Array[String]) -> void:
 	actor.take_damage_event(_event(1.0, DamageEventScript.DELIVERY_MELEE, attacker, "Test Bite"))
 	if _dot_count(attacker, "Bufotoxin") != 1:
 		failures.append("melee attacker should receive one Bufotoxin stack, got %d" % _dot_count(attacker, "Bufotoxin"))
+	var recoil_state: Dictionary = actor.get_render_motion_state()
+	if float(recoil_state.get("toxic_recoil_t", 0.0)) <= 0.9:
+		failures.append("melee retaliation should expose toxic recoil render pulse; state=%s" % str(recoil_state))
 
 	actor.take_damage_event(_event(1.0, DamageEventScript.DELIVERY_RANGED, attacker, "Test Shot"))
 	if _dot_count(attacker, "Bufotoxin") != 1:
@@ -121,11 +124,14 @@ func _check_toxic_skin_and_thanatosis(arena: Node, failures: Array[String]) -> v
 	actor.set_input_frame(e_frame)
 	actor.kit.tick(actor, 0.016)
 	var rooted: bool = actor.get_modifier_value("move_speed_mult", 1.0) == 0.0
-	if not rooted or not actor.can_act() or actor.kit.thanatosis_timer <= 0.0:
-		failures.append("Thanatosis should root movement without silencing actions; rooted=%s can_act=%s timer=%.2f" % [
+	var render_state: Dictionary = actor.get_render_motion_state()
+	var readable_root: bool = bool(render_state.get("rooted_pose", false)) and float(render_state.get("toxic_recoil_t", 0.0)) > 0.9
+	if not rooted or not actor.can_act() or actor.kit.thanatosis_timer <= 0.0 or not readable_root:
+		failures.append("Thanatosis should root movement without silencing actions and flare the toxic pose; rooted=%s can_act=%s timer=%.2f state=%s" % [
 			str(rooted),
 			str(actor.can_act()),
-			actor.kit.thanatosis_timer
+			actor.kit.thanatosis_timer,
+			str(render_state)
 		])
 
 func _check_secondary_meter(arena: Node, failures: Array[String]) -> void:

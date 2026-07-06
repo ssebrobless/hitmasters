@@ -53,6 +53,8 @@ func on_melee_contact_damage(actor: Node, attacker: Node, _amount: float, _event
 	if attacker == null or not is_instance_valid(attacker) or not attacker.has_method("apply_dot"):
 		return
 	attacker.apply_dot(actor, "Bufotoxin", BUFOTOXIN_TOTAL, BUFOTOXIN_SEC, BUFOTOXIN_MAX_STACKS)
+	if actor.has_method("begin_render_toxic_recoil"):
+		actor.begin_render_toxic_recoil()
 	if toxic_skin_timer > 0.0:
 		var bonus := 1.0 + _thanatosis_toxic_bonus(actor)
 		attacker.apply_dot(actor, "Toxic Skin", TOXIC_SKIN_TOTAL * bonus, TOXIC_SKIN_SEC, TOXIC_SKIN_MAX_STACKS)
@@ -82,6 +84,8 @@ func _start_thanatosis(actor: Node) -> void:
 	var e := KitHelpers.ability(actor.creature_data, "E")
 	thanatosis_timer = KitHelpers.first_number(String(e.get("summary", "")), 5.0)
 	actor.add_modifier("Thanatosis", {"move_speed_mult": 0.0}, thanatosis_timer)
+	if actor.has_method("begin_render_toxic_recoil"):
+		actor.begin_render_toxic_recoil()
 	actor.e_timer = KitHelpers.cooldown_seconds(e)
 
 func _thanatosis_toxic_bonus(actor: Node) -> float:
