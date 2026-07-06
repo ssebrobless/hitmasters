@@ -20,7 +20,11 @@ const DEFAULT_PROFILE := {
 	"wingbeat_mult": 1.0,
 	"slither_amp": 1.0,
 	"tail_sway": 1.0,
-	"crawl_weight": 0.0
+	"crawl_weight": 0.0,
+	"body_wiggle": 1.0,
+	"tail_wave": 1.0,
+	"bird_stride": 1.0,
+	"perch_flutter": 1.0
 }
 
 const PROFILES := {
@@ -65,6 +69,17 @@ const PROFILES := {
 		"gait_rate_mult": 2.1,
 		"bob_px": 0.5
 	},
+	"newt": {
+		"accel_time": 0.12,
+		"decel_time": 0.09,
+		"turn_rate_deg": 720.0,
+		"terrain_lerp_rate": 7.0,
+		"gait": "slick_crawl",
+		"gait_rate_mult": 0.9,
+		"bob_px": 0.15,
+		"body_wiggle": 1.45,
+		"tail_wave": 1.55
+	},
 	"snapping_turtle": {
 		"accel_time": 0.28,
 		"decel_time": 0.18,
@@ -93,6 +108,28 @@ const PROFILES := {
 		"gait_rate_mult": 1.25,
 		"bob_px": 0.0,
 		"slither_amp": 1.35
+	},
+	"great_blue_heron": {
+		"accel_time": 0.22,
+		"decel_time": 0.14,
+		"turn_rate_deg": 420.0,
+		"terrain_lerp_rate": 5.0,
+		"gait": "patient_wade",
+		"gait_rate_mult": 0.48,
+		"bob_px": 0.25,
+		"bird_stride": 0.52,
+		"wingbeat_mult": 0.62
+	},
+	"kingfisher": {
+		"accel_time": 0.055,
+		"decel_time": 0.06,
+		"turn_rate_deg": 1250.0,
+		"gait": "dart_hover",
+		"gait_rate_mult": 1.65,
+		"bob_px": 1.15,
+		"bird_stride": 1.25,
+		"wingbeat_mult": 1.45,
+		"perch_flutter": 1.35
 	},
 	"wolf_spider": {
 		"accel_time": 0.055,
@@ -169,7 +206,11 @@ static func render_anim(profile: Dictionary, walk_phase: float) -> Dictionary:
 		"wingbeat_mult": float(profile.get("wingbeat_mult", 1.0)),
 		"slither_amp": float(profile.get("slither_amp", 1.0)),
 		"tail_sway": float(profile.get("tail_sway", 1.0)),
-		"crawl_weight": float(profile.get("crawl_weight", 0.0))
+		"crawl_weight": float(profile.get("crawl_weight", 0.0)),
+		"body_wiggle": float(profile.get("body_wiggle", 1.0)),
+		"tail_wave": float(profile.get("tail_wave", 1.0)),
+		"bird_stride": float(profile.get("bird_stride", 1.0)),
+		"perch_flutter": float(profile.get("perch_flutter", 1.0))
 	}
 
 static func _turn_limited_direction(current_velocity: Vector2, desired_direction: Vector2, delta: float, turn_rate_deg: float) -> Vector2:

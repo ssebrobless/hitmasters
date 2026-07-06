@@ -115,6 +115,18 @@ func _check_render_profile_keys(arena: Node, failures: Array[String]) -> void:
 	gator.apply_creature("alligator")
 	if not float(gator.movement_profile.get("crawl_weight", 0.0)) > 0.0:
 		failures.append("alligator should expose heavy crawl metadata")
+	var newt: Node = arena.bots[0]
+	newt.apply_creature("newt")
+	if not float(newt.movement_profile.get("tail_wave", 0.0)) > 1.0:
+		failures.append("newt should expose slick tail-wave metadata")
+	var heron: Node = arena.bots[1]
+	heron.apply_creature("great_blue_heron")
+	if not float(heron.movement_profile.get("bird_stride", 1.0)) < 1.0:
+		failures.append("heron should expose patient wading stride metadata")
+	var kingfisher: Node = arena.bots[2]
+	kingfisher.apply_creature("kingfisher")
+	if not float(kingfisher.movement_profile.get("perch_flutter", 1.0)) > 1.0:
+		failures.append("kingfisher should expose dart-hover flutter metadata")
 
 func _move_frame(direction: Vector2) -> Resource:
 	var frame := InputFrameScript.new()

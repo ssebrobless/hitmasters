@@ -91,7 +91,7 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		"mustelid":
 			_base_mustelid(canvas, radius, rocked_forward, side, skin, walk_phase, moving, strike, anim)
 		"bird":
-			_base_bird(canvas, radius, rocked_forward, side, skin, walk_phase, moving, airborne)
+			_base_bird(canvas, radius, rocked_forward, side, skin, walk_phase, moving, airborne, anim)
 		"serpent":
 			_base_serpent(canvas, radius, rocked_forward, side, skin, walk_phase, moving, anim)
 		"croc":
@@ -273,6 +273,8 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	var bulk := float(skin.get("bulk", 1.0))
 	var snout := float(skin.get("snout", 1.0))
 	var stretch := 1.0 + strike * 0.5
+	var body_wiggle := float(anim.get("body_wiggle", 1.0))
+	var tail_wave := float(anim.get("tail_wave", 1.0))
 	var is_water_shrew := String(anim.get("creature_id", "")) == "water_shrew"
 	var surface_walk := bool(anim.get("surface_walk", false))
 	var submerged_shrew := is_water_shrew and bool(anim.get("in_water", false)) and not surface_walk
@@ -290,12 +292,12 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 		var along := lerpf(-1.35, 1.15, t) * radius * stretch
 		var wiggle := 0.0
 		if moving and strike <= 0.0:
-			wiggle = sin(walk_phase * 1.2 - t * 2.2) * radius * 0.07 * (1.0 - t * 0.5)
+			wiggle = sin(walk_phase * 1.2 - t * 2.2) * radius * 0.07 * body_wiggle * (1.0 - t * 0.5)
 		spine.append(forward * along + side * wiggle)
 		segment_radii.append(radius * lerpf(0.42, 0.5, sin(t * PI)) * bulk)
 
 	var tail_style := String(skin.get("tail", "bushy"))
-	var tail_direction := (-forward).rotated(sin(walk_phase * 1.4 + 1.8) * 0.3 if moving else 0.12)
+	var tail_direction := (-forward).rotated((sin(walk_phase * 1.4 + 1.8) * 0.3 * tail_wave) if moving else 0.12)
 	var tail_base: Vector2 = spine[0]
 	match tail_style:
 		"paddle":
@@ -367,7 +369,7 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 		canvas.draw_line(fang_origin + side * 2.0, fang_origin + forward * radius * 0.4 + side * 2.0, Color(0.98, 0.98, 0.92, strike), 2.0)
 		canvas.draw_line(fang_origin - side * 2.0, fang_origin + forward * radius * 0.4 - side * 2.0, Color(0.98, 0.98, 0.92, strike), 2.0)
 
-static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, airborne: bool) -> void:
+static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, airborne: bool, anim: Dictionary = {}) -> void:
 	var main: Color = skin.get("main", Color(0.4, 0.32, 0.22))
 	var dark: Color = skin.get("dark", main.darkened(0.35))
 	var breast: Color = skin.get("breast", main.lightened(0.25))
@@ -375,6 +377,9 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var beak_len := float(skin.get("beak_len", 0.4))
 	var neck := float(skin.get("neck", 0.0))
 	var head_color: Color = skin.get("head_color", main)
+	var bird_stride := float(anim.get("bird_stride", 1.0))
+	var wingbeat := float(anim.get("wingbeat_mult", 1.0))
+	var perch_flutter := float(anim.get("perch_flutter", 1.0))
 
 	# Tail fan.
 	canvas.draw_colored_polygon(PackedVector2Array([
@@ -387,7 +392,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 
 	if airborne:
 		# Extended flapping wings.
-		var flap := sin(Time.get_ticks_msec() * 0.012 + walk_phase) * 0.35
+		var flap := sin(Time.get_ticks_msec() * 0.012 * wingbeat + walk_phase * perch_flutter) * 0.35
 		for wing_side: float in [-1.0, 1.0]:
 			var wing_tip := side * wing_side * radius * 1.9 + forward * radius * (0.1 + flap * wing_side * wing_side)
 			canvas.draw_colored_polygon(PackedVector2Array([
@@ -421,7 +426,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 	# Legs when grounded.
 	if not airborne and moving:
 		for leg_side: float in [-1.0, 1.0]:
-			var leg_step := sin(walk_phase * 1.6 + (PI if leg_side > 0.0 else 0.0)) * radius * 0.12
+			var leg_step := sin(walk_phase * 1.6 + (PI if leg_side > 0.0 else 0.0)) * radius * 0.12 * bird_stride
 			canvas.draw_line(side * leg_side * radius * 0.2, side * leg_side * radius * 0.24 + forward * leg_step - forward * radius * 0.05, beak.darkened(0.2), 1.5)
 
 	# Head (long neck for heron), beak, eyes.
