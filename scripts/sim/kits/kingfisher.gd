@@ -58,9 +58,12 @@ func _peck(actor: Node) -> void:
 		flying_damage = float(primary_data.get("flying", flying_damage))
 	var airborne: bool = actor.state == CreatureStateScript.State.AIRBORNE or actor.state == CreatureStateScript.State.PERCHED
 	var damage: float = flying_damage if airborne else grounded_damage
-	if moved_since_attack_px >= PLUNGE_MOVE_UNITS * SimConstants.UNIT_PX:
+	var plunging := moved_since_attack_px >= PLUNGE_MOVE_UNITS * SimConstants.UNIT_PX
+	if plunging:
 		damage *= PLUNGE_BONUS_MULT
-	MeleeHit.hit(actor, KitHelpers.range_units(actor.stats, 1.0) * SimConstants.UNIT_PX, damage, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_AIR if airborne else DamageEventScript.PLANE_GROUND, "Plunge" if moved_since_attack_px >= PLUNGE_MOVE_UNITS * SimConstants.UNIT_PX else "Peck", {"max_hits": 1})
+		if actor.has_method("begin_render_plunge"):
+			actor.begin_render_plunge()
+	MeleeHit.hit(actor, KitHelpers.range_units(actor.stats, 1.0) * SimConstants.UNIT_PX, damage, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_AIR if airborne else DamageEventScript.PLANE_GROUND, "Plunge" if plunging else "Peck", {"max_hits": 1})
 	actor.open_low_window(LOW_WINDOW_SEC)
 	moved_since_attack_px = 0.0
 	var rate := float(actor.stats.get("attack_rate_per_sec", 0.85))

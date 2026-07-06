@@ -61,13 +61,20 @@ func _check_plunge_bonus(arena: Node, failures: Array[String]) -> void:
 	actor.kit.moved_since_attack_px = 2.0 * SimConstants.UNIT_PX
 	actor.kit.tick(actor, 0.016)
 	var plunge_damage: float = target.max_health - target.health
-	var bonus_ok: bool = plunge_damage > normal_damage * 1.25 and actor.low_window_timer > 0.0 and actor.kit.moved_since_attack_px == 0.0
+	var plunge_state: Dictionary = actor.get_render_motion_state()
+	var plunge_read: bool = float(plunge_state.get("plunge_t", 0.0)) > 0.9
+	actor._process(0.1)
+	var plunge_decayed: bool = float(actor.get_render_motion_state().get("plunge_t", 1.0)) < float(plunge_state.get("plunge_t", 0.0))
+	var bonus_ok: bool = plunge_damage > normal_damage * 1.25 and actor.low_window_timer > 0.0 and actor.kit.moved_since_attack_px == 0.0 and plunge_read and plunge_decayed
 	if not bonus_ok:
-		failures.append("Kingfisher Plunge should gain damage after 2u movement and open low window; normal=%.2f plunge=%.2f low=%.2f moved=%.2f" % [
+		failures.append("Kingfisher Plunge should gain damage after 2u movement, open low window, and expose a dive cue; normal=%.2f plunge=%.2f low=%.2f moved=%.2f read=%s decayed=%s state=%s" % [
 			normal_damage,
 			plunge_damage,
 			actor.low_window_timer,
-			actor.kit.moved_since_attack_px
+			actor.kit.moved_since_attack_px,
+			str(plunge_read),
+			str(plunge_decayed),
+			str(plunge_state)
 		])
 
 func _check_hover(arena: Node, failures: Array[String]) -> void:

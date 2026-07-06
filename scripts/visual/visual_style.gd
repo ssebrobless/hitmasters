@@ -429,6 +429,8 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var perch_flutter := float(anim.get("perch_flutter", 1.0))
 	var waddle_sway := float(anim.get("waddle_sway", 0.0))
 	var perched_pose := bool(anim.get("perched_pose", false))
+	var plunge_t := clampf(float(anim.get("plunge_t", 0.0)), 0.0, 1.0)
+	var plunge_pose := String(anim.get("creature_id", "")) == "kingfisher" and plunge_t > 0.0
 
 	# Tail fan.
 	canvas.draw_colored_polygon(PackedVector2Array([
@@ -443,7 +445,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 		# Extended flapping wings.
 		var flap := sin(Time.get_ticks_msec() * 0.012 * wingbeat + walk_phase * perch_flutter) * 0.35
 		for wing_side: float in [-1.0, 1.0]:
-			var wing_tip := side * wing_side * radius * 1.9 + forward * radius * (0.1 + flap * wing_side * wing_side)
+			var wing_tip := side * wing_side * radius * (1.9 - plunge_t * 0.45) + forward * radius * (0.1 + flap * wing_side * wing_side + plunge_t * 0.32)
 			canvas.draw_colored_polygon(PackedVector2Array([
 				forward * radius * 0.35 + side * wing_side * radius * 0.3,
 				wing_tip + forward * radius * (0.25 + flap),
@@ -512,6 +514,11 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 	if has_disc:
 		canvas.draw_circle(head_center + side * eye_offset + forward * radius * 0.08, maxf(eye_size * 0.45, 1.0), Color(0.06, 0.05, 0.04))
 		canvas.draw_circle(head_center - side * eye_offset + forward * radius * 0.08, maxf(eye_size * 0.45, 1.0), Color(0.06, 0.05, 0.04))
+	if plunge_pose:
+		var streak_color := Color(0.58, 0.82, 1.0, 0.34 * plunge_t)
+		canvas.draw_line(head_center + forward * radius * 0.7, head_center + forward * radius * (1.85 + 0.45 * plunge_t), streak_color, maxf(radius * 0.12, 2.0))
+		for streak_side: float in [-1.0, 1.0]:
+			canvas.draw_line(-forward * radius * 0.1 + side * streak_side * radius * 0.72, -forward * radius * (0.92 + plunge_t * 0.22) + side * streak_side * radius * 1.05, Color(streak_color.r, streak_color.g, streak_color.b, streak_color.a * 0.75), maxf(radius * 0.08, 1.4))
 
 static func _base_serpent(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, anim: Dictionary = {}) -> void:
 	var main: Color = skin.get("main", Color(0.36, 0.26, 0.15))
