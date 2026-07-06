@@ -6,6 +6,7 @@ extends SceneTree
 const ARENA_SCENE := "res://scenes/Arena.tscn"
 const MinionScript := preload("res://scripts/game/minion.gd")
 const CreatureStateScript := preload("res://scripts/sim/creature_state.gd")
+const HurtboxScript := preload("res://scripts/sim/combat/hurtbox.gd")
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -25,8 +26,13 @@ func _run() -> void:
 	var arena := current_scene
 	var failures: Array[String] = []
 	_check_pair_separates(arena, failures)
+	_check_capsule_pair_separates(arena, failures)
 	_check_latch_pair_exempt(arena, failures)
+	_check_airborne_exempt(arena, failures)
+	_check_dashing_exempt(arena, failures)
 	_check_push_is_soft(arena, failures)
+	_check_midpoint_invariant(arena, failures)
+	_check_repeated_resolution_deterministic(arena, failures)
 	_check_minion_slots(arena, failures)
 	print("separation failures=%d" % failures.size())
 	for failure in failures:
@@ -54,6 +60,22 @@ func _check_pair_separates(arena: Node, failures: Array[String]) -> void:
 	if gap < min_gap - 0.5:
 		failures.append("overlapped creatures should separate to ring contact within 60 ticks (gap=%.1f need %.1f)" % [gap, min_gap])
 
+func _check_capsule_pair_separates(arena: Node, failures: Array[String]) -> void:
+	var pair := _two_creatures(arena)
+	var a: Node = pair[0]
+	var b: Node = pair[1]
+	_normalize_grounded(a, "alligator")
+	_normalize_grounded(b, "cane_toad")
+	a.body_heading = Vector2.RIGHT
+	a.global_position = Vector2(360.0, 300.0)
+	b.global_position = a.global_position + Vector2(a.body_capsule_half_len_px + a.body_radius + b.body_radius - 5.0, 0.0)
+	var starting_push: float = HurtboxScript.separation_push(a, b).length()
+	for i in 30:
+		arena.resolve_body_separation()
+	var remaining_push: float = HurtboxScript.separation_push(a, b).length()
+	if not (starting_push > 0.0 and remaining_push < 0.5):
+		failures.append("capsule-aware separation should resolve long-body overlap (start=%.2f remaining=%.2f)" % [starting_push, remaining_push])
+
 func _check_latch_pair_exempt(arena: Node, failures: Array[String]) -> void:
 	var pair := _two_creatures(arena)
 	var a: Node = pair[0]
@@ -70,6 +92,39 @@ func _check_latch_pair_exempt(arena: Node, failures: Array[String]) -> void:
 		failures.append("latch pair must be exempt from separation (gap %.2f -> %.2f)" % [before, after])
 	a.release_latch("test_done")
 
+func _check_airborne_exempt(arena: Node, failures: Array[String]) -> void:
+	var pair := _two_creatures(arena)
+	var a: Node = pair[0]
+	var b: Node = pair[1]
+	_normalize_grounded(a, "great_blue_heron")
+	_normalize_grounded(b, "cane_toad")
+	a.state = CreatureStateScript.State.AIRBORNE
+	a.global_position = Vector2(480.0, 300.0)
+	b.global_position = a.global_position + Vector2(1.0, 0.0)
+	var before: float = a.global_position.distance_to(b.global_position)
+	arena.resolve_body_separation()
+	var after: float = a.global_position.distance_to(b.global_position)
+	if absf(after - before) > 0.01:
+		failures.append("airborne creatures should pass over body separation (gap %.2f -> %.2f)" % [before, after])
+
+func _check_dashing_exempt(arena: Node, failures: Array[String]) -> void:
+	var pair := _two_creatures(arena)
+	var a: Node = pair[0]
+	var b: Node = pair[1]
+	_normalize_grounded(a, "bullfrog")
+	_normalize_grounded(b, "cane_toad")
+	a.dash_timer = 0.2
+	a.dash_velocity = Vector2.RIGHT * 500.0
+	a.global_position = Vector2(540.0, 300.0)
+	b.global_position = a.global_position + Vector2(1.0, 0.0)
+	var before: float = a.global_position.distance_to(b.global_position)
+	arena.resolve_body_separation()
+	var after: float = a.global_position.distance_to(b.global_position)
+	if absf(after - before) > 0.01:
+		failures.append("dashing creatures should ghost through body separation (gap %.2f -> %.2f)" % [before, after])
+	a.dash_timer = 0.0
+	a.dash_velocity = Vector2.ZERO
+
 func _check_push_is_soft(arena: Node, failures: Array[String]) -> void:
 	var pair := _two_creatures(arena)
 	var a: Node = pair[0]
@@ -83,6 +138,38 @@ func _check_push_is_soft(arena: Node, failures: Array[String]) -> void:
 	var moved: float = a.global_position.distance_to(a_before)
 	if moved > arena.SEPARATION_MAX_PUSH_PX + 0.01:
 		failures.append("per-tick separation push should be capped at %.1f px (moved %.2f)" % [arena.SEPARATION_MAX_PUSH_PX, moved])
+
+func _check_midpoint_invariant(arena: Node, failures: Array[String]) -> void:
+	var pair := _two_creatures(arena)
+	var a: Node = pair[0]
+	var b: Node = pair[1]
+	_normalize_grounded(a, "snapping_turtle")
+	_normalize_grounded(b, "cane_toad")
+	a.global_position = Vector2(620.0, 300.0)
+	b.global_position = a.global_position + Vector2(1.0, 0.0)
+	var midpoint_before: Vector2 = (a.global_position + b.global_position) * 0.5
+	arena.resolve_body_separation()
+	var midpoint_after: Vector2 = (a.global_position + b.global_position) * 0.5
+	if midpoint_after.distance_to(midpoint_before) > 0.01:
+		failures.append("uncollamped separation should preserve pair midpoint (before=%s after=%s)" % [str(midpoint_before), str(midpoint_after)])
+
+func _check_repeated_resolution_deterministic(arena: Node, failures: Array[String]) -> void:
+	var pair := _two_creatures(arena)
+	var a: Node = pair[0]
+	var b: Node = pair[1]
+	var first := _resolve_pair_signature(arena, a, b, 700.0)
+	var second := _resolve_pair_signature(arena, a, b, 700.0)
+	if first != second:
+		failures.append("repeated body separation should be bit-identical for the same setup; first=%s second=%s" % [first, second])
+
+func _resolve_pair_signature(arena: Node, a: Node, b: Node, x: float) -> String:
+	_normalize_grounded(a, "snapping_turtle")
+	_normalize_grounded(b, "cane_toad")
+	a.global_position = Vector2(x, 300.0)
+	b.global_position = a.global_position + Vector2(1.0, 0.0)
+	for i in 120:
+		arena.resolve_body_separation()
+	return "%s|%s" % [str(a.global_position.snapped(Vector2(0.001, 0.001))), str(b.global_position.snapped(Vector2(0.001, 0.001)))]
 
 func _check_minion_slots(arena: Node, failures: Array[String]) -> void:
 	var target: Node = arena.bots[0]
@@ -102,6 +189,10 @@ func _normalize_grounded(actor: Node, creature_id: String) -> void:
 	actor.state = CreatureStateScript.State.NORMAL
 	actor.dash_timer = 0.0
 	actor.dash_velocity = Vector2.ZERO
+	if actor.get("residual_velocity") != null:
+		actor.set("residual_velocity", Vector2.ZERO)
+	if actor.get("steering_velocity") != null:
+		actor.set("steering_velocity", Vector2.ZERO)
 	actor.pass_obstacles_timer = 0.0
 	actor.break_stealth()
 	actor.release_latch("test_reset")
