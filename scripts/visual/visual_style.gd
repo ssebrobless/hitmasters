@@ -435,6 +435,12 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 		for scuff_side: float in [-1.0, 1.0]:
 			var scuff_center := -forward * radius * 0.55 + side * scuff_side * radius * 0.48
 			canvas.draw_arc(scuff_center, radius * (0.18 + 0.04 * bog_creep_intensity), PI * 0.1, PI * 0.9, 8, bog_scuff, 1.0)
+			var toe_center := -forward * radius * 0.16 + side * scuff_side * radius * 0.34
+			canvas.draw_line(toe_center, toe_center - forward * radius * (0.16 + 0.06 * bog_creep_intensity), Color(bog_scuff.r, bog_scuff.g, bog_scuff.b, bog_scuff.a * 0.82), 1.0)
+	if bog_paddle:
+		for bubble_side: float in [-1.0, 1.0]:
+			var bubble_center := forward * radius * 0.46 + side * bubble_side * radius * 0.26
+			canvas.draw_circle(bubble_center, maxf(radius * (0.045 + 0.015 * bog_paddle_intensity), 1.0), bog_water.lightened(0.22))
 	if turtle_plod:
 		for scuff_side: float in [-1.0, 1.0]:
 			var scuff_center := -forward * radius * 0.46 + side * scuff_side * radius * 0.62
@@ -492,6 +498,8 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 	canvas.draw_circle(head_center, radius * 0.26, skin_color)
 	if skin.has("neck_patch"):
 		var patch: Color = skin["neck_patch"]
+		if bog_creep or bog_paddle:
+			canvas.draw_arc(head_center, radius * (0.22 + 0.04 * maxf(bog_creep_intensity, bog_paddle_intensity)), -PI * 0.15, PI * 1.1, 12, Color(patch.r, patch.g, patch.b, 0.18 + 0.06 * maxf(bog_creep_intensity, bog_paddle_intensity)), 1.0)
 		canvas.draw_circle(head_center + head_side * radius * 0.2, radius * 0.1, patch)
 		canvas.draw_circle(head_center - head_side * radius * 0.2, radius * 0.1, patch)
 	if strike > 0.0:
