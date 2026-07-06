@@ -162,6 +162,8 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var toxic_recoil_t := clampf(float(anim.get("toxic_recoil_t", 0.0)), 0.0, 1.0)
 	var chorus_hop := String(anim.get("creature_id", "")) == "chorus_frog" and bool(anim.get("chorus_hop_pose", false))
 	var chorus_hop_intensity := clampf(float(anim.get("chorus_hop_intensity", 0.0)), 0.0, 1.25)
+	var cane_squat_hop := String(anim.get("creature_id", "")) == "cane_toad" and bool(anim.get("cane_squat_hop_pose", false))
+	var cane_squat_hop_intensity := clampf(float(anim.get("cane_squat_hop_intensity", 0.0)), 0.0, 1.25)
 
 	var raw_hop := sin(walk_phase * 1.2) * 0.5 + 0.5 if moving and not rooted_pose else 0.0
 	var ground_contact := clampf(float(anim.get("ground_contact", 0.6)), 0.1, 0.95)
@@ -169,9 +171,13 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var leg_extend := 0.55 + hop * 0.55 * float(anim.get("hop_leg_scale", 1.0))
 	if chorus_hop:
 		leg_extend += 0.16 * chorus_hop_intensity * (0.35 + hop)
+	if cane_squat_hop:
+		leg_extend = maxf(0.36, leg_extend - 0.18 * cane_squat_hop_intensity)
 	if rooted_pose:
 		leg_extend = 0.38
 	var landing_squash := (1.0 - hop) * float(anim.get("landing_squash", 0.0)) if moving else 0.0
+	if cane_squat_hop:
+		landing_squash = maxf(landing_squash, 0.08 * cane_squat_hop_intensity * (1.0 - hop * 0.35))
 	var landing_t := clampf(float(anim.get("landing_t", 0.0)), 0.0, 1.0)
 	var landing_impact := clampf(float(anim.get("landing_impact", 0.0)), 0.0, 1.5)
 	landing_squash = maxf(landing_squash, landing_t * landing_impact * 0.18)
@@ -185,6 +191,9 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 		if chorus_hop:
 			var toe_trail := foot - forward * radius * (0.22 + 0.12 * chorus_hop_intensity)
 			canvas.draw_line(foot, toe_trail + side * leg_side * radius * 0.08, Color(dark.r, dark.g, dark.b, 0.32 + 0.12 * chorus_hop_intensity), maxf(radius * 0.06, 1.1))
+		if cane_squat_hop:
+			var scuff := foot - forward * radius * (0.18 + 0.12 * cane_squat_hop_intensity)
+			canvas.draw_arc(scuff, radius * (0.18 + 0.05 * cane_squat_hop_intensity), PI * 0.08, PI * 0.9, 8, Color(dark.r, dark.g, dark.b, 0.2 + 0.08 * cane_squat_hop_intensity), maxf(radius * 0.05, 1.0))
 		canvas.draw_line(hip, knee, dark, maxf(radius * 0.24, 3.0))
 		canvas.draw_line(knee, foot, dark, maxf(radius * 0.18, 2.5))
 		for toe in 3:
@@ -193,6 +202,8 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 	for foot_side: float in [-1.0, 1.0]:
 		var front_step := sin(walk_phase * 1.2 + PI * 0.5) * radius * 0.08 if moving else 0.0
 		var front_foot := forward * (radius * 0.55 + front_step) + side * foot_side * radius * 0.4
+		if cane_squat_hop:
+			front_foot += side * foot_side * radius * 0.1 * cane_squat_hop_intensity - forward * radius * 0.08 * cane_squat_hop_intensity
 		canvas.draw_circle(front_foot, radius * 0.13, dark)
 		if chorus_hop:
 			canvas.draw_arc(front_foot - forward * radius * 0.08, radius * (0.16 + 0.04 * chorus_hop_intensity), PI * 0.1, PI * 0.9, 8, Color(dark.r, dark.g, dark.b, 0.25), 1.0)

@@ -298,6 +298,31 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.add_modifier("Thanatosis", {"move_speed_mult": 0.0}, 1.0)
 	if not bool(actor.get_render_motion_state().get("rooted_pose", false)):
 		failures.append("Thanatosis should expose rooted render pose")
+	actor.remove_modifiers_from_source("Thanatosis")
+	actor.current_environment_profile = {"surface": "land"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var cane_hop_state: Dictionary = actor.get_render_motion_state()
+	var cane_hop: bool = bool(cane_hop_state.get("cane_squat_hop_pose", false)) and float(cane_hop_state.get("cane_squat_hop_intensity", 0.0)) > 0.25
+	actor.velocity = Vector2.ZERO
+	actor.set_input_frame(InputFrameScript.new())
+	var cane_idle_state: Dictionary = actor.get_render_motion_state()
+	var cane_idle_clear: bool = not bool(cane_idle_state.get("cane_squat_hop_pose", false)) and float(cane_idle_state.get("cane_squat_hop_intensity", 1.0)) <= 0.001
+	actor.add_modifier("Thanatosis", {"move_speed_mult": 0.0}, 1.0)
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var cane_rooted_state: Dictionary = actor.get_render_motion_state()
+	var cane_rooted_suppressed: bool = bool(cane_rooted_state.get("rooted_pose", false)) and not bool(cane_rooted_state.get("cane_squat_hop_pose", false))
+	actor.remove_modifiers_from_source("Thanatosis")
+	if not cane_hop or not cane_idle_clear or not cane_rooted_suppressed:
+		failures.append("moving cane toad should expose squat-hop render pose, clear when idle, and defer to Thanatosis rooted pose; moving=%s idle=%s rooted=%s state=%s/%s/%s" % [
+			str(cane_hop),
+			str(cane_idle_clear),
+			str(cane_rooted_suppressed),
+			str(cane_hop_state),
+			str(cane_idle_state),
+			str(cane_rooted_state)
+		])
 	actor.apply_creature("crayfish")
 	actor.add_modifier("Meral Display", {"forward_back_only": 2.0}, 1.0)
 	var stance_state: Dictionary = actor.get_render_motion_state()
