@@ -438,6 +438,12 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 			var wake_color := bog_water if bog_paddle else turtle_water
 			canvas.draw_arc(wake_origin, radius * (0.34 + 0.12 * swim_intensity), -0.55, 0.95, 12, wake_color, 1.2 + swim_intensity * 0.45)
 			canvas.draw_line(wake_origin - forward * radius * 0.2, wake_origin - forward * radius * (0.78 + 0.2 * swim_intensity) + side * wake_side * radius * 0.16, Color(wake_color.r, wake_color.g, wake_color.b, wake_color.a * 0.7), maxf(radius * 0.055, 1.1))
+	if turtle_swim:
+		var shell_push := Color(turtle_water.r, turtle_water.g, turtle_water.b, 0.18 + 0.08 * turtle_swim_intensity)
+		canvas.draw_arc(-forward * radius * 0.18, radius * (0.62 + 0.08 * turtle_swim_intensity), PI * 0.05, PI * 0.95, 18, shell_push, maxf(radius * 0.08, 1.2))
+		for push_side: float in [-1.0, 1.0]:
+			var push_start := -forward * radius * 0.12 + side * push_side * radius * 0.58
+			canvas.draw_line(push_start, push_start - forward * radius * (0.56 + 0.18 * turtle_swim_intensity) + side * push_side * radius * 0.18, shell_push, maxf(radius * 0.06, 1.0))
 	if bog_creep:
 		for scuff_side: float in [-1.0, 1.0]:
 			var scuff_center := -forward * radius * 0.55 + side * scuff_side * radius * 0.48
@@ -471,6 +477,7 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 			canvas.draw_line(leg_center + claw_direction.rotated((float(claw) - 1.0) * 0.35) * radius * 0.18, leg_center + claw_direction.rotated((float(claw) - 1.0) * 0.35) * radius * 0.34, Color(0.85, 0.82, 0.7), 1.5)
 		if turtle_swim:
 			canvas.draw_circle(leg_center - forward * radius * 0.08, maxf(radius * (0.07 + 0.02 * turtle_swim_intensity), 1.2), turtle_water.lightened(0.18))
+			canvas.draw_arc(leg_center - forward * radius * 0.1, radius * (0.18 + 0.04 * turtle_swim_intensity), PI * 0.05, PI * 0.9, 8, turtle_water, maxf(radius * 0.045, 1.0))
 		if turtle_plod:
 			canvas.draw_line(leg_center - forward * radius * 0.05, leg_center - forward * radius * (0.32 + 0.08 * turtle_plod_intensity), turtle_scuff, maxf(radius * 0.04, 1.0))
 		if bog_paddle:

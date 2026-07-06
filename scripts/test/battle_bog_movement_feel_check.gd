@@ -622,6 +622,12 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var turtle_water_state: Dictionary = actor.get_render_motion_state()
 	var turtle_swim: bool = bool(turtle_water_state.get("turtle_swim_pose", false)) \
 		and not bool(turtle_water_state.get("turtle_plod_pose", false)) \
+		and not bool(turtle_water_state.get("bog_turtle_paddle_pose", false)) \
+		and not bool(turtle_water_state.get("duck_paddle_pose", false)) \
+		and not bool(turtle_water_state.get("beaver_swim_pose", false)) \
+		and not bool(turtle_water_state.get("mink_swim_pose", false)) \
+		and not bool(turtle_water_state.get("otter_swim_pose", false)) \
+		and not bool(turtle_water_state.get("crayfish_tail_flick_swim_pose", false)) \
 		and float(turtle_water_state.get("turtle_swim_intensity", 0.0)) > 0.25 \
 		and float(turtle_water_state.get("turtle_plod_intensity", 1.0)) <= 0.001
 	actor.velocity = Vector2.ZERO
@@ -629,6 +635,18 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var turtle_idle_state: Dictionary = actor.get_render_motion_state()
 	var turtle_idle_clear: bool = not bool(turtle_idle_state.get("turtle_swim_pose", false)) \
 		and not bool(turtle_idle_state.get("turtle_plod_pose", false)) \
+		and not bool(turtle_idle_state.get("bog_turtle_creep_pose", false)) \
+		and not bool(turtle_idle_state.get("bog_turtle_paddle_pose", false)) \
+		and not bool(turtle_idle_state.get("duck_paddle_pose", false)) \
+		and not bool(turtle_idle_state.get("duck_waddle_pose", false)) \
+		and not bool(turtle_idle_state.get("beaver_swim_pose", false)) \
+		and not bool(turtle_idle_state.get("beaver_lumber_pose", false)) \
+		and not bool(turtle_idle_state.get("mink_swim_pose", false)) \
+		and not bool(turtle_idle_state.get("mink_bound_pose", false)) \
+		and not bool(turtle_idle_state.get("otter_swim_pose", false)) \
+		and not bool(turtle_idle_state.get("otter_land_slide_pose", false)) \
+		and not bool(turtle_idle_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(turtle_idle_state.get("crayfish_tail_flick_swim_pose", false)) \
 		and float(turtle_idle_state.get("turtle_swim_intensity", 1.0)) <= 0.001 \
 		and float(turtle_idle_state.get("turtle_plod_intensity", 1.0)) <= 0.001
 	actor.current_environment_profile = {"surface": "land"}
@@ -637,10 +655,16 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var turtle_land_state: Dictionary = actor.get_render_motion_state()
 	var turtle_plod: bool = bool(turtle_land_state.get("turtle_plod_pose", false)) \
 		and not bool(turtle_land_state.get("turtle_swim_pose", false)) \
+		and not bool(turtle_land_state.get("bog_turtle_creep_pose", false)) \
+		and not bool(turtle_land_state.get("duck_waddle_pose", false)) \
+		and not bool(turtle_land_state.get("beaver_lumber_pose", false)) \
+		and not bool(turtle_land_state.get("mink_bound_pose", false)) \
+		and not bool(turtle_land_state.get("otter_land_slide_pose", false)) \
+		and not bool(turtle_land_state.get("crayfish_scuttle_pose", false)) \
 		and float(turtle_land_state.get("turtle_plod_intensity", 0.0)) > 0.25 \
 		and float(turtle_land_state.get("turtle_swim_intensity", 1.0)) <= 0.001
 	if not turtle_swim or not turtle_idle_clear or not turtle_plod:
-		failures.append("moving snapping turtle should expose water paddle swim and land plod render poses, then clear when idle; water=%s idle=%s land=%s state=%s/%s/%s" % [
+		failures.append("moving snapping turtle should expose heavy-shell water paddle and land plod without tiny turtle, duck, mammal, or crustacean overlap, then clear when idle; water=%s idle=%s land=%s state=%s/%s/%s" % [
 			str(turtle_swim),
 			str(turtle_idle_clear),
 			str(turtle_plod),
