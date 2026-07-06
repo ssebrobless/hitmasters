@@ -140,6 +140,7 @@ func _initialize() -> void:
 	var bullfrog_water_ratio := bullfrog_water_speed / bullfrog_ground_speed
 	var shallow_frog_ratio := shallow_frog_speed / shallow_frog_ground_speed
 	var shallow_turtle_ratio := shallow_turtle_speed / shallow_turtle._speed_px_for_ground()
+	var land_ground_synonyms := bullfrog.has_movement("ground_walker") and owl.has_movement("land_walker")
 	var bullfrog_took_dot := bullfrog_loss > bullfrog_start_hp * 0.1
 	var bullfrog_dragged := absf(bullfrog_water_ratio - EnvironmentProfileScript.DEEP_WATER_LAND_DRAG_MULTIPLIER) < 0.001
 	var shallow_frog_safe_slow := shallow_frog_loss <= 0.001 and shallow_frog_ratio < 0.95
@@ -149,9 +150,9 @@ func _initialize() -> void:
 	var shallow_turtle_comfort := shallow_turtle_ratio > 1.02 and shallow_turtle_swim_safe
 	var turtle_drowned_after_timer := turtle.swim_time_remaining <= 0.0 and turtle_loss > 0.0
 	var mink_smoothing_ok := mink_first_shallow_speed < mink_ground_speed and mink_first_shallow_speed > mink_settled_shallow_speed and absf(mink_settled_shallow_speed - mink._speed_px_for_ground() * 0.92) < 0.5
-	var passed := bullfrog_took_dot and bullfrog_dragged and shallow_frog_safe_slow and turtle_boosted and duck_uses_swim_speed and wader_uses_swim_speed and shallow_turtle_comfort and turtle_drowned_after_timer and took_off and held_takeoff_stayed_airborne and grounded_by_depletion and stayed_grounded and voluntary_landed and landing_hold_stayed_grounded and blocked_takeoff_stayed_grounded and mink_smoothing_ok
+	var passed := bullfrog_took_dot and bullfrog_dragged and shallow_frog_safe_slow and turtle_boosted and duck_uses_swim_speed and wader_uses_swim_speed and shallow_turtle_comfort and turtle_drowned_after_timer and took_off and held_takeoff_stayed_airborne and grounded_by_depletion and stayed_grounded and voluntary_landed and landing_hold_stayed_grounded and blocked_takeoff_stayed_grounded and mink_smoothing_ok and land_ground_synonyms
 
-	print("land_walker_dot_loss=%.2f land_water_ratio=%.3f shallow_frog_ratio=%.3f shallow_loss=%.2f semi_water_speed_ratio=%.3f duck_swim=%s wader_swim=%s shallow_turtle_ratio=%.3f shallow_swim_safe=%s semi_swim_remaining=%.2f semi_dot_loss=%.2f owl_took_off=%s held_airborne=%s takeoff_seconds=%.2f owl_grounded_timer=%.2f stayed_grounded=%s voluntary_landed=%s landing_hold=%s blocked_takeoff=%s mink_smoothing=%s/%.2f/%.2f" % [
+	print("land_walker_dot_loss=%.2f land_water_ratio=%.3f shallow_frog_ratio=%.3f shallow_loss=%.2f semi_water_speed_ratio=%.3f duck_swim=%s wader_swim=%s shallow_turtle_ratio=%.3f shallow_swim_safe=%s semi_swim_remaining=%.2f semi_dot_loss=%.2f owl_took_off=%s held_airborne=%s takeoff_seconds=%.2f owl_grounded_timer=%.2f stayed_grounded=%s voluntary_landed=%s landing_hold=%s blocked_takeoff=%s mink_smoothing=%s/%.2f/%.2f land_ground_synonyms=%s" % [
 		bullfrog_loss,
 		bullfrog_water_ratio,
 		shallow_frog_ratio,
@@ -173,7 +174,8 @@ func _initialize() -> void:
 		str(blocked_takeoff_stayed_grounded),
 		str(mink_smoothing_ok),
 		mink_first_shallow_speed,
-		mink_settled_shallow_speed
+		mink_settled_shallow_speed,
+		str(land_ground_synonyms)
 	])
 	quit(0 if passed else 1)
 

@@ -411,7 +411,13 @@ func is_untargetable() -> bool:
 	return _modifier_value("untargetable", 1.0) > 1.5
 
 func has_movement(tag: String) -> bool:
-	return movement_tags.has(tag)
+	if movement_tags.has(tag):
+		return true
+	if tag == "ground_walker":
+		return movement_tags.has("land_walker")
+	if tag == "land_walker":
+		return movement_tags.has("ground_walker")
+	return false
 
 func get_current_zone() -> String:
 	if arena != null and arena.has_method("get_terrain_zone"):
@@ -993,6 +999,10 @@ func _environment_profile_for_zone(zone: String) -> Dictionary:
 
 func _effective_movement_tags() -> Array:
 	var tags := movement_tags.duplicate()
+	if tags.has("land_walker") and not tags.has("ground_walker"):
+		tags.append("ground_walker")
+	if tags.has("ground_walker") and not tags.has("land_walker"):
+		tags.append("land_walker")
 	if _modifier_value("water_walk", 1.0) > 1.5 and not tags.has("water_walk"):
 		tags.append("water_walk")
 	return tags
