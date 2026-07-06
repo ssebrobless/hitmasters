@@ -636,6 +636,8 @@ func get_render_motion_state() -> Dictionary:
 	var plunge_t := clampf(render_plunge_timer / PLUNGE_TELL_SEC, 0.0, 1.0) if PLUNGE_TELL_SEC > 0.0 else 0.0
 	var surface_walk := creature_id == "water_shrew" and water_walk_active and moving and surface == EnvironmentProfileScript.SURFACE_WATER
 	var wake_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if surface_walk else 0.0
+	var shrew_submerged := creature_id == "water_shrew" and surface == EnvironmentProfileScript.SURFACE_WATER and not surface_walk
+	var shrew_submerged_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if shrew_submerged and moving else 0.0
 	var chorus_hop := creature_id == "chorus_frog" and moving and not is_airborne()
 	var chorus_hop_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if chorus_hop else 0.0
 	var bullfrog_lunge := creature_id == "bullfrog" and kit != null and bool(kit.get("lunge_active"))
@@ -701,6 +703,8 @@ func get_render_motion_state() -> Dictionary:
 		"in_water": surface == EnvironmentProfileScript.SURFACE_WATER,
 		"surface_walk": surface_walk,
 		"surface_wake_intensity": wake_intensity,
+		"submerged_shrew_pose": shrew_submerged,
+		"submerged_shrew_intensity": shrew_submerged_intensity,
 		"bullfrog_coil_pose": bullfrog_coil,
 		"bullfrog_coil_intensity": bullfrog_coil_intensity,
 		"bullfrog_lunge_pose": bullfrog_lunge,

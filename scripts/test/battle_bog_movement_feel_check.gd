@@ -435,6 +435,36 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 			str(chorus_hop_state),
 			str(chorus_idle_state)
 		])
+	actor.apply_creature("water_shrew")
+	actor.current_environment_profile = {"surface": "water"}
+	actor.add_modifier("Water Walk", {"water_walk": 2.0}, 1.0)
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var shrew_skim_state: Dictionary = actor.get_render_motion_state()
+	var shrew_skim: bool = bool(shrew_skim_state.get("surface_walk", false)) \
+		and not bool(shrew_skim_state.get("submerged_shrew_pose", false)) \
+		and float(shrew_skim_state.get("surface_wake_intensity", 0.0)) > 0.25
+	actor.remove_modifiers_from_source("Water Walk")
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var shrew_submerged_state: Dictionary = actor.get_render_motion_state()
+	var shrew_submerged: bool = bool(shrew_submerged_state.get("submerged_shrew_pose", false)) \
+		and not bool(shrew_submerged_state.get("surface_walk", false)) \
+		and float(shrew_submerged_state.get("submerged_shrew_intensity", 0.0)) > 0.25
+	actor.current_environment_profile = {"surface": "land"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var shrew_land_state: Dictionary = actor.get_render_motion_state()
+	var shrew_land_clear: bool = not bool(shrew_land_state.get("surface_walk", false)) and not bool(shrew_land_state.get("submerged_shrew_pose", false))
+	if not shrew_skim or not shrew_submerged or not shrew_land_clear:
+		failures.append("water shrew should expose mutually exclusive surface skim and submerged render poses, then clear on land; skim=%s submerged=%s land=%s state=%s/%s/%s" % [
+			str(shrew_skim),
+			str(shrew_submerged),
+			str(shrew_land_clear),
+			str(shrew_skim_state),
+			str(shrew_submerged_state),
+			str(shrew_land_state)
+		])
 	actor.apply_creature("newt")
 	actor.current_environment_profile = {"surface": "land"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()

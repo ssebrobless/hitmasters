@@ -510,6 +510,8 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	var is_otter := String(anim.get("creature_id", "")) == "otter"
 	var surface_walk := bool(anim.get("surface_walk", false))
 	var surface_wake_intensity := clampf(float(anim.get("surface_wake_intensity", 0.0)), 0.0, 1.25)
+	var submerged_shrew := is_water_shrew and bool(anim.get("submerged_shrew_pose", bool(anim.get("in_water", false)) and not surface_walk))
+	var submerged_shrew_intensity := clampf(float(anim.get("submerged_shrew_intensity", 0.0)), 0.0, 1.25)
 	var slick_crawl := is_newt and bool(anim.get("slick_crawl_pose", false))
 	var slick_crawl_intensity := clampf(float(anim.get("slick_crawl_intensity", 0.0)), 0.0, 1.25)
 	var newt_swim := is_newt and bool(anim.get("newt_swim_pose", false))
@@ -529,6 +531,9 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	if surface_walk:
 		body_wiggle += 0.42 * surface_wake_intensity
 		tail_wave += 0.25 * surface_wake_intensity
+	if submerged_shrew:
+		body_wiggle += 0.16 * submerged_shrew_intensity
+		tail_wave += 0.22 * submerged_shrew_intensity
 	if slick_crawl:
 		body_wiggle += 0.35 * slick_crawl_intensity
 		tail_wave += 0.32 * slick_crawl_intensity
@@ -563,8 +568,8 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 		stretch += 0.1
 		body_wiggle += 0.22
 		tail_wave += 0.32
-	var submerged_shrew := is_water_shrew and bool(anim.get("in_water", false)) and not surface_walk
 	var water_tint := Color(0.2, 0.6, 0.85, 0.32 + 0.14 * surface_wake_intensity)
+	var submerged_tint := Color(0.28, 0.56, 0.74, 0.16 + 0.1 * submerged_shrew_intensity)
 	var slick_tint := Color(0.86, 0.58, 0.32, 0.20 + 0.10 * slick_crawl_intensity)
 	var newt_water := Color(0.38, 0.64, 0.78, 0.18 + 0.12 * newt_swim_intensity)
 	var beaver_water := Color(0.42, 0.68, 0.82, 0.20 + 0.12 * beaver_swim_intensity)
@@ -593,6 +598,8 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 		for wake_side: float in [-1.0, 1.0]:
 			var wake_start := -forward * radius * 0.5 + side * wake_side * radius * 0.26
 			canvas.draw_line(wake_start, wake_start - forward * radius * (0.62 + 0.2 * newt_swim_intensity) + side * wake_side * radius * 0.14, newt_water, maxf(radius * 0.045, 1.0))
+	if submerged_shrew and submerged_shrew_intensity > 0.0:
+		canvas.draw_line(-forward * radius * 0.2, -forward * radius * (0.86 + 0.18 * submerged_shrew_intensity), Color(submerged_tint.r, submerged_tint.g, submerged_tint.b, submerged_tint.a * 0.72), maxf(radius * 0.045, 1.0))
 	if otter_land_slide:
 		var slide_center := -forward * radius * 0.35
 		canvas.draw_arc(slide_center, radius * (0.72 + 0.1 * otter_motion_intensity), PI * 0.12, PI * 0.88, 14, otter_slide_dust, maxf(radius * 0.07, 1.2))
@@ -716,9 +723,10 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			var bubble := -forward * radius * (0.45 + t * (1.0 + 0.45 * surface_wake_intensity)) + side * sin(walk_phase * 1.6 + t * 3.1) * radius * (0.2 + 0.22 * surface_wake_intensity)
 			canvas.draw_circle(bubble, maxf(radius * (0.04 + t * 0.035 + surface_wake_intensity * 0.015), 1.0), water_tint.lightened(0.25))
 	elif submerged_shrew:
-		for bubble_index in 3:
-			var bubble := forward * radius * (0.15 + float(bubble_index) * 0.18) + side * radius * (0.34 + float(bubble_index) * 0.12)
-			canvas.draw_circle(bubble, maxf(radius * 0.06, 1.0), water_tint.lightened(0.35))
+		for bubble_index in 4:
+			var t := float(bubble_index) / 3.0
+			var bubble := -forward * radius * (0.12 + t * (0.62 + 0.18 * submerged_shrew_intensity)) + side * sin(walk_phase * 1.25 + t * 2.6) * radius * (0.18 + 0.16 * submerged_shrew_intensity)
+			canvas.draw_circle(bubble, maxf(radius * (0.045 + t * 0.025), 1.0), submerged_tint.lightened(0.3))
 	elif newt_swim:
 		for bubble_index in 4:
 			var t := float(bubble_index) / 3.0
