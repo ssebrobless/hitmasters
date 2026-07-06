@@ -24,6 +24,7 @@ func _run() -> void:
 
 	_check_profile_ramp(arena, failures)
 	_check_turn_inertia(arena, failures)
+	_check_directional_scuttle(arena, failures)
 	_check_dash_bypass(arena, failures)
 	_check_render_profile_keys(arena, failures)
 	_check_water_profile_overlay(arena, failures)
@@ -65,6 +66,20 @@ func _check_turn_inertia(arena: Node, failures: Array[String]) -> void:
 		turtle.tick_sim(1.0 / 60.0)
 	if not (turtle.velocity.x > 8.0 and turtle.velocity.y < -1.0):
 		failures.append("heavy turtle profile should keep forward momentum while beginning a turn; velocity=%s" % str(turtle.velocity))
+
+func _check_directional_scuttle(arena: Node, failures: Array[String]) -> void:
+	var actor: Node = arena.player
+	var forward_speed := _one_tick_velocity(actor, "crayfish", Vector2.RIGHT)
+	var lateral_speed := _one_tick_velocity(actor, "crayfish", Vector2.UP)
+	var backward_speed := _one_tick_velocity(actor, "crayfish", Vector2.LEFT)
+	var frog_lateral := _one_tick_velocity(actor, "bullfrog", Vector2.UP)
+	if not (lateral_speed > forward_speed * 1.3 and backward_speed > lateral_speed * 1.05 and lateral_speed > frog_lateral * 2.0):
+		failures.append("crayfish should scuttle laterally and snap backward relative to facing; forward=%.2f lateral=%.2f backward=%.2f frog_lateral=%.2f" % [
+			forward_speed,
+			lateral_speed,
+			backward_speed,
+			frog_lateral
+		])
 
 func _check_dash_bypass(arena: Node, failures: Array[String]) -> void:
 	var actor: Node = arena.player
@@ -176,3 +191,12 @@ func _move_frame(direction: Vector2) -> Resource:
 	frame.move = direction
 	frame.aim = Vector2.RIGHT * 100.0
 	return frame
+
+func _one_tick_velocity(actor: Node, creature_id: String, direction: Vector2) -> float:
+	actor.apply_creature(creature_id)
+	actor.global_position = Vector2.ZERO
+	actor.velocity = Vector2.ZERO
+	actor.last_aim_direction = Vector2.RIGHT
+	actor.set_input_frame(_move_frame(direction))
+	actor.tick_sim(1.0 / 60.0)
+	return actor.velocity.length()

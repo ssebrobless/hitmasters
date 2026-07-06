@@ -28,6 +28,11 @@ const DEFAULT_PROFILE := {
 	"turtle_stride": 1.0,
 	"shell_stability": 0.0,
 	"waddle_sway": 0.0,
+	"forward_speed_mult": 1.0,
+	"lateral_speed_mult": 1.0,
+	"backward_speed_mult": 1.0,
+	"lateral_accel_time": -1.0,
+	"backward_accel_time": -1.0,
 	"water_profile": {}
 }
 
@@ -73,7 +78,12 @@ const PROFILES := {
 		"gait_rate_mult": 1.55,
 		"bob_px": 0.4,
 		"scuttle_stride": 1.35,
-		"tail_curl": 0.55
+		"tail_curl": 0.55,
+		"forward_speed_mult": 0.9,
+		"lateral_speed_mult": 1.2,
+		"backward_speed_mult": 1.1,
+		"lateral_accel_time": 0.045,
+		"backward_accel_time": 0.035
 	},
 	"water_shrew": {
 		"accel_time": 0.035,
@@ -287,16 +297,19 @@ static func profile_for_surface(profile: Dictionary, surface: String) -> Diction
 		active[key] = overlay[key]
 	return active
 
-static func profiled_velocity(current_velocity: Vector2, move: Vector2, top_speed_px: float, delta: float, profile: Dictionary) -> Vector2:
+static func profiled_velocity(current_velocity: Vector2, move: Vector2, top_speed_px: float, delta: float, profile: Dictionary, facing_direction := Vector2.ZERO) -> Vector2:
 	if top_speed_px <= 0.0:
 		return Vector2.ZERO
 	var desired := Vector2.ZERO
 	if move.length() > 0.001:
-		desired = _turn_limited_direction(current_velocity, move.normalized(), delta, float(profile.get("turn_rate_deg", 900.0))) * top_speed_px
-	var response_time := float(profile.get("accel_time", 0.08)) if desired.length() > current_velocity.length() else float(profile.get("decel_time", 0.07))
+		var desired_direction := move.normalized()
+		var desired_speed := top_speed_px * _directional_speed_mult(desired_direction, facing_direction, profile)
+		desired = _turn_limited_direction(current_velocity, desired_direction, delta, float(profile.get("turn_rate_deg", 900.0))) * desired_speed
+	var response_time := _directional_accel_time(float(profile.get("accel_time", 0.08)), move, facing_direction, profile) if desired.length() > current_velocity.length() else float(profile.get("decel_time", 0.07))
 	if desired != Vector2.ZERO and current_velocity.length() > 1.0 and current_velocity.normalized().dot(desired.normalized()) < -0.25:
 		response_time = maxf(response_time, float(profile.get("decel_time", 0.07)))
-	var max_delta := top_speed_px / maxf(response_time, 0.001) * delta
+	var response_speed := top_speed_px if desired == Vector2.ZERO or desired.length() < current_velocity.length() else desired.length()
+	var max_delta := response_speed / maxf(response_time, 0.001) * delta
 	return current_velocity.move_toward(desired, max_delta)
 
 static func gait_phase_delta(speed_px: float, delta: float, profile: Dictionary) -> float:
@@ -338,3 +351,33 @@ static func _turn_limited_direction(current_velocity: Vector2, desired_direction
 	var max_angle := deg_to_rad(turn_rate_deg) * delta
 	var angle := clampf(current_direction.angle_to(desired_direction), -max_angle, max_angle)
 	return current_direction.rotated(angle).normalized()
+
+static func _directional_speed_mult(move_direction: Vector2, facing_direction: Vector2, profile: Dictionary) -> float:
+	if move_direction.length() <= 0.001 or facing_direction.length() <= 0.001:
+		return 1.0
+	var forward := facing_direction.normalized()
+	var move := move_direction.normalized()
+	var forward_weight := maxf(move.dot(forward), 0.0)
+	var backward_weight := maxf(-move.dot(forward), 0.0)
+	var lateral_weight := absf(move.cross(forward))
+	var total := maxf(forward_weight + backward_weight + lateral_weight, 0.001)
+	return (
+		forward_weight * float(profile.get("forward_speed_mult", 1.0))
+		+ lateral_weight * float(profile.get("lateral_speed_mult", 1.0))
+		+ backward_weight * float(profile.get("backward_speed_mult", 1.0))
+	) / total
+
+static func _directional_accel_time(default_time: float, move_direction: Vector2, facing_direction: Vector2, profile: Dictionary) -> float:
+	if move_direction.length() <= 0.001 or facing_direction.length() <= 0.001:
+		return default_time
+	var forward := facing_direction.normalized()
+	var move := move_direction.normalized()
+	var backward_weight := maxf(-move.dot(forward), 0.0)
+	var lateral_weight := absf(move.cross(forward))
+	var backward_time := float(profile.get("backward_accel_time", -1.0))
+	var lateral_time := float(profile.get("lateral_accel_time", -1.0))
+	if backward_weight >= lateral_weight and backward_weight > 0.5 and backward_time > 0.0:
+		return backward_time
+	if lateral_weight > 0.5 and lateral_time > 0.0:
+		return lateral_time
+	return default_time

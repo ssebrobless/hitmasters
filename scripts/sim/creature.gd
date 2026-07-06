@@ -517,7 +517,7 @@ func _move_from_input(delta: float) -> void:
 	if dash_timer > 0.0:
 		velocity = dash_velocity
 	else:
-		velocity = MovementFeelScript.profiled_velocity(velocity, move, get_speed_px() * speed_multiplier, delta, _active_movement_profile())
+		velocity = MovementFeelScript.profiled_velocity(velocity, move, get_speed_px() * speed_multiplier, delta, _active_movement_profile(), last_aim_direction)
 	if Engine.is_in_physics_frame():
 		move_and_slide()
 	else:
