@@ -150,7 +150,12 @@ func _check_ambush_and_devour(arena: Node, failures: Array[String]) -> void:
 	actor.global_position = _zone_point(arena, TerrainMapScript.LAND)
 	actor.current_environment_profile = {"surface": "land"}
 	actor.velocity = Vector2.RIGHT * 80.0
-	var high_walk: bool = bool(actor.get_render_motion_state().get("high_walk_pose", false))
+	var high_walk_state: Dictionary = actor.get_render_motion_state()
+	var high_walk: bool = bool(high_walk_state.get("high_walk_pose", false)) \
+		and not bool(high_walk_state.get("ambush_pose", false)) \
+		and not bool(high_walk_state.get("alligator_water_cruise_pose", false)) \
+		and not bool(high_walk_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(high_walk_state.get("turtle_plod_pose", false))
 
 	var victim: Node = arena.bots[1]
 	victim.apply_creature("mink")
@@ -161,7 +166,7 @@ func _check_ambush_and_devour(arena: Node, failures: Array[String]) -> void:
 	actor.on_kill(victim)
 	var devoured: bool = actor.health >= before_devour + expected_devour_heal - 0.001
 	if not stealthed or not slowed or not ambush_low or not broke or not high_walk or not devoured:
-		failures.append("Ambush should stealth+slow into low posture, then break to high-walk on attack; Devour should heal 50%% victim max HP; stealth=%s slowed=%s ambush_low=%s broke=%s high_walk=%s devoured=%s health=%.2f e=%.2f speed=%.2f states=%s/%s" % [
+		failures.append("Ambush should stealth+slow into low posture, then break to distinct high-walk on attack; Devour should heal 50%% victim max HP; stealth=%s slowed=%s ambush_low=%s broke=%s high_walk=%s devoured=%s health=%.2f e=%.2f speed=%.2f states=%s/%s/%s" % [
 			str(stealthed),
 			str(slowed),
 			str(ambush_low),
@@ -172,6 +177,7 @@ func _check_ambush_and_devour(arena: Node, failures: Array[String]) -> void:
 			actor.e_timer,
 			actor.get_modifier_value("move_speed_mult", 1.0),
 			str(ambush_state),
+			str(high_walk_state),
 			str(actor.get_render_motion_state())
 		])
 

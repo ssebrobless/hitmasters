@@ -1215,12 +1215,17 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 		tail_sway *= 2.1
 
 	if high_walk_pose:
+		var high_step_dust := Color(0.32, 0.28, 0.18, 0.14)
 		canvas.draw_colored_polygon(PackedVector2Array([
 			-forward * radius * 1.0 + side * radius * 0.48,
 			forward * radius * 1.38 + side * radius * 0.36,
 			forward * radius * 1.38 - side * radius * 0.36,
 			-forward * radius * 1.0 - side * radius * 0.48
 		]), Color(0.02, 0.03, 0.02, 0.18))
+		for step_side: float in [-1.0, 1.0]:
+			var step_center := -forward * radius * 0.18 + side * step_side * radius * 0.66
+			canvas.draw_arc(step_center, radius * 0.34, PI * 0.08, PI * 0.92, 10, high_step_dust, maxf(radius * 0.055, 1.0))
+			canvas.draw_line(step_center - forward * radius * 0.1, step_center - forward * radius * 0.52 + side * step_side * radius * 0.08, Color(high_step_dust.r, high_step_dust.g, high_step_dust.b, 0.16), maxf(radius * 0.04, 1.0))
 	if death_roll_pose:
 		var churn := Color(0.46, 0.72, 0.82, 0.26)
 		canvas.draw_arc(Vector2.ZERO, radius * 1.52, -PI * 0.15, PI * 1.18, 42, churn, maxf(radius * 0.12, 2.0))
@@ -1257,6 +1262,7 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 		canvas.draw_circle(leg_center, radius * (0.18 + crawl_weight * 0.03), dark)
 		if high_walk_pose:
 			canvas.draw_line(leg_center, leg_center + leg_center.normalized() * radius * 0.18, dark, maxf(radius * 0.08, 1.5))
+			canvas.draw_arc(leg_center - forward * radius * 0.08, radius * 0.18, PI * 0.1, PI * 0.9, 8, Color(0.32, 0.28, 0.18, 0.2), maxf(radius * 0.04, 1.0))
 		if water_cruise_pose and leg_index % 2 == 0:
 			canvas.draw_circle(leg_center - forward * radius * 0.08, maxf(radius * (0.05 + 0.025 * water_cruise_intensity), 1.0), Color(0.36, 0.62, 0.74, 0.18 + 0.08 * water_cruise_intensity))
 

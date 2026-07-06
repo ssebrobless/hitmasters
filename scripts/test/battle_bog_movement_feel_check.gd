@@ -902,7 +902,12 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var gator_walk_state: Dictionary = actor.get_render_motion_state()
 	var gator_walk: bool = bool(gator_walk_state.get("high_walk_pose", false)) \
 		and not bool(gator_walk_state.get("ambush_pose", false)) \
-		and not bool(gator_walk_state.get("alligator_water_cruise_pose", false))
+		and not bool(gator_walk_state.get("alligator_water_cruise_pose", false)) \
+		and not bool(gator_walk_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(gator_walk_state.get("water_slither_pose", false)) \
+		and not bool(gator_walk_state.get("turtle_plod_pose", false)) \
+		and not bool(gator_walk_state.get("leech_inchworm_pose", false)) \
+		and not bool(gator_walk_state.get("crayfish_scuttle_pose", false))
 	actor.current_environment_profile = {"surface": "water"}
 	actor.velocity = Vector2.RIGHT * 80.0
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
@@ -910,15 +915,29 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var gator_cruise: bool = bool(gator_water_state.get("alligator_water_cruise_pose", false)) \
 		and not bool(gator_water_state.get("high_walk_pose", false)) \
 		and not bool(gator_water_state.get("ambush_pose", false)) \
+		and not bool(gator_water_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(gator_water_state.get("water_slither_pose", false)) \
+		and not bool(gator_water_state.get("turtle_swim_pose", false)) \
+		and not bool(gator_water_state.get("leech_undulate_pose", false)) \
+		and not bool(gator_water_state.get("crayfish_tail_flick_swim_pose", false)) \
 		and float(gator_water_state.get("alligator_water_cruise_intensity", 0.0)) > 0.25
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
 	var gator_idle_state: Dictionary = actor.get_render_motion_state()
 	var gator_idle_clear: bool = not bool(gator_idle_state.get("alligator_water_cruise_pose", false)) \
 		and not bool(gator_idle_state.get("high_walk_pose", false)) \
+		and not bool(gator_idle_state.get("ambush_pose", false)) \
+		and not bool(gator_idle_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(gator_idle_state.get("water_slither_pose", false)) \
+		and not bool(gator_idle_state.get("turtle_plod_pose", false)) \
+		and not bool(gator_idle_state.get("turtle_swim_pose", false)) \
+		and not bool(gator_idle_state.get("leech_inchworm_pose", false)) \
+		and not bool(gator_idle_state.get("leech_undulate_pose", false)) \
+		and not bool(gator_idle_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(gator_idle_state.get("crayfish_tail_flick_swim_pose", false)) \
 		and float(gator_idle_state.get("alligator_water_cruise_intensity", 1.0)) <= 0.001
 	if not gator_walk or not gator_cruise or not gator_idle_clear:
-		failures.append("moving alligator should expose land high-walk and water cruise poses outside Ambush, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
+		failures.append("moving alligator should expose land high-walk and water cruise outside Ambush without low-crawler overlap, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
 			str(gator_walk),
 			str(gator_cruise),
 			str(gator_idle_clear),
