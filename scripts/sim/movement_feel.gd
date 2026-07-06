@@ -33,6 +33,8 @@ const DEFAULT_PROFILE := {
 	"backward_speed_mult": 1.0,
 	"lateral_accel_time": -1.0,
 	"backward_accel_time": -1.0,
+	"cluster_spread": 1.0,
+	"inchworm_pulse": 0.0,
 	"water_profile": {}
 }
 
@@ -122,6 +124,24 @@ const PROFILES := {
 			"gait_rate_mult": 0.62,
 			"bob_px": 0.12,
 			"turtle_stride": 0.68
+		}
+	},
+	"bog_turtle": {
+		"accel_time": 0.30,
+		"decel_time": 0.20,
+		"turn_rate_deg": 300.0,
+		"terrain_lerp_rate": 5.0,
+		"gait": "tiny_creep",
+		"gait_rate_mult": 0.52,
+		"bob_px": 0.08,
+		"turtle_stride": 0.34,
+		"shell_stability": 0.9,
+		"water_profile": {
+			"accel_time": 0.18,
+			"decel_time": 0.24,
+			"turn_rate_deg": 440.0,
+			"gait_rate_mult": 0.68,
+			"turtle_stride": 0.62
 		}
 	},
 	"alligator": {
@@ -227,6 +247,24 @@ const PROFILES := {
 			"tail_wave": 1.65
 		}
 	},
+	"otter": {
+		"accel_time": 0.055,
+		"decel_time": 0.06,
+		"turn_rate_deg": 1350.0,
+		"terrain_lerp_rate": 7.5,
+		"gait": "bound_slide",
+		"gait_rate_mult": 1.65,
+		"bob_px": 0.72,
+		"body_wiggle": 1.18,
+		"tail_wave": 1.28,
+		"water_profile": {
+			"accel_time": 0.045,
+			"decel_time": 0.085,
+			"turn_rate_deg": 1180.0,
+			"body_wiggle": 1.36,
+			"tail_wave": 1.72
+		}
+	},
 	"beaver": {
 		"accel_time": 0.22,
 		"decel_time": 0.16,
@@ -276,6 +314,30 @@ const PROFILES := {
 		"bob_px": 0.7,
 		"swarm_radius_mult": 1.18,
 		"swarm_jitter": 0.46
+	},
+	"leech": {
+		"accel_time": 0.22,
+		"decel_time": 0.18,
+		"turn_rate_deg": 520.0,
+		"terrain_lerp_rate": 5.0,
+		"gait": "inchworm_cluster",
+		"gait_rate_mult": 0.78,
+		"bob_px": 0.05,
+		"body_wiggle": 1.45,
+		"tail_wave": 1.35,
+		"cluster_spread": 0.78,
+		"inchworm_pulse": 0.45,
+		"water_profile": {
+			"accel_time": 0.10,
+			"decel_time": 0.14,
+			"turn_rate_deg": 760.0,
+			"gait": "undulating_cluster",
+			"gait_rate_mult": 1.28,
+			"body_wiggle": 1.75,
+			"tail_wave": 1.95,
+			"cluster_spread": 1.05,
+			"inchworm_pulse": 0.2
+		}
 	}
 }
 
@@ -341,7 +403,9 @@ static func render_anim(profile: Dictionary, walk_phase: float) -> Dictionary:
 		"perch_flutter": float(profile.get("perch_flutter", 1.0)),
 		"turtle_stride": float(profile.get("turtle_stride", 1.0)),
 		"shell_stability": float(profile.get("shell_stability", 0.0)),
-		"waddle_sway": float(profile.get("waddle_sway", 0.0))
+		"waddle_sway": float(profile.get("waddle_sway", 0.0)),
+		"cluster_spread": float(profile.get("cluster_spread", 1.0)),
+		"inchworm_pulse": float(profile.get("inchworm_pulse", 0.0))
 	}
 
 static func _turn_limited_direction(current_velocity: Vector2, desired_direction: Vector2, delta: float, turn_rate_deg: float) -> Vector2:

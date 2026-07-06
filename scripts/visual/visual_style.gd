@@ -103,7 +103,7 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		"swarm":
 			_base_swarm(canvas, radius, skin, walk_phase, moving, anim)
 		"cluster":
-			_base_cluster(canvas, radius, rocked_forward, side, skin)
+			_base_cluster(canvas, radius, rocked_forward, side, skin, walk_phase, anim)
 		"bug":
 			_base_bug(canvas, radius, rocked_forward, side, skin, walk_phase, moving, anim)
 		_:
@@ -662,17 +662,22 @@ static func _base_swarm(canvas: CanvasItem, radius: float, skin: Dictionary, wal
 		canvas.draw_circle(dot, maxf(radius * 0.09, 1.6), dark)
 		canvas.draw_line(dot + Vector2(-2.0, -1.0), dot + Vector2(2.0, -1.0), Color(main.r, main.g, main.b, 0.6), 1.0)
 
-static func _base_cluster(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary) -> void:
+static func _base_cluster(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, anim: Dictionary = {}) -> void:
 	var main: Color = skin.get("main", Color(0.27, 0.11, 0.08))
 	var dark: Color = skin.get("dark", Color(0.16, 0.06, 0.05))
+	var cluster_spread := float(anim.get("cluster_spread", 1.0))
+	var inchworm_pulse := float(anim.get("inchworm_pulse", 0.0))
+	var body_wiggle := float(anim.get("body_wiggle", 1.0))
+	var tail_wave := float(anim.get("tail_wave", 1.0))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 11
-	var wriggle := Time.get_ticks_msec() * 0.002
+	var wriggle := Time.get_ticks_msec() * 0.002 * tail_wave
 	for i in 12:
-		var offset := Vector2(rng.randf_range(-0.6, 0.6), rng.randf_range(-0.6, 0.6)) * radius
-		var leech_forward := forward.rotated(rng.randf_range(-PI, PI) + sin(wriggle + float(i)) * 0.3)
+		var offset := Vector2(rng.randf_range(-0.6, 0.6), rng.randf_range(-0.6, 0.6)) * radius * cluster_spread
+		var pulse := sin(walk_phase * 1.2 + float(i) * 0.75) * inchworm_pulse
+		var leech_forward := forward.rotated(rng.randf_range(-PI, PI) + sin(wriggle + float(i)) * 0.3 * body_wiggle)
 		var leech_side := Vector2(-leech_forward.y, leech_forward.x)
-		var half_len := radius * 0.28
+		var half_len := radius * (0.28 + pulse * 0.08)
 		var points := PackedVector2Array([
 			offset - leech_forward * half_len + leech_side * radius * 0.08,
 			offset + leech_forward * half_len + leech_side * radius * 0.05,

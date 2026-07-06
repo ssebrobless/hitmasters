@@ -29,6 +29,7 @@ func _run() -> void:
 	_check_dash_bypass(arena, failures)
 	_check_render_profile_keys(arena, failures)
 	_check_water_profile_overlay(arena, failures)
+	_check_wave4_profile_seeds(failures)
 	_check_render_state_flags(arena, failures)
 
 	print("movement_feel failures=%d" % failures.size())
@@ -187,6 +188,19 @@ func _check_water_profile_overlay(arena: Node, failures: Array[String]) -> void:
 	turtle.current_environment_profile = {"surface": "water"}
 	if not float(turtle._active_movement_profile().get("turn_rate_deg", 0.0)) > float(land_profile.get("turn_rate_deg", 0.0)):
 		failures.append("creature active profile should use water movement overlay")
+
+func _check_wave4_profile_seeds(failures: Array[String]) -> void:
+	var bog_turtle: Dictionary = MovementFeelScript.profile_for("bog_turtle")
+	if String(bog_turtle.get("gait", "")) != "tiny_creep" or not float(bog_turtle.get("shell_stability", 0.0)) > 0.0:
+		failures.append("bog turtle should expose tiny stubborn turtle movement metadata")
+	var otter: Dictionary = MovementFeelScript.profile_for("otter")
+	var otter_water: Dictionary = MovementFeelScript.profile_for_surface(otter, "water")
+	if String(otter.get("gait", "")) != "bound_slide" or not float(otter_water.get("tail_wave", 0.0)) > float(otter.get("tail_wave", 0.0)):
+		failures.append("otter should expose bound-slide land and stronger water tail metadata")
+	var leech: Dictionary = MovementFeelScript.profile_for("leech")
+	var leech_water: Dictionary = MovementFeelScript.profile_for_surface(leech, "water")
+	if String(leech.get("gait", "")) != "inchworm_cluster" or not float(leech.get("inchworm_pulse", 0.0)) > 0.0 or not float(leech_water.get("tail_wave", 0.0)) > float(leech.get("tail_wave", 0.0)):
+		failures.append("leech should expose inchworm land and undulating water metadata")
 
 func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var actor: Node = arena.player
