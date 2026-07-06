@@ -960,6 +960,16 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(otter_water_state.get("mink_swim_pose", false)) \
 		and not bool(otter_water_state.get("beaver_lumber_pose", false)) \
 		and not bool(otter_water_state.get("beaver_swim_pose", false)) \
+		and not bool(otter_water_state.get("duck_paddle_pose", false)) \
+		and not bool(otter_water_state.get("turtle_swim_pose", false)) \
+		and not bool(otter_water_state.get("bog_turtle_paddle_pose", false)) \
+		and not bool(otter_water_state.get("water_slither_pose", false)) \
+		and not bool(otter_water_state.get("newt_swim_pose", false)) \
+		and not bool(otter_water_state.get("leech_undulate_pose", false)) \
+		and not bool(otter_water_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and not bool(otter_water_state.get("surface_walk", false)) \
+		and not bool(otter_water_state.get("submerged_shrew_pose", false)) \
+		and not bool(otter_water_state.get("alligator_water_cruise_pose", false)) \
 		and float(otter_water_state.get("otter_motion_intensity", 0.0)) > 0.25
 	actor.current_environment_profile = {"surface": "land"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
@@ -972,6 +982,15 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(otter_land_state.get("mink_swim_pose", false)) \
 		and not bool(otter_land_state.get("beaver_lumber_pose", false)) \
 		and not bool(otter_land_state.get("beaver_swim_pose", false)) \
+		and not bool(otter_land_state.get("duck_waddle_pose", false)) \
+		and not bool(otter_land_state.get("turtle_plod_pose", false)) \
+		and not bool(otter_land_state.get("bog_turtle_creep_pose", false)) \
+		and not bool(otter_land_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(otter_land_state.get("slick_crawl_pose", false)) \
+		and not bool(otter_land_state.get("leech_inchworm_pose", false)) \
+		and not bool(otter_land_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(otter_land_state.get("shrew_land_skitter_pose", false)) \
+		and not bool(otter_land_state.get("high_walk_pose", false)) \
 		and float(otter_land_state.get("otter_motion_intensity", 0.0)) > 0.25
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
@@ -983,9 +1002,28 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(otter_idle_state.get("mink_swim_pose", false)) \
 		and not bool(otter_idle_state.get("beaver_lumber_pose", false)) \
 		and not bool(otter_idle_state.get("beaver_swim_pose", false)) \
+		and not bool(otter_idle_state.get("duck_waddle_pose", false)) \
+		and not bool(otter_idle_state.get("duck_paddle_pose", false)) \
+		and not bool(otter_idle_state.get("turtle_plod_pose", false)) \
+		and not bool(otter_idle_state.get("turtle_swim_pose", false)) \
+		and not bool(otter_idle_state.get("bog_turtle_creep_pose", false)) \
+		and not bool(otter_idle_state.get("bog_turtle_paddle_pose", false)) \
+		and not bool(otter_idle_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(otter_idle_state.get("water_slither_pose", false)) \
+		and not bool(otter_idle_state.get("slick_crawl_pose", false)) \
+		and not bool(otter_idle_state.get("newt_swim_pose", false)) \
+		and not bool(otter_idle_state.get("leech_inchworm_pose", false)) \
+		and not bool(otter_idle_state.get("leech_undulate_pose", false)) \
+		and not bool(otter_idle_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(otter_idle_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and not bool(otter_idle_state.get("shrew_land_skitter_pose", false)) \
+		and not bool(otter_idle_state.get("surface_walk", false)) \
+		and not bool(otter_idle_state.get("submerged_shrew_pose", false)) \
+		and not bool(otter_idle_state.get("high_walk_pose", false)) \
+		and not bool(otter_idle_state.get("alligator_water_cruise_pose", false)) \
 		and float(otter_idle_state.get("otter_motion_intensity", 1.0)) <= 0.001
 	if not otter_swim or not otter_slide or not otter_idle_clear:
-		failures.append("moving otter should expose water swim and low land slide without mink/beaver/pack overlap, then clear when idle; swim=%s slide=%s idle=%s state=%s/%s/%s" % [
+		failures.append("moving otter should expose rolling water swim and low belly land slide without mink, beaver, crawler, turtle, bird, snake, shrew, gator, or crustacean overlap, then clear when idle; swim=%s slide=%s idle=%s state=%s/%s/%s" % [
 			str(otter_swim),
 			str(otter_slide),
 			str(otter_idle_clear),
