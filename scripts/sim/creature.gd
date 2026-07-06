@@ -12,6 +12,7 @@ const VisualStyle := preload("res://scripts/visual/visual_style.gd")
 const TurtleKitScript := preload("res://scripts/sim/kits/snapping_turtle.gd")
 const WaterSnakeKitScript := preload("res://scripts/sim/kits/water_snake.gd")
 const AlligatorKitScript := preload("res://scripts/sim/kits/alligator.gd")
+const WolfSpiderKitScript := preload("res://scripts/sim/kits/wolf_spider.gd")
 const FrogKitScript := preload("res://scripts/sim/kits/chorus_frog.gd")
 const NewtKitScript := preload("res://scripts/sim/kits/newt.gd")
 const MinkKitScript := preload("res://scripts/sim/kits/mink.gd")
@@ -911,6 +912,8 @@ func _make_kit() -> RefCounted:
 			return WaterSnakeKitScript.new()
 		"alligator":
 			return AlligatorKitScript.new()
+		"wolf_spider":
+			return WolfSpiderKitScript.new()
 		"chorus_frog":
 			return FrogKitScript.new()
 		"newt":

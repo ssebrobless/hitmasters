@@ -5,6 +5,7 @@ extends SceneTree
 
 const ARENA_SCENE := "res://scenes/Arena.tscn"
 const MinionScript := preload("res://scripts/game/minion.gd")
+const CreatureStateScript := preload("res://scripts/sim/creature_state.gd")
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -13,6 +14,7 @@ func _run() -> void:
 	var config := get_root().get_node_or_null("GameConfig")
 	if config != null:
 		config.selected_mode = "3v3"
+		config.set_selected_creature("snapping_turtle")
 	var error := change_scene_to_file(ARENA_SCENE)
 	if error != OK:
 		push_error("separation check failed to boot Arena: %d" % error)
@@ -40,6 +42,8 @@ func _check_pair_separates(arena: Node, failures: Array[String]) -> void:
 	var pair := _two_creatures(arena)
 	var a: Node = pair[0]
 	var b: Node = pair[1]
+	_normalize_grounded(a, "snapping_turtle")
+	_normalize_grounded(b, "cane_toad")
 	var anchor: Vector2 = Vector2(0.0, 0.0)
 	a.global_position = anchor
 	b.global_position = anchor + Vector2(2.0, 0.0)
@@ -54,6 +58,8 @@ func _check_latch_pair_exempt(arena: Node, failures: Array[String]) -> void:
 	var pair := _two_creatures(arena)
 	var a: Node = pair[0]
 	var b: Node = pair[1]
+	_normalize_grounded(a, "snapping_turtle")
+	_normalize_grounded(b, "cane_toad")
 	a.attach_to_victim(b, 5.0, "TestLatch", 99.0)
 	b.receive_latch(a, 5.0, "TestLatch")
 	a.global_position = b.global_position + Vector2(3.0, 0.0)
@@ -68,6 +74,8 @@ func _check_push_is_soft(arena: Node, failures: Array[String]) -> void:
 	var pair := _two_creatures(arena)
 	var a: Node = pair[0]
 	var b: Node = pair[1]
+	_normalize_grounded(a, "snapping_turtle")
+	_normalize_grounded(b, "cane_toad")
 	a.global_position = Vector2(40.0, 40.0)
 	b.global_position = a.global_position + Vector2(1.0, 0.0)
 	var a_before: Vector2 = a.global_position
@@ -88,3 +96,12 @@ func _check_minion_slots(arena: Node, failures: Array[String]) -> void:
 		minion.queue_free()
 	if offsets.size() < 4:
 		failures.append("defender slots should produce distinct engagement angles (got %d unique of 5)" % offsets.size())
+
+func _normalize_grounded(actor: Node, creature_id: String) -> void:
+	actor.apply_creature(creature_id)
+	actor.state = CreatureStateScript.State.NORMAL
+	actor.dash_timer = 0.0
+	actor.dash_velocity = Vector2.ZERO
+	actor.pass_obstacles_timer = 0.0
+	actor.break_stealth()
+	actor.release_latch("test_reset")

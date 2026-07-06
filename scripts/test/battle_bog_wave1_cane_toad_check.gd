@@ -3,6 +3,7 @@ extends SceneTree
 const ARENA_SCENE := "res://scenes/Arena.tscn"
 const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
+const CreatureStateScript := preload("res://scripts/sim/creature_state.gd")
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -41,6 +42,12 @@ func _run() -> void:
 func _check_poison_stream(arena: Node, failures: Array[String]) -> void:
 	var actor: Node = arena.player
 	var target: Node = arena.bots[0]
+	target.apply_creature("cane_toad")
+	target.state = CreatureStateScript.State.NORMAL
+	target.dash_timer = 0.0
+	target.dash_velocity = Vector2.ZERO
+	target.pass_obstacles_timer = 0.0
+	target.break_stealth()
 	actor.global_position = Vector2.ZERO
 	target.global_position = Vector2(36.0, 0.0)
 	target.health = target.max_health
