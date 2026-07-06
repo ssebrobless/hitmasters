@@ -318,13 +318,19 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	var tail_wave := float(anim.get("tail_wave", 1.0))
 	var is_water_shrew := String(anim.get("creature_id", "")) == "water_shrew"
 	var surface_walk := bool(anim.get("surface_walk", false))
+	var surface_wake_intensity := clampf(float(anim.get("surface_wake_intensity", 0.0)), 0.0, 1.25)
+	if surface_walk:
+		body_wiggle += 0.42 * surface_wake_intensity
+		tail_wave += 0.25 * surface_wake_intensity
 	var submerged_shrew := is_water_shrew and bool(anim.get("in_water", false)) and not surface_walk
-	var water_tint := Color(0.2, 0.6, 0.85, 0.38)
+	var water_tint := Color(0.2, 0.6, 0.85, 0.32 + 0.14 * surface_wake_intensity)
 
 	if surface_walk:
 		for wake_side: float in [-1.0, 1.0]:
 			var wake_center := -forward * radius * 0.2 + side * wake_side * radius * 0.55
-			canvas.draw_arc(wake_center, radius * 0.46, -0.5, 0.9, 10, water_tint, 1.5)
+			canvas.draw_arc(wake_center, radius * (0.42 + 0.16 * surface_wake_intensity), -0.5, 0.9, 10, water_tint, 1.5 + surface_wake_intensity)
+			var streak_origin := -forward * radius * (0.45 + 0.16 * surface_wake_intensity) + side * wake_side * radius * 0.44
+			canvas.draw_line(streak_origin, streak_origin - forward * radius * (0.62 + 0.24 * surface_wake_intensity) + side * wake_side * radius * 0.18, Color(water_tint.r, water_tint.g, water_tint.b, water_tint.a * 0.7), maxf(1.0, radius * 0.07))
 
 	var spine: Array[Vector2] = []
 	var segment_radii: Array[float] = []
@@ -372,7 +378,7 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			var paw := spine[2].lerp(spine[5], paw_t) + side * paw_side * radius * 0.5 * bulk + forward * paw_step
 			canvas.draw_circle(paw, radius * 0.13, fur_dark)
 			if surface_walk:
-				canvas.draw_circle(paw + side * paw_side * radius * 0.08, maxf(radius * 0.08, 1.2), water_tint.lightened(0.2))
+				canvas.draw_circle(paw + side * paw_side * radius * 0.08, maxf(radius * (0.08 + 0.03 * surface_wake_intensity), 1.2), water_tint.lightened(0.2))
 
 	for i in 7:
 		canvas.draw_circle(spine[i], segment_radii[i] + 2.0, fur_dark)
@@ -383,10 +389,10 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 		for i in 6:
 			canvas.draw_circle(spine[i] + side * (radius * 0.18 if i % 2 == 0 else radius * -0.18), maxf(radius * 0.08, 1.5), accent)
 	if surface_walk:
-		for bubble_index in 4:
-			var t := float(bubble_index) / 3.0
-			var bubble := -forward * radius * (0.5 + t * 0.8) + side * sin(walk_phase + t * 3.1) * radius * 0.28
-			canvas.draw_circle(bubble, maxf(radius * (0.05 + t * 0.03), 1.0), water_tint.lightened(0.25))
+		for bubble_index in 6:
+			var t := float(bubble_index) / 5.0
+			var bubble := -forward * radius * (0.45 + t * (1.0 + 0.45 * surface_wake_intensity)) + side * sin(walk_phase * 1.6 + t * 3.1) * radius * (0.2 + 0.22 * surface_wake_intensity)
+			canvas.draw_circle(bubble, maxf(radius * (0.04 + t * 0.035 + surface_wake_intensity * 0.015), 1.0), water_tint.lightened(0.25))
 	elif submerged_shrew:
 		for bubble_index in 3:
 			var bubble := forward * radius * (0.15 + float(bubble_index) * 0.18) + side * radius * (0.34 + float(bubble_index) * 0.12)

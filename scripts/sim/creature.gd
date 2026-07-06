@@ -531,11 +531,14 @@ func get_render_motion_state() -> Dictionary:
 	var landing_t := clampf(render_landing_timer / LANDING_TELL_SEC, 0.0, 1.0) if LANDING_TELL_SEC > 0.0 else 0.0
 	var toxic_recoil_t := clampf(render_toxic_recoil_timer / TOXIC_RECOIL_TELL_SEC, 0.0, 1.0) if TOXIC_RECOIL_TELL_SEC > 0.0 else 0.0
 	var escape_curl_t := clampf(render_escape_curl_timer / ESCAPE_CURL_TELL_SEC, 0.0, 1.0) if ESCAPE_CURL_TELL_SEC > 0.0 else 0.0
+	var surface_walk := creature_id == "water_shrew" and water_walk_active and moving and surface == EnvironmentProfileScript.SURFACE_WATER
+	var wake_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if surface_walk else 0.0
 	return {
 		"creature_id": creature_id,
 		"terrain_surface": surface,
 		"in_water": surface == EnvironmentProfileScript.SURFACE_WATER,
-		"surface_walk": creature_id == "water_shrew" and water_walk_active and moving and surface == EnvironmentProfileScript.SURFACE_WATER,
+		"surface_walk": surface_walk,
+		"surface_wake_intensity": wake_intensity,
 		"water_walk_active": water_walk_active,
 		"rooted_pose": _has_modifier_source("Thanatosis"),
 		"display_stance": _has_modifier_source("Meral Display"),
