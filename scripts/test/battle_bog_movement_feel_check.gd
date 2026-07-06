@@ -334,6 +334,23 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 			str(turtle_idle_state),
 			str(turtle_land_state)
 		])
+	actor.apply_creature("mink")
+	actor.current_environment_profile = {"surface": "land"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var mink_bound_state: Dictionary = actor.get_render_motion_state()
+	var mink_bound: bool = bool(mink_bound_state.get("mink_bound_pose", false)) and float(mink_bound_state.get("mink_bound_intensity", 0.0)) > 0.25
+	actor.velocity = Vector2.ZERO
+	actor.set_input_frame(InputFrameScript.new())
+	var mink_idle_state: Dictionary = actor.get_render_motion_state()
+	var mink_idle_clear: bool = not bool(mink_idle_state.get("mink_bound_pose", false)) and float(mink_idle_state.get("mink_bound_intensity", 1.0)) <= 0.001
+	if not mink_bound or not mink_idle_clear:
+		failures.append("moving mink should expose elastic bound render pose and clear when idle; moving=%s idle=%s state=%s/%s" % [
+			str(mink_bound),
+			str(mink_idle_clear),
+			str(mink_bound_state),
+			str(mink_idle_state)
+		])
 	actor.apply_creature("alligator")
 	actor.add_modifier("Ambush", {"move_speed_mult": 0.7}, 1.0)
 	if not bool(actor.get_render_motion_state().get("ambush_pose", false)):

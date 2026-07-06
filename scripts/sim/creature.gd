@@ -567,6 +567,8 @@ func get_render_motion_state() -> Dictionary:
 	var owl_silent := creature_id == "owl" and stealth_timer > 0.0
 	var beaver_swim := creature_id == "beaver" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var beaver_swim_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if beaver_swim else 0.0
+	var mink_bound := creature_id == "mink" and moving and not is_airborne()
+	var mink_bound_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if mink_bound else 0.0
 	return {
 		"creature_id": creature_id,
 		"terrain_surface": surface,
@@ -597,6 +599,8 @@ func get_render_motion_state() -> Dictionary:
 		"owl_silent_flight_pose": owl_silent,
 		"beaver_swim_pose": beaver_swim,
 		"beaver_swim_intensity": beaver_swim_intensity,
+		"mink_bound_pose": mink_bound,
+		"mink_bound_intensity": mink_bound_intensity,
 		"water_walk_active": water_walk_active,
 		"rooted_pose": _has_modifier_source("Thanatosis"),
 		"display_stance": _has_modifier_source("Meral Display"),

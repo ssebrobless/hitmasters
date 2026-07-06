@@ -333,6 +333,7 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	var is_water_shrew := String(anim.get("creature_id", "")) == "water_shrew"
 	var is_newt := String(anim.get("creature_id", "")) == "newt"
 	var is_beaver := String(anim.get("creature_id", "")) == "beaver"
+	var is_mink := String(anim.get("creature_id", "")) == "mink"
 	var surface_walk := bool(anim.get("surface_walk", false))
 	var surface_wake_intensity := clampf(float(anim.get("surface_wake_intensity", 0.0)), 0.0, 1.25)
 	var slick_crawl := is_newt and bool(anim.get("slick_crawl_pose", false))
@@ -340,6 +341,8 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	var tail_lost_pose := is_newt and bool(anim.get("tail_lost_pose", false))
 	var beaver_swim := is_beaver and bool(anim.get("beaver_swim_pose", false))
 	var beaver_swim_intensity := clampf(float(anim.get("beaver_swim_intensity", 0.0)), 0.0, 1.25)
+	var mink_bound := is_mink and bool(anim.get("mink_bound_pose", false))
+	var mink_bound_intensity := clampf(float(anim.get("mink_bound_intensity", 0.0)), 0.0, 1.25)
 	if surface_walk:
 		body_wiggle += 0.42 * surface_wake_intensity
 		tail_wave += 0.25 * surface_wake_intensity
@@ -349,10 +352,15 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	if beaver_swim:
 		body_wiggle += 0.16 * beaver_swim_intensity
 		tail_wave += 0.58 * beaver_swim_intensity
+	if mink_bound:
+		stretch += 0.12 * mink_bound_intensity
+		body_wiggle += 0.22 * mink_bound_intensity
+		tail_wave += 0.34 * mink_bound_intensity
 	var submerged_shrew := is_water_shrew and bool(anim.get("in_water", false)) and not surface_walk
 	var water_tint := Color(0.2, 0.6, 0.85, 0.32 + 0.14 * surface_wake_intensity)
 	var slick_tint := Color(0.86, 0.58, 0.32, 0.20 + 0.10 * slick_crawl_intensity)
 	var beaver_water := Color(0.42, 0.68, 0.82, 0.20 + 0.12 * beaver_swim_intensity)
+	var mink_dust := Color(0.72, 0.66, 0.56, 0.18 + 0.08 * mink_bound_intensity)
 
 	if surface_walk:
 		for wake_side: float in [-1.0, 1.0]:
@@ -360,6 +368,11 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			canvas.draw_arc(wake_center, radius * (0.42 + 0.16 * surface_wake_intensity), -0.5, 0.9, 10, water_tint, 1.5 + surface_wake_intensity)
 			var streak_origin := -forward * radius * (0.45 + 0.16 * surface_wake_intensity) + side * wake_side * radius * 0.44
 			canvas.draw_line(streak_origin, streak_origin - forward * radius * (0.62 + 0.24 * surface_wake_intensity) + side * wake_side * radius * 0.18, Color(water_tint.r, water_tint.g, water_tint.b, water_tint.a * 0.7), maxf(1.0, radius * 0.07))
+	if mink_bound:
+		var bound_phase := sin(walk_phase * 1.4)
+		var shadow_center := -forward * radius * (0.18 + 0.12 * bound_phase)
+		canvas.draw_arc(shadow_center, radius * (0.74 + 0.1 * mink_bound_intensity), PI * 0.08, PI * 0.92, 14, mink_dust, maxf(radius * 0.07, 1.4))
+		canvas.draw_line(-forward * radius * 0.72, -forward * radius * (1.35 + 0.26 * mink_bound_intensity), Color(mink_dust.r, mink_dust.g, mink_dust.b, mink_dust.a * 0.75), maxf(radius * 0.06, 1.2))
 
 	var spine: Array[Vector2] = []
 	var segment_radii: Array[float] = []
@@ -413,10 +426,15 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			var paw_side := 1.0 if paw_index % 2 == 0 else -1.0
 			var paw_step := sin(walk_phase * 1.4 + PI * float(paw_index)) * radius * 0.14
 			var paw_reach := radius * (0.66 if slick_crawl else 0.5) * bulk
+			if mink_bound:
+				paw_step += sin(walk_phase * 1.4 + PI * float(paw_index)) * radius * 0.13 * mink_bound_intensity
+				paw_reach += radius * 0.08 * mink_bound_intensity
 			var paw := spine[2].lerp(spine[5], paw_t) + side * paw_side * paw_reach + forward * paw_step
 			canvas.draw_circle(paw, radius * (0.09 if slick_crawl else 0.13), fur_dark)
 			if slick_crawl:
 				canvas.draw_line(paw, paw + side * paw_side * radius * 0.2 + forward * radius * 0.05, fur_dark.lightened(0.1), 1.0)
+			if mink_bound:
+				canvas.draw_line(paw, paw - forward * radius * (0.22 + 0.08 * mink_bound_intensity), fur_dark.lightened(0.08), 1.0)
 			if surface_walk:
 				canvas.draw_circle(paw + side * paw_side * radius * 0.08, maxf(radius * (0.08 + 0.03 * surface_wake_intensity), 1.2), water_tint.lightened(0.2))
 			if beaver_swim:
