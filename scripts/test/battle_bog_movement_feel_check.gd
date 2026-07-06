@@ -788,18 +788,42 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
 	var leech_land_state: Dictionary = actor.get_render_motion_state()
-	var leech_inchworm: bool = bool(leech_land_state.get("leech_inchworm_pose", false)) and not bool(leech_land_state.get("leech_undulate_pose", false)) and float(leech_land_state.get("leech_motion_intensity", 0.0)) > 0.25
+	var leech_inchworm: bool = bool(leech_land_state.get("leech_inchworm_pose", false)) \
+		and not bool(leech_land_state.get("leech_undulate_pose", false)) \
+		and not bool(leech_land_state.get("slick_crawl_pose", false)) \
+		and not bool(leech_land_state.get("newt_swim_pose", false)) \
+		and not bool(leech_land_state.get("water_slither_pose", false)) \
+		and not bool(leech_land_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(leech_land_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(leech_land_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and float(leech_land_state.get("leech_motion_intensity", 0.0)) > 0.25
 	actor.current_environment_profile = {"surface": "water"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
 	var leech_water_state: Dictionary = actor.get_render_motion_state()
-	var leech_undulate: bool = bool(leech_water_state.get("leech_undulate_pose", false)) and not bool(leech_water_state.get("leech_inchworm_pose", false)) and float(leech_water_state.get("leech_motion_intensity", 0.0)) > 0.25
+	var leech_undulate: bool = bool(leech_water_state.get("leech_undulate_pose", false)) \
+		and not bool(leech_water_state.get("leech_inchworm_pose", false)) \
+		and not bool(leech_water_state.get("slick_crawl_pose", false)) \
+		and not bool(leech_water_state.get("newt_swim_pose", false)) \
+		and not bool(leech_water_state.get("water_slither_pose", false)) \
+		and not bool(leech_water_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(leech_water_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(leech_water_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and float(leech_water_state.get("leech_motion_intensity", 0.0)) > 0.25
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
 	var leech_idle_state: Dictionary = actor.get_render_motion_state()
-	var leech_idle_clear: bool = not bool(leech_idle_state.get("leech_inchworm_pose", false)) and not bool(leech_idle_state.get("leech_undulate_pose", false)) and float(leech_idle_state.get("leech_motion_intensity", 1.0)) <= 0.001
+	var leech_idle_clear: bool = not bool(leech_idle_state.get("leech_inchworm_pose", false)) \
+		and not bool(leech_idle_state.get("leech_undulate_pose", false)) \
+		and not bool(leech_idle_state.get("slick_crawl_pose", false)) \
+		and not bool(leech_idle_state.get("newt_swim_pose", false)) \
+		and not bool(leech_idle_state.get("water_slither_pose", false)) \
+		and not bool(leech_idle_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(leech_idle_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(leech_idle_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and float(leech_idle_state.get("leech_motion_intensity", 1.0)) <= 0.001
 	if not leech_inchworm or not leech_undulate or not leech_idle_clear:
-		failures.append("moving leech should expose land inchworm and water undulate render poses, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
+		failures.append("moving leech should expose suction inchworm and water undulate without newt/snake/crayfish overlap, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
 			str(leech_inchworm),
 			str(leech_undulate),
 			str(leech_idle_clear),

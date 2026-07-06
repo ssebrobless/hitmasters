@@ -1498,10 +1498,19 @@ static func _base_cluster(canvas: CanvasItem, radius: float, forward: Vector2, s
 		for wake_side: float in [-1.0, 1.0]:
 			var wake_start := -forward * radius * 0.45 + side * wake_side * radius * 0.4
 			canvas.draw_line(wake_start, wake_start - forward * radius * (0.82 + 0.24 * leech_motion_intensity) + side * wake_side * radius * 0.18, water_color, maxf(radius * 0.06, 1.0))
+		for ripple_index in 3:
+			var t := float(ripple_index) / 2.0
+			var ripple_center := -forward * radius * (0.18 + t * 0.72) + side * sin(walk_phase * 1.25 + t * 2.4) * radius * 0.22
+			canvas.draw_arc(ripple_center, radius * (0.18 + t * 0.08 + 0.05 * leech_motion_intensity), -0.35, TAU * 0.65, 12, Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.75), maxf(radius * 0.04, 1.0))
 	if leech_inchworm:
 		cluster_spread = maxf(0.45, cluster_spread - 0.12 * leech_motion_intensity)
 		inchworm_pulse += 0.22 * leech_motion_intensity
+		var sucker_phase := sin(walk_phase * 1.2)
 		canvas.draw_arc(-forward * radius * 0.28, radius * (0.5 + 0.07 * leech_motion_intensity), PI * 0.1, PI * 0.9, 12, Color(dark.r, dark.g, dark.b, 0.18 + 0.08 * leech_motion_intensity), maxf(radius * 0.06, 1.0))
+		for anchor_side: float in [-1.0, 1.0]:
+			var anchor_center := forward * radius * (0.32 * anchor_side + 0.08 * sucker_phase * anchor_side)
+			canvas.draw_arc(anchor_center, radius * (0.18 + 0.04 * leech_motion_intensity), 0.0, TAU, 14, Color(dark.r, dark.g, dark.b, 0.28 + 0.08 * leech_motion_intensity), maxf(radius * 0.045, 1.0))
+			canvas.draw_line(anchor_center - forward * radius * 0.12, anchor_center - forward * radius * (0.36 + 0.12 * leech_motion_intensity), Color(dark.r, dark.g, dark.b, 0.18 + 0.06 * leech_motion_intensity), maxf(radius * 0.04, 1.0))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 11
 	var wriggle := Time.get_ticks_msec() * 0.002 * tail_wave
