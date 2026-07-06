@@ -37,6 +37,7 @@ const FLIGHT_GROUNDED_LOCKOUT_SEC := 3.0
 const TERRAIN_SPEED_LERP_RATE := 9.0
 const HUNGER_MAX := 100.0
 const HUNGER_FULL_TO_EMPTY_SEC := 105.0
+const HITSTOP_SEC := 3.0 / 60.0
 
 var arena: Node = null
 var terrain_map: RefCounted = null
@@ -92,6 +93,7 @@ var latch_source := ""
 var latch_execute_timer := 0.0
 var latch_move_multiplier := 1.0
 var last_aim_direction := Vector2.RIGHT
+var render_hitstop_timer := 0.0
 var render_flash_timer := 0.0
 var render_shake_timer := 0.0
 var anim_walk_phase := 0.0
@@ -166,6 +168,11 @@ func _physics_process(delta: float) -> void:
 		PerfStats.add("creatures", int(Time.get_ticks_usec() - perf_start))
 
 func _process(delta: float) -> void:
+	render_hitstop_timer = maxf(render_hitstop_timer - delta, 0.0)
+	if render_hitstop_timer > 0.0:
+		if arena == null or not arena.has_method("is_near_view") or arena.is_near_view(global_position):
+			queue_redraw()
+		return
 	render_flash_timer = maxf(render_flash_timer - delta, 0.0)
 	render_shake_timer = maxf(render_shake_timer - delta, 0.0)
 	anim_attack_timer = maxf(anim_attack_timer - delta, 0.0)
@@ -215,6 +222,9 @@ func take_area_damage(amount: float, source_ability := "", source_actor: Node = 
 	var event := DamageEventScript.new()
 	event.setup(amount, DamageEventScript.DELIVERY_AREA, DamageEventScript.PLANE_GROUND, source_actor, source_ability)
 	take_damage_event(event)
+
+func begin_render_hitstop(duration := HITSTOP_SEC) -> void:
+	render_hitstop_timer = maxf(render_hitstop_timer, duration)
 
 func begin_stealth(duration: float, _source: String) -> void:
 	stealth_timer = duration
@@ -273,6 +283,10 @@ func take_damage_event(event: Resource) -> void:
 		flight_toggle_requires_release = true
 		emit_vfx_event("spiked", {"target": self, "position": global_position})
 	if event.source_actor != null or String(event.source_ability) != "":
+		if amount >= 50.0:
+			begin_render_hitstop()
+			if event.source_actor != null and is_instance_valid(event.source_actor) and event.source_actor.has_method("begin_render_hitstop"):
+				event.source_actor.begin_render_hitstop()
 		emit_vfx_event("hit_landed", {
 			"source": event.source_actor,
 			"target": self,
