@@ -138,6 +138,8 @@ func _check_ambush_and_devour(arena: Node, failures: Array[String]) -> void:
 	actor.kit.tick(actor, 0.016)
 	var stealthed: bool = actor.is_stealthed()
 	var slowed: bool = actor.get_modifier_value("move_speed_mult", 1.0) < 0.75
+	var ambush_state: Dictionary = actor.get_render_motion_state()
+	var ambush_low: bool = bool(ambush_state.get("ambush_pose", false)) and not bool(ambush_state.get("high_walk_pose", false))
 	var attack := InputFrameScript.new()
 	attack.aim = actor.global_position + Vector2.RIGHT * 100.0
 	attack.set_button(InputFrameScript.BUTTON_PRIMARY, true)
@@ -145,6 +147,10 @@ func _check_ambush_and_devour(arena: Node, failures: Array[String]) -> void:
 	actor.set_input_frame(attack)
 	actor.kit.tick(actor, 0.016)
 	var broke: bool = not actor.is_stealthed() and actor.get_modifier_value("move_speed_mult", 1.0) >= 0.99 and actor.e_timer > 8.5
+	actor.global_position = _zone_point(arena, TerrainMapScript.LAND)
+	actor.current_environment_profile = {"surface": "land"}
+	actor.velocity = Vector2.RIGHT * 80.0
+	var high_walk: bool = bool(actor.get_render_motion_state().get("high_walk_pose", false))
 
 	var victim: Node = arena.bots[1]
 	victim.apply_creature("mink")
@@ -154,15 +160,19 @@ func _check_ambush_and_devour(arena: Node, failures: Array[String]) -> void:
 	var expected_devour_heal: float = victim.max_health * 0.50
 	actor.on_kill(victim)
 	var devoured: bool = actor.health >= before_devour + expected_devour_heal - 0.001
-	if not stealthed or not slowed or not broke or not devoured:
-		failures.append("Ambush should stealth+slow then break on attack with cooldown; Devour should heal 50%% victim max HP; stealth=%s slowed=%s broke=%s devoured=%s health=%.2f e=%.2f speed=%.2f" % [
+	if not stealthed or not slowed or not ambush_low or not broke or not high_walk or not devoured:
+		failures.append("Ambush should stealth+slow into low posture, then break to high-walk on attack; Devour should heal 50%% victim max HP; stealth=%s slowed=%s ambush_low=%s broke=%s high_walk=%s devoured=%s health=%.2f e=%.2f speed=%.2f states=%s/%s" % [
 			str(stealthed),
 			str(slowed),
+			str(ambush_low),
 			str(broke),
+			str(high_walk),
 			str(devoured),
 			actor.health,
 			actor.e_timer,
-			actor.get_modifier_value("move_speed_mult", 1.0)
+			actor.get_modifier_value("move_speed_mult", 1.0),
+			str(ambush_state),
+			str(actor.get_render_motion_state())
 		])
 
 func _check_bot_hook(arena: Node, failures: Array[String]) -> void:

@@ -550,15 +550,28 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var tail_sway := float(anim.get("tail_sway", 1.0))
 	var crawl_weight := float(anim.get("crawl_weight", 0.0))
 	var ambush_pose := bool(anim.get("ambush_pose", false))
+	var high_walk_pose := bool(anim.get("high_walk_pose", false))
 	if ambush_pose:
 		crawl_weight = maxf(crawl_weight, 0.72)
 		tail_sway *= 0.35
+	elif high_walk_pose:
+		crawl_weight = minf(crawl_weight, 0.16)
+		tail_sway *= 1.18
+
+	if high_walk_pose:
+		canvas.draw_colored_polygon(PackedVector2Array([
+			-forward * radius * 1.0 + side * radius * 0.48,
+			forward * radius * 1.38 + side * radius * 0.36,
+			forward * radius * 1.38 - side * radius * 0.36,
+			-forward * radius * 1.0 - side * radius * 0.48
+		]), Color(0.02, 0.03, 0.02, 0.18))
 
 	# Keeled tail, swaying.
 	var tail_direction := (-forward).rotated((sin(walk_phase * 0.9) * 0.25 * tail_sway) if moving else 0.08)
 	for i in 5:
 		var t := float(i) / 4.0
-		var tail_point := -forward * radius * 0.7 + tail_direction * radius * (0.3 + t * 1.5)
+		var tail_lift := side * sin(walk_phase * 0.7) * radius * 0.08 * (1.0 - t) if high_walk_pose else Vector2.ZERO
+		var tail_point := -forward * radius * 0.7 + tail_direction * radius * (0.3 + t * 1.5) + tail_lift
 		canvas.draw_circle(tail_point, radius * lerpf(0.34, 0.08, t), dark)
 		if i < 4:
 			canvas.draw_line(tail_point, tail_point + tail_direction.rotated(PI * 0.5) * radius * 0.12, dark.darkened(0.15), 1.5)
@@ -566,9 +579,13 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 	# Stubby legs.
 	for leg_index in 4:
 		var angle := [1.1, -1.1, 2.2, -2.2][leg_index] as float
-		var step := (sin(walk_phase + (PI if leg_index % 2 == 0 else 0.0)) * radius * 0.1 * (1.0 - crawl_weight * 0.35)) if moving else 0.0
-		var leg_center := forward.rotated(angle) * radius * (0.78 + crawl_weight * 0.08) + forward * step
-		canvas.draw_circle(leg_center, radius * (0.2 + crawl_weight * 0.03), dark)
+		var stride_mult := 1.45 if high_walk_pose else 1.0
+		var step := (sin(walk_phase + (PI if leg_index % 2 == 0 else 0.0)) * radius * 0.1 * (1.0 - crawl_weight * 0.35) * stride_mult) if moving else 0.0
+		var leg_reach := 0.9 if high_walk_pose else 0.78
+		var leg_center := forward.rotated(angle) * radius * (leg_reach + crawl_weight * 0.08) + forward * step
+		canvas.draw_circle(leg_center, radius * (0.18 + crawl_weight * 0.03), dark)
+		if high_walk_pose:
+			canvas.draw_line(leg_center, leg_center + leg_center.normalized() * radius * 0.18, dark, maxf(radius * 0.08, 1.5))
 
 	# Body: broad armored oval.
 	var body_points := PackedVector2Array()
@@ -604,6 +621,9 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 	if ambush_pose:
 		canvas.draw_line(-forward * radius * 0.75 - side * radius * 0.5, forward * radius * 1.05 - side * radius * 0.38, Color(0.08, 0.16, 0.08, 0.65), 2.0)
 		canvas.draw_line(-forward * radius * 0.75 + side * radius * 0.5, forward * radius * 1.05 + side * radius * 0.38, Color(0.08, 0.16, 0.08, 0.65), 2.0)
+	elif high_walk_pose:
+		canvas.draw_line(-forward * radius * 0.35 - side * radius * 0.18, forward * radius * 0.7 - side * radius * 0.12, dark.lightened(0.22), 1.5)
+		canvas.draw_line(-forward * radius * 0.35 + side * radius * 0.18, forward * radius * 0.7 + side * radius * 0.12, dark.lightened(0.22), 1.5)
 
 static func _base_crustacean(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, strike := 0.0, anim: Dictionary = {}) -> void:
 	var main: Color = skin.get("main", Color(0.5, 0.2, 0.1))

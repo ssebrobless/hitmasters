@@ -533,6 +533,7 @@ func get_render_motion_state() -> Dictionary:
 	var escape_curl_t := clampf(render_escape_curl_timer / ESCAPE_CURL_TELL_SEC, 0.0, 1.0) if ESCAPE_CURL_TELL_SEC > 0.0 else 0.0
 	var surface_walk := creature_id == "water_shrew" and water_walk_active and moving and surface == EnvironmentProfileScript.SURFACE_WATER
 	var wake_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if surface_walk else 0.0
+	var alligator_high_walk := creature_id == "alligator" and moving and surface != EnvironmentProfileScript.SURFACE_WATER and not _has_modifier_source("Ambush")
 	return {
 		"creature_id": creature_id,
 		"terrain_surface": surface,
@@ -544,6 +545,7 @@ func get_render_motion_state() -> Dictionary:
 		"display_stance": _has_modifier_source("Meral Display"),
 		"escape_dash": creature_id == "crayfish" and backward_dash,
 		"ambush_pose": _has_modifier_source("Ambush"),
+		"high_walk_pose": alligator_high_walk,
 		"off_balance_pose": _has_modifier_source("Whiff Recovery"),
 		"perched_pose": state == CreatureStateScript.State.PERCHED,
 		"landing_t": landing_t,

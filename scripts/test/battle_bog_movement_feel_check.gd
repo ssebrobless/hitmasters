@@ -314,6 +314,13 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.add_modifier("Ambush", {"move_speed_mult": 0.7}, 1.0)
 	if not bool(actor.get_render_motion_state().get("ambush_pose", false)):
 		failures.append("Ambush should expose low ambush render pose")
+	actor.remove_modifiers_from_source("Ambush")
+	actor.current_environment_profile = {"surface": "land"}
+	actor.velocity = Vector2.RIGHT * 80.0
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var gator_walk_state: Dictionary = actor.get_render_motion_state()
+	if not bool(gator_walk_state.get("high_walk_pose", false)) or bool(gator_walk_state.get("ambush_pose", false)):
+		failures.append("moving alligator should expose high-walk posture outside Ambush; state=%s" % str(gator_walk_state))
 	actor.apply_creature("owl")
 	actor.state = CreatureStateScript.State.PERCHED
 	if not bool(actor.get_render_motion_state().get("perched_pose", false)):
