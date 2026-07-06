@@ -355,7 +355,11 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
 	var cane_hop_state: Dictionary = actor.get_render_motion_state()
-	var cane_hop: bool = bool(cane_hop_state.get("cane_squat_hop_pose", false)) and float(cane_hop_state.get("cane_squat_hop_intensity", 0.0)) > 0.25
+	var cane_hop: bool = bool(cane_hop_state.get("cane_squat_hop_pose", false)) \
+		and float(cane_hop_state.get("cane_squat_hop_intensity", 0.0)) > 0.25 \
+		and not bool(cane_hop_state.get("chorus_hop_pose", false)) \
+		and not bool(cane_hop_state.get("bullfrog_heavy_hop_pose", false)) \
+		and not bool(cane_hop_state.get("bullfrog_coil_pose", false))
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
 	var cane_idle_state: Dictionary = actor.get_render_motion_state()
@@ -364,10 +368,13 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
 	var cane_rooted_state: Dictionary = actor.get_render_motion_state()
-	var cane_rooted_suppressed: bool = bool(cane_rooted_state.get("rooted_pose", false)) and not bool(cane_rooted_state.get("cane_squat_hop_pose", false))
+	var cane_rooted_suppressed: bool = bool(cane_rooted_state.get("rooted_pose", false)) \
+		and not bool(cane_rooted_state.get("cane_squat_hop_pose", false)) \
+		and not bool(cane_rooted_state.get("chorus_hop_pose", false)) \
+		and not bool(cane_rooted_state.get("bullfrog_heavy_hop_pose", false))
 	actor.remove_modifiers_from_source("Thanatosis")
 	if not cane_hop or not cane_idle_clear or not cane_rooted_suppressed:
-		failures.append("moving cane toad should expose squat-hop render pose, clear when idle, and defer to Thanatosis rooted pose; moving=%s idle=%s rooted=%s state=%s/%s/%s" % [
+		failures.append("moving cane toad should expose squat-hop without frog overlap, clear when idle, and defer to Thanatosis rooted pose; moving=%s idle=%s rooted=%s state=%s/%s/%s" % [
 			str(cane_hop),
 			str(cane_idle_clear),
 			str(cane_rooted_suppressed),

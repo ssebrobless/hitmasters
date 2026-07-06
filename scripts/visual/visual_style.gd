@@ -311,6 +311,11 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 			var thump_center := -forward * radius * 0.42 + side * thump_side * radius * 0.42
 			canvas.draw_arc(thump_center, radius * (0.34 + 0.1 * bullfrog_heavy_hop_intensity), PI * 0.08, PI * 0.92, 10, thump_color, maxf(radius * 0.055, 1.0))
 		canvas.draw_line(-forward * radius * 0.7, -forward * radius * (1.16 + 0.18 * bullfrog_heavy_hop_intensity), Color(thump_color.r, thump_color.g, thump_color.b, thump_color.a * 0.72), maxf(radius * 0.06, 1.1))
+	if cane_squat_hop:
+		var squat_scuff := Color(dark.r, dark.g, dark.b, 0.16 + 0.08 * cane_squat_hop_intensity)
+		for squat_side: float in [-1.0, 1.0]:
+			var squat_center := -forward * radius * 0.2 + side * squat_side * radius * 0.54
+			canvas.draw_arc(squat_center, radius * (0.2 + 0.06 * cane_squat_hop_intensity), PI * 0.05, PI * 0.88, 8, squat_scuff, maxf(radius * 0.045, 1.0))
 	if chorus_hop:
 		var pulse_alpha := 0.14 + 0.08 * chorus_hop_intensity
 		for pulse_side: float in [-1.0, 0.0, 1.0]:
@@ -377,6 +382,8 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 			canvas.draw_circle(wart, wart_radius, dark.lightened(0.12 + toxic_recoil_t * 0.18))
 		for gland_side: float in [-1.0, 1.0]:
 			var gland := forward * radius * 0.35 + side * gland_side * radius * 0.42
+			if cane_squat_hop:
+				canvas.draw_arc(gland - forward * radius * 0.06, radius * (0.2 + 0.04 * cane_squat_hop_intensity), PI * 0.1, PI * 0.9, 10, Color(dark.r, dark.g, dark.b, 0.16 + 0.06 * cane_squat_hop_intensity), 1.0)
 			if toxic_recoil_t > 0.0:
 				canvas.draw_circle(gland, radius * (0.34 + toxic_recoil_t * 0.18), Color(0.58, 1.0, 0.34, 0.28 * toxic_recoil_t))
 				canvas.draw_line(gland, gland + side * gland_side * radius * (0.55 + toxic_recoil_t * 0.16), Color(0.58, 1.0, 0.34, 0.35 * toxic_recoil_t), maxf(radius * 0.08, 1.5))
