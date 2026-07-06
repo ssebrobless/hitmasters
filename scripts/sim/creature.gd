@@ -5,6 +5,7 @@ const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 const CreatureStateScript := preload("res://scripts/sim/creature_state.gd")
 const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
 const EnvironmentProfileScript := preload("res://scripts/sim/environment_profile.gd")
+const MovementFeelScript := preload("res://scripts/sim/movement_feel.gd")
 const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
 const HurtboxScript := preload("res://scripts/sim/combat/hurtbox.gd")
 const PerfStats := preload("res://scripts/game/perf_stats.gd")
@@ -53,6 +54,7 @@ var body_capsule_half_len_px := 0.0
 var base_speed_px := 0.0
 var terrain_speed_px := 0.0
 var terrain_speed_target_px := 0.0
+var movement_profile: Dictionary = {}
 var current_terrain_zone := TerrainMapScript.LAND
 var previous_terrain_zone := TerrainMapScript.LAND
 var current_environment_profile: Dictionary = {}
@@ -123,6 +125,7 @@ func apply_creature(next_creature_id: String) -> void:
 	health = max_health
 	body_radius = _footprint_radius_px()
 	body_capsule_half_len_px = _footprint_capsule_half_len_px()
+	movement_profile = MovementFeelScript.profile_for(creature_id)
 	base_speed_px = _speed_px_for_ground()
 	swim_time_max = _numeric_stat("swim_time_sec", 0.0)
 	swim_time_remaining = swim_time_max
@@ -168,7 +171,7 @@ func _process(delta: float) -> void:
 	anim_attack_timer = maxf(anim_attack_timer - delta, 0.0)
 	anim_windup_timer = maxf(anim_windup_timer - delta, 0.0)
 	if velocity.length() > 4.0:
-		anim_walk_phase += delta * clampf(velocity.length() / 26.0, 3.0, 11.0)
+		anim_walk_phase += MovementFeelScript.gait_phase_delta(velocity.length(), delta, movement_profile)
 	if arena == null or not arena.has_method("is_near_view") or arena.is_near_view(global_position):
 		queue_redraw()
 
@@ -452,7 +455,10 @@ func _move_from_input(delta: float) -> void:
 		var axis := last_aim_direction.normalized()
 		move = axis * move.dot(axis)
 	var speed_multiplier := latch_move_multiplier * _modifier_value("move_speed_mult", 1.0)
-	velocity = (dash_velocity if dash_timer > 0.0 else move * get_speed_px() * speed_multiplier)
+	if dash_timer > 0.0:
+		velocity = dash_velocity
+	else:
+		velocity = MovementFeelScript.profiled_velocity(velocity, move, get_speed_px() * speed_multiplier, delta, movement_profile)
 	if Engine.is_in_physics_frame():
 		move_and_slide()
 	else:
@@ -471,7 +477,8 @@ func _update_terrain(delta: float) -> void:
 	current_terrain_zone = zone
 	current_environment_profile = _environment_profile_for_zone(zone)
 	terrain_speed_target_px = _terrain_target_speed_px(zone)
-	terrain_speed_px = lerpf(terrain_speed_px if terrain_speed_px > 0.0 else terrain_speed_target_px, terrain_speed_target_px, clampf(delta * TERRAIN_SPEED_LERP_RATE, 0.0, 1.0))
+	var terrain_lerp_rate := float(movement_profile.get("terrain_lerp_rate", TERRAIN_SPEED_LERP_RATE))
+	terrain_speed_px = lerpf(terrain_speed_px if terrain_speed_px > 0.0 else terrain_speed_target_px, terrain_speed_target_px, clampf(delta * terrain_lerp_rate, 0.0, 1.0))
 
 	if not is_airborne() and bool(current_environment_profile.get("drains_swim", false)):
 		if _has_limited_swim_time():
@@ -1047,7 +1054,8 @@ func _draw() -> void:
 	if render_shake_timer > 0.0:
 		var shake_phase := render_shake_timer * 120.0
 		shake_offset = Vector2(sin(shake_phase), cos(shake_phase * 1.37)) * 2.0
-	var anim := {
+	var anim := MovementFeelScript.render_anim(movement_profile, anim_walk_phase)
+	anim.merge({
 		"walk_phase": anim_walk_phase,
 		"moving": velocity.length() > 4.0,
 		"attack_t": 1.0 - anim_attack_timer / anim_attack_duration if anim_attack_timer > 0.0 else -1.0,
@@ -1055,7 +1063,7 @@ func _draw() -> void:
 		"attack_aim": anim_attack_aim,
 		"windup_t": 1.0 - anim_windup_timer / anim_windup_duration if anim_windup_timer > 0.0 else -1.0,
 		"shake_offset": shake_offset
-	}
+	})
 	var draw_alpha := 0.4 if is_stealthed() else 1.0
 	if wrong_terrain_seconds > 0.0:
 		_draw_wrong_terrain_warning()

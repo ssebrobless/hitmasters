@@ -72,13 +72,14 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		rock = sin(walk_phase) * 0.1
 	var rocked_forward := forward.rotated(rock)
 	var side := Vector2(-rocked_forward.y, rocked_forward.x)
+	var movement_bob := Vector2(0.0, -float(anim.get("movement_bob", 0.0))) if moving and attack_t < 0.0 else Vector2.ZERO
 
 	var origin: Vector2 = anim.get("origin", Vector2.ZERO)
 	var shake_offset: Vector2 = origin + anim.get("shake_offset", Vector2.ZERO)
 	if airborne:
 		canvas.draw_set_transform(shake_offset, 0.0, Vector2.ONE)
 		canvas.draw_circle(Vector2(0.0, radius * 0.55), radius * 0.8, _with_alpha(Color(0.0, 0.0, 0.0, 0.3), alpha))
-	canvas.draw_set_transform(shake_offset + body_offset + (Vector2(0.0, -radius * 0.5) if airborne else Vector2.ZERO), 0.0, Vector2.ONE)
+	canvas.draw_set_transform(shake_offset + body_offset + movement_bob + (Vector2(0.0, -radius * 0.5) if airborne else Vector2.ZERO), 0.0, Vector2.ONE)
 
 	canvas.draw_arc(Vector2.ZERO, radius + 3.0, 0.0, TAU, 40, outline, 2.5)
 
