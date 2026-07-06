@@ -27,7 +27,8 @@ const DEFAULT_PROFILE := {
 	"perch_flutter": 1.0,
 	"turtle_stride": 1.0,
 	"shell_stability": 0.0,
-	"waddle_sway": 0.0
+	"waddle_sway": 0.0,
+	"water_profile": {}
 }
 
 const PROFILES := {
@@ -103,7 +104,15 @@ const PROFILES := {
 		"gait_rate_mult": 0.45,
 		"bob_px": 0.2,
 		"turtle_stride": 0.42,
-		"shell_stability": 0.82
+		"shell_stability": 0.82,
+		"water_profile": {
+			"accel_time": 0.16,
+			"decel_time": 0.24,
+			"turn_rate_deg": 390.0,
+			"gait_rate_mult": 0.62,
+			"bob_px": 0.12,
+			"turtle_stride": 0.68
+		}
 	},
 	"alligator": {
 		"accel_time": 0.20,
@@ -114,7 +123,14 @@ const PROFILES := {
 		"gait_rate_mult": 0.65,
 		"bob_px": 0.3,
 		"tail_sway": 1.35,
-		"crawl_weight": 0.32
+		"crawl_weight": 0.32,
+		"water_profile": {
+			"accel_time": 0.13,
+			"decel_time": 0.20,
+			"turn_rate_deg": 360.0,
+			"tail_sway": 1.8,
+			"crawl_weight": 0.12
+		}
 	},
 	"water_snake": {
 		"accel_time": 0.10,
@@ -123,7 +139,13 @@ const PROFILES := {
 		"gait": "slither",
 		"gait_rate_mult": 1.25,
 		"bob_px": 0.0,
-		"slither_amp": 1.35
+		"slither_amp": 1.35,
+		"water_profile": {
+			"accel_time": 0.08,
+			"decel_time": 0.12,
+			"turn_rate_deg": 410.0,
+			"slither_amp": 1.65
+		}
 	},
 	"great_blue_heron": {
 		"accel_time": 0.22,
@@ -169,7 +191,14 @@ const PROFILES := {
 		"bob_px": 0.65,
 		"bird_stride": 0.76,
 		"wingbeat_mult": 0.85,
-		"waddle_sway": 0.34
+		"waddle_sway": 0.34,
+		"water_profile": {
+			"accel_time": 0.10,
+			"decel_time": 0.15,
+			"turn_rate_deg": 760.0,
+			"bob_px": 0.45,
+			"waddle_sway": 0.16
+		}
 	},
 	"mink": {
 		"accel_time": 0.045,
@@ -179,7 +208,14 @@ const PROFILES := {
 		"gait_rate_mult": 1.7,
 		"bob_px": 0.8,
 		"body_wiggle": 1.28,
-		"tail_wave": 1.35
+		"tail_wave": 1.35,
+		"water_profile": {
+			"accel_time": 0.08,
+			"decel_time": 0.10,
+			"turn_rate_deg": 980.0,
+			"body_wiggle": 1.0,
+			"tail_wave": 1.65
+		}
 	},
 	"beaver": {
 		"accel_time": 0.22,
@@ -190,7 +226,14 @@ const PROFILES := {
 		"gait_rate_mult": 0.58,
 		"bob_px": 0.28,
 		"body_wiggle": 0.42,
-		"tail_wave": 0.55
+		"tail_wave": 0.55,
+		"water_profile": {
+			"accel_time": 0.14,
+			"decel_time": 0.22,
+			"turn_rate_deg": 620.0,
+			"body_wiggle": 0.58,
+			"tail_wave": 0.95
+		}
 	},
 	"wolf_spider": {
 		"accel_time": 0.055,
@@ -232,6 +275,17 @@ static func profile_for(creature_id: String) -> Dictionary:
 	for key in override.keys():
 		profile[key] = override[key]
 	return profile
+
+static func profile_for_surface(profile: Dictionary, surface: String) -> Dictionary:
+	if surface != "water":
+		return profile
+	var overlay: Dictionary = profile.get("water_profile", {})
+	if overlay.is_empty():
+		return profile
+	var active := profile.duplicate()
+	for key in overlay.keys():
+		active[key] = overlay[key]
+	return active
 
 static func profiled_velocity(current_velocity: Vector2, move: Vector2, top_speed_px: float, delta: float, profile: Dictionary) -> Vector2:
 	if top_speed_px <= 0.0:

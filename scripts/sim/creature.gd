@@ -180,7 +180,7 @@ func _process(delta: float) -> void:
 	anim_attack_timer = maxf(anim_attack_timer - delta, 0.0)
 	anim_windup_timer = maxf(anim_windup_timer - delta, 0.0)
 	if velocity.length() > 4.0:
-		anim_walk_phase += MovementFeelScript.gait_phase_delta(velocity.length(), delta, movement_profile)
+		anim_walk_phase += MovementFeelScript.gait_phase_delta(velocity.length(), delta, _active_movement_profile())
 	if arena == null or not arena.has_method("is_near_view") or arena.is_near_view(global_position):
 		queue_redraw()
 
@@ -517,7 +517,7 @@ func _move_from_input(delta: float) -> void:
 	if dash_timer > 0.0:
 		velocity = dash_velocity
 	else:
-		velocity = MovementFeelScript.profiled_velocity(velocity, move, get_speed_px() * speed_multiplier, delta, movement_profile)
+		velocity = MovementFeelScript.profiled_velocity(velocity, move, get_speed_px() * speed_multiplier, delta, _active_movement_profile())
 	if Engine.is_in_physics_frame():
 		move_and_slide()
 	else:
@@ -1037,6 +1037,11 @@ func _environment_profile_for_zone(zone: String) -> Dictionary:
 		return terrain_map.get_environment_profile_for_zone(zone, _effective_movement_tags(), swim_time_remaining)
 	return EnvironmentProfileScript.for_zone(zone, _effective_movement_tags(), swim_time_remaining)
 
+func _active_movement_profile() -> Dictionary:
+	if is_airborne():
+		return movement_profile
+	return MovementFeelScript.profile_for_surface(movement_profile, String(current_environment_profile.get("surface", "")))
+
 func _effective_movement_tags() -> Array:
 	var tags := movement_tags.duplicate()
 	if tags.has("land_walker") and not tags.has("ground_walker"):
@@ -1116,7 +1121,7 @@ func _draw() -> void:
 	if render_shake_timer > 0.0:
 		var shake_phase := render_shake_timer * 120.0
 		shake_offset = Vector2(sin(shake_phase), cos(shake_phase * 1.37)) * 2.0
-	var anim := MovementFeelScript.render_anim(movement_profile, anim_walk_phase)
+	var anim := MovementFeelScript.render_anim(_active_movement_profile(), anim_walk_phase)
 	anim.merge({
 		"walk_phase": anim_walk_phase,
 		"moving": velocity.length() > 4.0,

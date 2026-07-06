@@ -2,6 +2,7 @@ extends SceneTree
 
 const ARENA_SCENE := "res://scenes/Arena.tscn"
 const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
+const MovementFeelScript := preload("res://scripts/sim/movement_feel.gd")
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -25,6 +26,7 @@ func _run() -> void:
 	_check_turn_inertia(arena, failures)
 	_check_dash_bypass(arena, failures)
 	_check_render_profile_keys(arena, failures)
+	_check_water_profile_overlay(arena, failures)
 
 	print("movement_feel failures=%d" % failures.size())
 	for failure in failures:
@@ -151,6 +153,23 @@ func _check_render_profile_keys(arena: Node, failures: Array[String]) -> void:
 	turtle2.apply_creature("snapping_turtle")
 	if not float(turtle2.movement_profile.get("shell_stability", 0.0)) > 0.0:
 		failures.append("snapping turtle should expose stable shell metadata")
+
+func _check_water_profile_overlay(arena: Node, failures: Array[String]) -> void:
+	var turtle: Node = arena.player
+	turtle.apply_creature("snapping_turtle")
+	var land_profile: Dictionary = turtle.movement_profile
+	var water_profile: Dictionary = MovementFeelScript.profile_for_surface(land_profile, "water")
+	if not float(water_profile.get("accel_time", 0.0)) < float(land_profile.get("accel_time", 0.0)):
+		failures.append("snapping turtle should accelerate more smoothly in water; land=%s water=%s" % [str(land_profile), str(water_profile)])
+	if not float(water_profile.get("turtle_stride", 0.0)) > float(land_profile.get("turtle_stride", 0.0)):
+		failures.append("snapping turtle water overlay should paddle more than land creep")
+	var beaver_profile: Dictionary = MovementFeelScript.profile_for("beaver")
+	var beaver_water: Dictionary = MovementFeelScript.profile_for_surface(beaver_profile, "water")
+	if not float(beaver_water.get("tail_wave", 0.0)) > float(beaver_profile.get("tail_wave", 0.0)):
+		failures.append("beaver water overlay should emphasize tail-rudder motion")
+	turtle.current_environment_profile = {"surface": "water"}
+	if not float(turtle._active_movement_profile().get("turn_rate_deg", 0.0)) > float(land_profile.get("turn_rate_deg", 0.0)):
+		failures.append("creature active profile should use water movement overlay")
 
 func _move_frame(direction: Vector2) -> Resource:
 	var frame := InputFrameScript.new()
