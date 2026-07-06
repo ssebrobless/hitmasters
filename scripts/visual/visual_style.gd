@@ -60,6 +60,8 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 	var takeoff_flap_t := clampf(float(anim.get("takeoff_flap_t", 0.0)), 0.0, 1.0)
 	var landing_flap_t := clampf(float(anim.get("landing_flap_t", 0.0)), 0.0, 1.0)
 	var grounded_lockout_t := clampf(float(anim.get("grounded_lockout_t", 0.0)), 0.0, 1.0)
+	var terrain_splash_t := clampf(float(anim.get("terrain_splash_t", 0.0)), 0.0, 1.0)
+	var terrain_scuff_t := clampf(float(anim.get("terrain_scuff_t", 0.0)), 0.0, 1.0)
 
 	var attack_t := float(anim.get("attack_t", -1.0))
 	var windup_t := float(anim.get("windup_t", -1.0))
@@ -115,6 +117,31 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		for segment: int in 4:
 			var start_angle := float(segment) * PI * 0.5 + PI * 0.08
 			canvas.draw_arc(Vector2.ZERO, lock_radius, start_angle, start_angle + PI * 0.27, 10, lock_color, maxf(1.6, visual_radius * 0.08))
+	if terrain_splash_t > 0.0 and not airborne:
+		var splash_color := _with_alpha(Color(0.48, 0.78, 0.92, 0.18 + terrain_splash_t * 0.22), alpha)
+		var splash_radius := visual_radius * (0.86 + (1.0 - terrain_splash_t) * 0.34)
+		canvas.draw_set_transform(shake_offset, 0.0, Vector2.ONE)
+		canvas.draw_arc(Vector2.ZERO, splash_radius, PI * 0.08, PI * 0.92, 22, splash_color, maxf(1.5, visual_radius * 0.08))
+		canvas.draw_arc(Vector2.ZERO, splash_radius, PI * 1.08, PI * 1.92, 22, Color(splash_color.r, splash_color.g, splash_color.b, splash_color.a * 0.72), maxf(1.2, visual_radius * 0.06))
+		for splash_side: float in [-1.0, 1.0]:
+			canvas.draw_line(
+				-forward * visual_radius * 0.15 + side * splash_side * visual_radius * 0.45,
+				-forward * visual_radius * (0.72 + terrain_splash_t * 0.22) + side * splash_side * visual_radius * (0.88 + terrain_splash_t * 0.18),
+				Color(splash_color.r, splash_color.g, splash_color.b, splash_color.a * 0.82),
+				maxf(1.1, visual_radius * 0.06)
+			)
+	if terrain_scuff_t > 0.0 and not airborne:
+		var scuff_color := _with_alpha(Color(0.42, 0.32, 0.2, 0.16 + terrain_scuff_t * 0.2), alpha)
+		canvas.draw_set_transform(shake_offset, 0.0, Vector2.ONE)
+		for scuff_side: float in [-1.0, 1.0]:
+			var scuff_center := -forward * visual_radius * 0.38 + side * scuff_side * visual_radius * 0.52
+			canvas.draw_arc(scuff_center, visual_radius * (0.24 + terrain_scuff_t * 0.1), PI * 0.08, PI * 0.92, 10, scuff_color, maxf(1.1, visual_radius * 0.06))
+			canvas.draw_line(
+				scuff_center,
+				scuff_center - forward * visual_radius * (0.48 + terrain_scuff_t * 0.2) + side * scuff_side * visual_radius * 0.18,
+				Color(scuff_color.r, scuff_color.g, scuff_color.b, scuff_color.a * 0.7),
+				maxf(1.0, visual_radius * 0.05)
+			)
 	if airborne:
 		var height_ratio := clampf(air_lift_px / maxf(radius, 1.0), 0.0, 2.4)
 		var shadow_alpha := clampf(0.32 - height_ratio * 0.07 + low_window_t * 0.18, 0.12, 0.46)

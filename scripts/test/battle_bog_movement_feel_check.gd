@@ -6,6 +6,7 @@ const MovementFeelScript := preload("res://scripts/sim/movement_feel.gd")
 const CreatureScript := preload("res://scripts/sim/creature.gd")
 const CreatureStateScript := preload("res://scripts/sim/creature_state.gd")
 const SimConstants := preload("res://scripts/sim/sim_constants.gd")
+const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -34,6 +35,7 @@ func _run() -> void:
 	_check_render_profile_keys(arena, failures)
 	_check_landing_tell(arena, failures)
 	_check_water_profile_overlay(arena, failures)
+	_check_terrain_transition_cues(arena, failures)
 	_check_wave4_profile_seeds(failures)
 	_check_render_state_flags(arena, failures)
 	_check_bird_transition_cues(arena, failures)
@@ -283,6 +285,51 @@ func _check_water_profile_overlay(arena: Node, failures: Array[String]) -> void:
 	turtle.current_environment_profile = {"surface": "water"}
 	if not float(turtle._active_movement_profile().get("turn_rate_deg", 0.0)) > float(land_profile.get("turn_rate_deg", 0.0)):
 		failures.append("creature active profile should use water movement overlay")
+
+func _check_terrain_transition_cues(arena: Node, failures: Array[String]) -> void:
+	var actor: Node = arena.player
+	actor.apply_creature("snapping_turtle")
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var land_point := _movement_zone_point(arena, TerrainMapScript.LAND)
+	var water_point := _movement_zone_point(arena, TerrainMapScript.WATER)
+	var shallow_point := _movement_zone_point(arena, TerrainMapScript.SHALLOW)
+	actor.global_position = land_point
+	actor._reset_terrain_profile()
+	actor.global_position = water_point
+	actor._update_terrain(SimConstants.TICK_DELTA)
+	var water_state: Dictionary = actor.get_render_motion_state()
+	actor.global_position = shallow_point
+	actor._update_terrain(SimConstants.TICK_DELTA)
+	var mud_state: Dictionary = actor.get_render_motion_state()
+	actor.global_position = land_point
+	actor._update_terrain(SimConstants.TICK_DELTA)
+	var land_state: Dictionary = actor.get_render_motion_state()
+	var water_entry: bool = String(water_state.get("terrain_transition_from_surface", "")) == "solid" \
+		and String(water_state.get("terrain_transition_to_surface", "")) == "water" \
+		and float(water_state.get("water_entry_t", 0.0)) > 0.9 \
+		and float(water_state.get("terrain_splash_t", 0.0)) > 0.9
+	var mud_entry: bool = String(mud_state.get("terrain_transition_from_surface", "")) == "water" \
+		and String(mud_state.get("terrain_transition_to_surface", "")) == "mud" \
+		and float(mud_state.get("water_exit_t", 0.0)) > 0.9 \
+		and float(mud_state.get("mud_entry_t", 0.0)) > 0.9 \
+		and float(mud_state.get("terrain_scuff_t", 0.0)) > 0.9
+	var mud_exit: bool = String(land_state.get("terrain_transition_from_surface", "")) == "mud" \
+		and String(land_state.get("terrain_transition_to_surface", "")) == "solid" \
+		and float(land_state.get("mud_exit_t", 0.0)) > 0.9 \
+		and float(land_state.get("terrain_scuff_t", 0.0)) > 0.9
+	if not water_entry or not mud_entry or not mud_exit:
+		failures.append("terrain changes should expose splash/scuff transition cues across land, water, and mud; water=%s mud=%s land=%s state=%s/%s/%s points=%s/%s/%s" % [
+			str(water_entry),
+			str(mud_entry),
+			str(mud_exit),
+			str(water_state),
+			str(mud_state),
+			str(land_state),
+			str(land_point),
+			str(water_point),
+			str(shallow_point)
+		])
 
 func _check_wave4_profile_seeds(failures: Array[String]) -> void:
 	var bog_turtle: Dictionary = MovementFeelScript.profile_for("bog_turtle")
@@ -685,6 +732,19 @@ func _flight_frame(direction: Vector2) -> Resource:
 	var frame := _move_frame(direction)
 	frame.set_button(InputFrameScript.BUTTON_FLIGHT_TOGGLE, true)
 	return frame
+
+func _movement_zone_point(arena: Node, zone: String) -> Vector2:
+	var rects: Array = arena.terrain_map.get_rects(zone)
+	for rect: Rect2 in rects:
+		for x_step in 7:
+			for y_step in 7:
+				var point := Vector2(
+					lerpf(rect.position.x + 12.0, rect.end.x - 12.0, float(x_step) / 6.0),
+					lerpf(rect.position.y + 12.0, rect.end.y - 12.0, float(y_step) / 6.0)
+				)
+				if String(arena.terrain_map.get_zone_at(point)) == zone:
+					return point
+	return Vector2.ZERO
 
 func _aim_frame(direction: Vector2) -> Resource:
 	var frame := InputFrameScript.new()

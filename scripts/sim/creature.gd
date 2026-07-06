@@ -44,6 +44,7 @@ const RESIDUAL_DASH_STOP_SPEED := 3.0
 const LANDING_TELL_SEC := 0.16
 const TAKEOFF_FLAP_TELL_SEC := 0.24
 const LANDING_FLAP_TELL_SEC := 0.30
+const TERRAIN_TRANSITION_TELL_SEC := 0.32
 const TOXIC_RECOIL_TELL_SEC := 0.22
 const ESCAPE_CURL_TELL_SEC := 0.24
 const PLUNGE_TELL_SEC := 0.20
@@ -145,6 +146,9 @@ var render_landing_impact := 0.0
 var render_last_hop_airborne := false
 var render_takeoff_flap_timer := 0.0
 var render_landing_flap_timer := 0.0
+var render_terrain_transition_timer := 0.0
+var render_terrain_from_surface := ""
+var render_terrain_to_surface := ""
 var render_toxic_recoil_timer := 0.0
 var render_escape_curl_timer := 0.0
 var render_plunge_timer := 0.0
@@ -205,6 +209,9 @@ func apply_creature(next_creature_id: String) -> void:
 	render_last_hop_airborne = false
 	render_takeoff_flap_timer = 0.0
 	render_landing_flap_timer = 0.0
+	render_terrain_transition_timer = 0.0
+	render_terrain_from_surface = ""
+	render_terrain_to_surface = ""
 	render_toxic_recoil_timer = 0.0
 	render_escape_curl_timer = 0.0
 	render_plunge_timer = 0.0
@@ -238,6 +245,7 @@ func _process(delta: float) -> void:
 	render_shake_timer = maxf(render_shake_timer - delta, 0.0)
 	render_takeoff_flap_timer = maxf(render_takeoff_flap_timer - delta, 0.0)
 	render_landing_flap_timer = maxf(render_landing_flap_timer - delta, 0.0)
+	render_terrain_transition_timer = maxf(render_terrain_transition_timer - delta, 0.0)
 	render_toxic_recoil_timer = maxf(render_toxic_recoil_timer - delta, 0.0)
 	render_escape_curl_timer = maxf(render_escape_curl_timer - delta, 0.0)
 	render_plunge_timer = maxf(render_plunge_timer - delta, 0.0)
@@ -318,6 +326,14 @@ func begin_render_landing_flap(duration := LANDING_FLAP_TELL_SEC, impact := 0.9)
 	render_landing_flap_timer = maxf(render_landing_flap_timer, duration)
 	render_landing_timer = maxf(render_landing_timer, LANDING_TELL_SEC)
 	render_landing_impact = maxf(render_landing_impact, impact)
+	queue_redraw()
+
+func begin_render_terrain_transition(from_surface: String, to_surface: String, duration := TERRAIN_TRANSITION_TELL_SEC) -> void:
+	if from_surface == "" or to_surface == "" or from_surface == to_surface:
+		return
+	render_terrain_from_surface = from_surface
+	render_terrain_to_surface = to_surface
+	render_terrain_transition_timer = maxf(render_terrain_transition_timer, duration)
 	queue_redraw()
 
 func begin_stealth(duration: float, _source: String) -> void:
@@ -599,6 +615,13 @@ func get_render_motion_state() -> Dictionary:
 	var landing_flap_t := clampf(render_landing_flap_timer / LANDING_FLAP_TELL_SEC, 0.0, 1.0) if LANDING_FLAP_TELL_SEC > 0.0 else 0.0
 	var grounded_lockout_t := clampf(flight_grounded_timer / FLIGHT_GROUNDED_LOCKOUT_SEC, 0.0, 1.0) if FLIGHT_GROUNDED_LOCKOUT_SEC > 0.0 and has_movement("flight") and not has_movement("always_flying") else 0.0
 	var bird_transition_pose := has_movement("flight") and not has_movement("always_flying") and maxf(maxf(takeoff_charge_t, takeoff_flap_t), maxf(landing_flap_t, grounded_lockout_t)) > 0.0
+	var terrain_transition_t := clampf(render_terrain_transition_timer / TERRAIN_TRANSITION_TELL_SEC, 0.0, 1.0) if TERRAIN_TRANSITION_TELL_SEC > 0.0 else 0.0
+	var water_entry_t := terrain_transition_t if render_terrain_to_surface == EnvironmentProfileScript.SURFACE_WATER and render_terrain_from_surface != EnvironmentProfileScript.SURFACE_WATER else 0.0
+	var water_exit_t := terrain_transition_t if render_terrain_from_surface == EnvironmentProfileScript.SURFACE_WATER and render_terrain_to_surface != EnvironmentProfileScript.SURFACE_WATER else 0.0
+	var mud_entry_t := terrain_transition_t if render_terrain_to_surface == EnvironmentProfileScript.SURFACE_MUD and render_terrain_from_surface != EnvironmentProfileScript.SURFACE_MUD else 0.0
+	var mud_exit_t := terrain_transition_t if render_terrain_from_surface == EnvironmentProfileScript.SURFACE_MUD and render_terrain_to_surface != EnvironmentProfileScript.SURFACE_MUD else 0.0
+	var terrain_splash_t := maxf(water_entry_t, water_exit_t)
+	var terrain_scuff_t := maxf(mud_entry_t, mud_exit_t)
 	var latch_attacking := latch_victim != null and is_instance_valid(latch_victim)
 	var latch_being_held := latched_attacker != null and is_instance_valid(latched_attacker)
 	var latch_source_name := String(latch_source)
@@ -723,6 +746,15 @@ func get_render_motion_state() -> Dictionary:
 		"landing_flap_t": landing_flap_t,
 		"grounded_lockout_t": grounded_lockout_t,
 		"bird_transition_pose": bird_transition_pose,
+		"terrain_transition_t": terrain_transition_t,
+		"terrain_transition_from_surface": render_terrain_from_surface,
+		"terrain_transition_to_surface": render_terrain_to_surface,
+		"water_entry_t": water_entry_t,
+		"water_exit_t": water_exit_t,
+		"mud_entry_t": mud_entry_t,
+		"mud_exit_t": mud_exit_t,
+		"terrain_splash_t": terrain_splash_t,
+		"terrain_scuff_t": terrain_scuff_t,
 		"latch_source": latch_source_name,
 		"latch_attacker_pose": latch_attacking,
 		"latched_victim_pose": latch_being_held,
@@ -826,9 +858,14 @@ func _move_from_input(delta: float) -> void:
 
 func _update_terrain(delta: float) -> void:
 	var zone := get_current_zone()
+	var old_zone := current_terrain_zone
+	var old_surface := String(current_environment_profile.get("surface", ""))
 	previous_terrain_zone = current_terrain_zone
 	current_terrain_zone = zone
 	current_environment_profile = _environment_profile_for_zone(zone)
+	var new_surface := String(current_environment_profile.get("surface", ""))
+	if zone != old_zone and not is_airborne():
+		begin_render_terrain_transition(old_surface, new_surface)
 	terrain_speed_target_px = _terrain_target_speed_px(zone)
 	var terrain_lerp_rate := float(movement_profile.get("terrain_lerp_rate", TERRAIN_SPEED_LERP_RATE))
 	terrain_speed_px = lerpf(terrain_speed_px if terrain_speed_px > 0.0 else terrain_speed_target_px, terrain_speed_target_px, clampf(delta * terrain_lerp_rate, 0.0, 1.0))
@@ -1116,6 +1153,9 @@ func _respawn() -> void:
 	render_last_hop_airborne = false
 	render_takeoff_flap_timer = 0.0
 	render_landing_flap_timer = 0.0
+	render_terrain_transition_timer = 0.0
+	render_terrain_from_surface = ""
+	render_terrain_to_surface = ""
 	render_toxic_recoil_timer = 0.0
 	render_escape_curl_timer = 0.0
 	render_plunge_timer = 0.0
@@ -1374,6 +1414,9 @@ func _reset_terrain_profile() -> void:
 	current_terrain_zone = get_current_zone()
 	previous_terrain_zone = current_terrain_zone
 	current_environment_profile = _environment_profile_for_zone(current_terrain_zone)
+	render_terrain_transition_timer = 0.0
+	render_terrain_from_surface = ""
+	render_terrain_to_surface = ""
 	terrain_speed_target_px = _terrain_target_speed_px(current_terrain_zone)
 	terrain_speed_px = terrain_speed_target_px
 
