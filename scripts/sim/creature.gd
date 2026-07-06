@@ -682,6 +682,8 @@ func get_render_motion_state() -> Dictionary:
 	var owl_glide := creature_id == "owl" and state == CreatureStateScript.State.AIRBORNE and moving
 	var owl_glide_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if owl_glide else 0.0
 	var owl_silent := creature_id == "owl" and stealth_timer > 0.0
+	var kingfisher_dart := creature_id == "kingfisher" and state == CreatureStateScript.State.AIRBORNE and moving and plunge_t <= 0.0
+	var kingfisher_dart_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if kingfisher_dart else 0.0
 	var beaver_swim := creature_id == "beaver" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var beaver_lumber := creature_id == "beaver" and surface != EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var beaver_motion_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if beaver_swim or beaver_lumber else 0.0
@@ -763,6 +765,8 @@ func get_render_motion_state() -> Dictionary:
 		"owl_glide_pose": owl_glide,
 		"owl_glide_intensity": owl_glide_intensity,
 		"owl_silent_flight_pose": owl_silent,
+		"kingfisher_dart_pose": kingfisher_dart,
+		"kingfisher_dart_intensity": kingfisher_dart_intensity,
 		"beaver_swim_pose": beaver_swim,
 		"beaver_swim_intensity": beaver_motion_intensity if beaver_swim else 0.0,
 		"beaver_lumber_pose": beaver_lumber,

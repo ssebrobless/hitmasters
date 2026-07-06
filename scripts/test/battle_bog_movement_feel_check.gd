@@ -760,6 +760,33 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 			str(owl_glide_state),
 			str(owl_silent_state)
 		])
+	actor.apply_creature("kingfisher")
+	actor.state = CreatureStateScript.State.AIRBORNE
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	var kingfisher_dart_state: Dictionary = actor.get_render_motion_state()
+	var kingfisher_dart: bool = bool(kingfisher_dart_state.get("kingfisher_dart_pose", false)) \
+		and float(kingfisher_dart_state.get("kingfisher_dart_intensity", 0.0)) > 0.25 \
+		and float(kingfisher_dart_state.get("plunge_t", 1.0)) <= 0.001
+	actor.begin_render_plunge()
+	var kingfisher_plunge_state: Dictionary = actor.get_render_motion_state()
+	var kingfisher_plunge_suppresses_dart: bool = float(kingfisher_plunge_state.get("plunge_t", 0.0)) > 0.5 \
+		and not bool(kingfisher_plunge_state.get("kingfisher_dart_pose", false)) \
+		and float(kingfisher_plunge_state.get("kingfisher_dart_intensity", 1.0)) <= 0.001
+	actor.velocity = Vector2.ZERO
+	actor.set_input_frame(InputFrameScript.new())
+	actor.render_plunge_timer = 0.0
+	var kingfisher_idle_state: Dictionary = actor.get_render_motion_state()
+	var kingfisher_idle_clear: bool = not bool(kingfisher_idle_state.get("kingfisher_dart_pose", false)) \
+		and float(kingfisher_idle_state.get("kingfisher_dart_intensity", 1.0)) <= 0.001
+	if not kingfisher_dart or not kingfisher_plunge_suppresses_dart or not kingfisher_idle_clear:
+		failures.append("airborne kingfisher should expose dart flight, suppress it during plunge, then clear when idle; dart=%s plunge=%s idle=%s state=%s/%s/%s" % [
+			str(kingfisher_dart),
+			str(kingfisher_plunge_suppresses_dart),
+			str(kingfisher_idle_clear),
+			str(kingfisher_dart_state),
+			str(kingfisher_plunge_state),
+			str(kingfisher_idle_state)
+		])
 	actor.apply_creature("mosquito_swarm")
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))

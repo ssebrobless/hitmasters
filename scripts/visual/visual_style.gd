@@ -830,6 +830,8 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var owl_glide := String(anim.get("creature_id", "")) == "owl" and bool(anim.get("owl_glide_pose", false))
 	var owl_glide_intensity := clampf(float(anim.get("owl_glide_intensity", 0.0)), 0.0, 1.25)
 	var owl_silent := String(anim.get("creature_id", "")) == "owl" and bool(anim.get("owl_silent_flight_pose", false))
+	var kingfisher_dart := String(anim.get("creature_id", "")) == "kingfisher" and bool(anim.get("kingfisher_dart_pose", false))
+	var kingfisher_dart_intensity := clampf(float(anim.get("kingfisher_dart_intensity", 0.0)), 0.0, 1.25)
 	var low_window_t := clampf(float(anim.get("low_window_t", 0.0)), 0.0, 1.0)
 	var takeoff_charge_t := clampf(float(anim.get("takeoff_charge_t", 0.0)), 0.0, 1.0)
 	var takeoff_flap_t := clampf(float(anim.get("takeoff_flap_t", 0.0)), 0.0, 1.0)
@@ -847,14 +849,16 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 
 	if airborne:
 		# Extended flapping wings.
-		var flap_amp := (0.12 if owl_glide else 0.35) + takeoff_flap_t * 0.26 + landing_flap_t * 0.16
+		var flap_amp := (0.12 if owl_glide else 0.48 if kingfisher_dart else 0.35) + takeoff_flap_t * 0.26 + landing_flap_t * 0.16
 		var flap := sin(Time.get_ticks_msec() * 0.012 * wingbeat + walk_phase * perch_flutter) * flap_amp
 		for wing_side: float in [-1.0, 1.0]:
 			var glide_width := 0.52 * owl_glide_intensity if owl_glide else 0.0
 			var glide_forward := -0.18 * owl_glide_intensity if owl_glide else 0.0
+			var dart_tuck := 0.26 * kingfisher_dart_intensity if kingfisher_dart else 0.0
+			var dart_forward := 0.24 * kingfisher_dart_intensity if kingfisher_dart else 0.0
 			var transition_width := takeoff_flap_t * 0.28 + landing_flap_t * 0.34
 			var transition_forward := takeoff_flap_t * -0.18 + landing_flap_t * 0.18
-			var wing_tip := side * wing_side * radius * (1.9 + glide_width + transition_width - plunge_t * 0.45 - low_window_t * 0.32) + forward * radius * (0.1 + glide_forward + transition_forward + flap * wing_side * wing_side + plunge_t * 0.32 + low_window_t * 0.28)
+			var wing_tip := side * wing_side * radius * (1.9 + glide_width + transition_width - plunge_t * 0.45 - low_window_t * 0.32 - dart_tuck) + forward * radius * (0.1 + glide_forward + transition_forward + dart_forward + flap * wing_side * wing_side + plunge_t * 0.32 + low_window_t * 0.28)
 			canvas.draw_colored_polygon(PackedVector2Array([
 				forward * radius * 0.35 + side * wing_side * radius * 0.3,
 				wing_tip + forward * radius * (0.25 + flap),
@@ -867,6 +871,8 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 				canvas.draw_line(forward * radius * 0.02 + side * wing_side * radius * 0.76, wing_tip - forward * radius * 0.22, transition_color, 1.3)
 			if owl_glide:
 				canvas.draw_line(forward * radius * 0.05 + side * wing_side * radius * 0.62, wing_tip - forward * radius * 0.12, Color(breast.r, breast.g, breast.b, 0.28), 1.0)
+			if kingfisher_dart:
+				canvas.draw_line(forward * radius * 0.12 + side * wing_side * radius * 0.55, wing_tip - forward * radius * (0.1 + 0.12 * kingfisher_dart_intensity), Color(0.52, 0.82, 1.0, 0.24 + 0.08 * kingfisher_dart_intensity), maxf(radius * 0.045, 1.0))
 		if owl_silent:
 			canvas.draw_colored_polygon(PackedVector2Array([
 				-forward * radius * 0.85 + side * radius * 1.0,
@@ -875,6 +881,12 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 				forward * radius * 0.22 - side * radius * 1.42,
 				-forward * radius * 0.85 - side * radius * 1.0
 			]), Color(0.08, 0.09, 0.1, 0.16))
+		if kingfisher_dart:
+			var dart_color := Color(0.42, 0.76, 1.0, 0.18 + 0.1 * kingfisher_dart_intensity)
+			canvas.draw_line(-forward * radius * 0.28, -forward * radius * (1.18 + 0.32 * kingfisher_dart_intensity), dart_color, maxf(radius * 0.08, 1.2))
+			for streak_side: float in [-1.0, 1.0]:
+				var streak_start := -forward * radius * 0.18 + side * streak_side * radius * 0.36
+				canvas.draw_line(streak_start, streak_start - forward * radius * (0.78 + 0.28 * kingfisher_dart_intensity) + side * streak_side * radius * 0.12, Color(dart_color.r, dart_color.g, dart_color.b, dart_color.a * 0.78), maxf(radius * 0.045, 1.0))
 	else:
 		# Folded wings hugging the body.
 		for wing_side: float in [-1.0, 1.0]:
