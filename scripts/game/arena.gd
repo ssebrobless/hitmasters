@@ -45,6 +45,8 @@ const SQUAD_DANGER_HEALTH_RATIO := 0.28
 const SQUAD_DANGER_RANGE := 360.0
 const DAY_LENGTH_SEC := 120.0
 const FOOD_EAT_RADIUS_PAD := 8.0
+const BOSS_BREED_INTERVAL := 5
+const ANIMAL_ZONE_TICK_SEC := 0.2
 
 var entities: Array[Node] = []
 var minions: Array[Node] = []
@@ -67,6 +69,10 @@ var vfx_events: Array[Dictionary] = []
 var dams: Array[Node] = []
 var huts: Array[Node] = []
 var food_sources: Array[Node] = []
+var animal_zone_states: Array[Dictionary] = []
+var bred_animal_count := 0
+var boss_activation_count := 0
+var animal_zone_tick_timer := 0.0
 var huts_lost := {0: 0, 1: 0}
 var hut_defend_hint_timer := 0.0
 var habitat_deposit_feedback_timer := 0.0
@@ -178,6 +184,7 @@ func _physics_process(delta: float) -> void:
 		PerfStats.add("bot_frames", int(Time.get_ticks_usec() - perf_bots_start))
 
 	elapsed += delta
+	_tick_animal_zones(delta)
 	wave_timer -= delta
 	_tick_telegraphs(delta)
 	_tick_kill_feed(delta)
@@ -212,6 +219,7 @@ func _update_camera_lead(delta: float) -> void:
 func _draw() -> void:
 	# Retired mid-objective holdover: Battle Bog's center belongs to
 	# contested water while huts and habitats carry the match contract.
+	_draw_animal_zones()
 	_draw_telegraphs()
 
 	draw_string(ThemeDB.fallback_font, blue_core_position + Vector2(-42.0, -110.0), "BLUE HABITAT", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, Color(0.45, 0.72, 1.0))
@@ -329,6 +337,7 @@ func _spawn_match() -> void:
 	stock_manager.reset()
 	day_index = 1
 	day_timer = 0.0
+	_setup_animal_zones()
 
 	var blue_core = CoreScript.new()
 	add_child(blue_core)
@@ -446,6 +455,127 @@ func get_deposit_prompt_state() -> Dictionary:
 		"in_home_habitat": in_home,
 		"near_home_habitat": near_home
 	}
+
+func get_animal_zone_state(side := "") -> Array[Dictionary]:
+	var zones: Array[Dictionary] = []
+	for zone: Dictionary in animal_zone_states:
+		if not String(side).is_empty() and String(zone.get("side", "")) != String(side):
+			continue
+		zones.append(zone.duplicate(true))
+	return zones
+
+func get_boss_progress_state() -> Dictionary:
+	return {
+		"bred_count": bred_animal_count,
+		"interval": BOSS_BREED_INTERVAL,
+		"toward_next": bred_animal_count % BOSS_BREED_INTERVAL,
+		"activations": boss_activation_count,
+		"boss_active": _boss_zones_active()
+	}
+
+func _setup_animal_zones() -> void:
+	animal_zone_states.clear()
+	bred_animal_count = 0
+	boss_activation_count = 0
+	animal_zone_tick_timer = 0.0
+	var terrain_zones: Array = terrain_map.get_animal_zones() if terrain_map.has_method("get_animal_zones") else []
+	for source_zone in terrain_zones:
+		var zone: Dictionary = source_zone
+		var is_boss := bool(zone.get("boss", false))
+		var state := zone.duplicate(true)
+		state["id"] = "%s:%s" % [String(zone.get("side", "")), String(zone.get("group", ""))]
+		state["active"] = not is_boss
+		state["activation_count"] = 0
+		state["occupants"] = _spawn_zone_occupants(state)
+		state["spawned_count"] = (state["occupants"] as Array).size()
+		state["blue_count"] = 0
+		state["red_count"] = 0
+		state["contested"] = false
+		state["control_team"] = -1
+		state["last_control_team"] = -1
+		animal_zone_states.append(state)
+	_tick_animal_zones(ANIMAL_ZONE_TICK_SEC)
+
+func _spawn_zone_occupants(zone: Dictionary) -> Array:
+	if bool(zone.get("boss", false)):
+		return _boss_zone_occupants(zone) if bool(zone.get("active", false)) else []
+	var creatures: Array = zone.get("creatures", [])
+	return creatures.duplicate()
+
+func _boss_zone_occupants(zone: Dictionary) -> Array:
+	var side := String(zone.get("side", "neutral"))
+	var activation := int(zone.get("activation_count", 0))
+	return ["%s_boss_%d" % [side, maxi(activation, 1)]]
+
+func _record_bred_animal(_actor: Node) -> void:
+	bred_animal_count += 1
+	if bred_animal_count % BOSS_BREED_INTERVAL == 0:
+		_activate_boss_zones()
+
+func _activate_boss_zones() -> void:
+	boss_activation_count += 1
+	for zone in animal_zone_states:
+		if not bool(zone.get("boss", false)):
+			continue
+		zone["active"] = true
+		zone["activation_count"] = int(zone.get("activation_count", 0)) + 1
+		zone["occupants"] = _boss_zone_occupants(zone)
+		zone["spawned_count"] = (zone["occupants"] as Array).size()
+		zone["last_bred_count"] = bred_animal_count
+	add_kill_feed("Boss animal zones stirred after %d breeding deposits" % bred_animal_count)
+
+func _boss_zones_active() -> bool:
+	for zone: Dictionary in animal_zone_states:
+		if bool(zone.get("boss", false)) and bool(zone.get("active", false)):
+			return true
+	return false
+
+func _tick_animal_zones(delta: float) -> void:
+	animal_zone_tick_timer -= delta
+	if animal_zone_tick_timer > 0.0:
+		return
+	animal_zone_tick_timer = ANIMAL_ZONE_TICK_SEC
+	for zone in animal_zone_states:
+		var blue_count := 0
+		var red_count := 0
+		if bool(zone.get("active", false)):
+			for actor in entities:
+				if not _actor_counts_for_animal_zone(actor, zone):
+					continue
+				if int(actor.get("team")) == BLUE:
+					blue_count += 1
+				elif int(actor.get("team")) == RED:
+					red_count += 1
+		zone["blue_count"] = blue_count
+		zone["red_count"] = red_count
+		zone["contested"] = blue_count > 0 and red_count > 0
+		var control_team := -1
+		if blue_count > 0 and red_count == 0:
+			control_team = BLUE
+		elif red_count > 0 and blue_count == 0:
+			control_team = RED
+		zone["control_team"] = control_team
+		if control_team >= 0:
+			zone["last_control_team"] = control_team
+
+func _actor_counts_for_animal_zone(actor: Node, zone: Dictionary) -> bool:
+	if actor == null or not is_instance_valid(actor):
+		return false
+	if not actor.has_method("is_scored_actor") or not actor.is_scored_actor():
+		return false
+	if actor.has_method("is_alive") and not actor.is_alive():
+		return false
+	if not ("team" in actor):
+		return false
+	return _point_in_animal_zone(actor.global_position, zone)
+
+func _point_in_animal_zone(point: Vector2, zone: Dictionary) -> bool:
+	var center: Vector2 = zone.get("center", Vector2.ZERO)
+	var radius: Vector2 = zone.get("radius", Vector2.ONE)
+	if radius.x <= 0.0 or radius.y <= 0.0:
+		return false
+	var normalized := Vector2((point.x - center.x) / radius.x, (point.y - center.y) / radius.y)
+	return normalized.length_squared() <= 1.0
 
 func _build_trio_hud_row(slot: Dictionary) -> Dictionary:
 	var actor: Node = slot.get("actor", null)
@@ -1689,6 +1819,59 @@ func _draw_squad_badges() -> void:
 		draw_string(ThemeDB.fallback_font, position + Vector2(1.5, 1.5), text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(0.02, 0.02, 0.02, 0.85))
 		draw_string(ThemeDB.fallback_font, position, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, color)
 
+func _draw_animal_zones() -> void:
+	for zone: Dictionary in animal_zone_states:
+		var center: Vector2 = zone.get("center", Vector2.ZERO)
+		var radius: Vector2 = zone.get("radius", Vector2.ZERO)
+		if radius.x <= 0.0 or radius.y <= 0.0:
+			continue
+		var active := bool(zone.get("active", false))
+		var boss := bool(zone.get("boss", false))
+		var contested := bool(zone.get("contested", false))
+		var control_team := int(zone.get("control_team", -1))
+		var base_color := _animal_zone_color(zone, active, boss, control_team)
+		var fill := Color(base_color.r, base_color.g, base_color.b, 0.035 if active else 0.014)
+		var outline := Color(base_color.r, base_color.g, base_color.b, 0.3 if active else 0.12)
+		_draw_ellipse(center, radius, fill, outline, 2.0 if active else 1.0)
+		if contested:
+			_draw_ellipse(center, radius * 0.92, Color(1.0, 0.85, 0.25, 0.025), Color(1.0, 0.82, 0.25, 0.46), 3.0)
+		elif control_team >= 0:
+			var team_tint := Color(0.4, 0.72, 1.0, 0.34) if control_team == BLUE else Color(1.0, 0.42, 0.35, 0.34)
+			_draw_ellipse(center, radius * 0.86, Color(team_tint.r, team_tint.g, team_tint.b, 0.018), team_tint, 2.0)
+		_draw_animal_zone_occupant_marks(zone, center, radius, base_color)
+
+func _animal_zone_color(zone: Dictionary, active: bool, boss: bool, control_team: int) -> Color:
+	if boss:
+		return Color(0.95, 0.65, 0.2) if active else Color(0.52, 0.46, 0.38)
+	if control_team == BLUE:
+		return Color(0.38, 0.68, 0.95)
+	if control_team == RED:
+		return Color(0.95, 0.42, 0.36)
+	return Color(0.5, 0.68, 0.38) if String(zone.get("side", "")) == "blue" else Color(0.58, 0.62, 0.34)
+
+func _draw_animal_zone_occupant_marks(zone: Dictionary, center: Vector2, radius: Vector2, color: Color) -> void:
+	var occupants: Array = zone.get("occupants", [])
+	if occupants.is_empty():
+		return
+	var active := bool(zone.get("active", false))
+	var alpha := 0.42 if active else 0.12
+	var count := mini(occupants.size(), 8)
+	for i in count:
+		var angle := -PI * 0.84 + (PI * 1.68 * float(i) / maxf(float(count - 1), 1.0))
+		var point := center + Vector2(cos(angle) * radius.x * 0.72, sin(angle) * radius.y * 0.72)
+		draw_circle(point, 4.0 if bool(zone.get("boss", false)) else 3.0, Color(color.r, color.g, color.b, alpha))
+
+func _draw_ellipse(center: Vector2, radius: Vector2, fill: Color, outline: Color, width: float) -> void:
+	var points := PackedVector2Array()
+	var steps := 44
+	for i in steps:
+		var angle := TAU * float(i) / float(steps)
+		points.append(center + Vector2(cos(angle) * radius.x, sin(angle) * radius.y))
+	if fill.a > 0.0:
+		draw_colored_polygon(points, fill)
+	for i in steps:
+		draw_line(points[i], points[(i + 1) % steps], outline, width)
+
 func get_habitat_stock_visuals(team := -1) -> Array[Dictionary]:
 	var visuals: Array[Dictionary] = []
 	if stock_manager == null or not stock_manager.has_method("get_team_slots"):
@@ -1953,6 +2136,7 @@ func _try_manual_habitat_deposit(actor: Node) -> bool:
 	if actor.has_method("reset_hunger_after_deposit") and actor.has_method("is_satiated") and actor.is_satiated():
 		actor.reset_hunger_after_deposit()
 	habitat_deposit_prompt_state = "accepted"
+	_record_bred_animal(actor)
 	add_kill_feed("%s deposited at habitat; breeding cue started" % actor.get_actor_name())
 	return true
 
