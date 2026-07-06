@@ -542,6 +542,8 @@ func get_render_motion_state() -> Dictionary:
 	var plunge_t := clampf(render_plunge_timer / PLUNGE_TELL_SEC, 0.0, 1.0) if PLUNGE_TELL_SEC > 0.0 else 0.0
 	var surface_walk := creature_id == "water_shrew" and water_walk_active and moving and surface == EnvironmentProfileScript.SURFACE_WATER
 	var wake_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if surface_walk else 0.0
+	var chorus_hop := creature_id == "chorus_frog" and moving and not is_airborne()
+	var chorus_hop_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if chorus_hop else 0.0
 	var alligator_high_walk := creature_id == "alligator" and moving and surface != EnvironmentProfileScript.SURFACE_WATER and not _has_modifier_source("Ambush")
 	var heron_wading := creature_id == "great_blue_heron" and surface == EnvironmentProfileScript.SURFACE_WATER and not is_airborne() and state != CreatureStateScript.State.PERCHED
 	var wading_stride := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if heron_wading and moving else 0.0
@@ -575,6 +577,8 @@ func get_render_motion_state() -> Dictionary:
 		"in_water": surface == EnvironmentProfileScript.SURFACE_WATER,
 		"surface_walk": surface_walk,
 		"surface_wake_intensity": wake_intensity,
+		"chorus_hop_pose": chorus_hop,
+		"chorus_hop_intensity": chorus_hop_intensity,
 		"wading_pose": heron_wading,
 		"wading_stride": wading_stride,
 		"slick_crawl_pose": newt_crawling,

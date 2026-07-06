@@ -160,11 +160,15 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var eye_color: Color = skin.get("eye", Color(0.8, 0.7, 0.3))
 	var rooted_pose := bool(anim.get("rooted_pose", false))
 	var toxic_recoil_t := clampf(float(anim.get("toxic_recoil_t", 0.0)), 0.0, 1.0)
+	var chorus_hop := String(anim.get("creature_id", "")) == "chorus_frog" and bool(anim.get("chorus_hop_pose", false))
+	var chorus_hop_intensity := clampf(float(anim.get("chorus_hop_intensity", 0.0)), 0.0, 1.25)
 
 	var raw_hop := sin(walk_phase * 1.2) * 0.5 + 0.5 if moving and not rooted_pose else 0.0
 	var ground_contact := clampf(float(anim.get("ground_contact", 0.6)), 0.1, 0.95)
 	var hop := maxf(0.0, (raw_hop - ground_contact) / maxf(1.0 - ground_contact, 0.001)) if moving else 0.0
 	var leg_extend := 0.55 + hop * 0.55 * float(anim.get("hop_leg_scale", 1.0))
+	if chorus_hop:
+		leg_extend += 0.16 * chorus_hop_intensity * (0.35 + hop)
 	if rooted_pose:
 		leg_extend = 0.38
 	var landing_squash := (1.0 - hop) * float(anim.get("landing_squash", 0.0)) if moving else 0.0
@@ -178,6 +182,9 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 		var hip := -forward * radius * 0.45 + side * leg_side * radius * 0.62
 		var knee := hip - forward * radius * 0.35 * leg_extend + side * leg_side * radius * 0.4
 		var foot := knee - forward * radius * 0.55 * leg_extend - side * leg_side * radius * 0.08
+		if chorus_hop:
+			var toe_trail := foot - forward * radius * (0.22 + 0.12 * chorus_hop_intensity)
+			canvas.draw_line(foot, toe_trail + side * leg_side * radius * 0.08, Color(dark.r, dark.g, dark.b, 0.32 + 0.12 * chorus_hop_intensity), maxf(radius * 0.06, 1.1))
 		canvas.draw_line(hip, knee, dark, maxf(radius * 0.24, 3.0))
 		canvas.draw_line(knee, foot, dark, maxf(radius * 0.18, 2.5))
 		for toe in 3:
@@ -185,7 +192,10 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 
 	for foot_side: float in [-1.0, 1.0]:
 		var front_step := sin(walk_phase * 1.2 + PI * 0.5) * radius * 0.08 if moving else 0.0
-		canvas.draw_circle(forward * (radius * 0.55 + front_step) + side * foot_side * radius * 0.4, radius * 0.13, dark)
+		var front_foot := forward * (radius * 0.55 + front_step) + side * foot_side * radius * 0.4
+		canvas.draw_circle(front_foot, radius * 0.13, dark)
+		if chorus_hop:
+			canvas.draw_arc(front_foot - forward * radius * 0.08, radius * (0.16 + 0.04 * chorus_hop_intensity), PI * 0.1, PI * 0.9, 8, Color(dark.r, dark.g, dark.b, 0.25), 1.0)
 
 	var body_points := PackedVector2Array()
 	for i in 16:
@@ -233,6 +243,10 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 
 	if bool(skin.get("call_sac", false)):
 		var sac_pulse := (sin(Time.get_ticks_msec() * 0.008) * 0.5 + 0.5) * 0.35
+		if chorus_hop:
+			sac_pulse += 0.28 * chorus_hop_intensity * (sin(walk_phase * 1.2) * 0.5 + 0.5)
+			var pulse_center := forward * radius * 0.88
+			canvas.draw_arc(pulse_center, radius * (0.34 + 0.12 * chorus_hop_intensity), -0.25, TAU * 0.75, 18, Color(belly.r, belly.g, belly.b, 0.24), maxf(radius * 0.05, 1.0))
 		canvas.draw_circle(forward * radius * 0.88, radius * (0.14 + sac_pulse * 0.14), belly)
 
 static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, windup_t: float, strike := 0.0, attack_aim := Vector2.ZERO, attack_reach := 0.0, anim: Dictionary = {}) -> void:
