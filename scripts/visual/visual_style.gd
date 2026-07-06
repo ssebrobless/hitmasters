@@ -1033,6 +1033,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 		for dust_side: float in [-1.0, 1.0]:
 			var dust_center := -forward * radius * 0.28 + side * dust_side * radius * 0.32
 			canvas.draw_arc(dust_center, radius * (0.18 + 0.05 * heron_stalk_intensity), PI * 0.08, PI * 0.9, 8, stalk_dust, maxf(radius * 0.04, 1.0))
+			canvas.draw_line(dust_center, dust_center + forward * radius * (0.2 + 0.08 * heron_stalk_intensity), Color(stalk_dust.r, stalk_dust.g, stalk_dust.b, stalk_dust.a * 0.78), maxf(radius * 0.035, 1.0))
 	canvas.draw_colored_polygon(body_points, main)
 	canvas.draw_circle(forward * radius * 0.3, radius * 0.34, breast)
 	if bool(skin.get("barred", false)):
@@ -1051,6 +1052,8 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 				var foot := side * leg_side * radius * 0.34 + forward * (wade_step + radius * 0.28)
 				var water_color := Color(0.52, 0.78, 0.9, 0.28 + 0.12 * wading_stride)
 				canvas.draw_arc(foot, radius * (0.22 + 0.08 * wading_stride), -0.2, TAU * 0.72, 16, water_color, 1.2 + wading_stride)
+				canvas.draw_line(foot - forward * radius * 0.16, foot - forward * radius * (0.46 + 0.12 * wading_stride), Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.66), maxf(radius * 0.045, 1.0))
+				canvas.draw_arc(foot - forward * radius * 0.22, radius * (0.34 + 0.08 * wading_stride), PI * 0.05, PI * 0.95, 12, Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.62), maxf(radius * 0.04, 1.0))
 				canvas.draw_line(hip, knee, beak.darkened(0.22), 1.6)
 				canvas.draw_line(knee, foot, beak.darkened(0.18), 1.6)
 			elif heron_stalk:

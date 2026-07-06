@@ -1099,6 +1099,13 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var heron_water_state: Dictionary = actor.get_render_motion_state()
 	var heron_wade: bool = bool(heron_water_state.get("wading_pose", false)) \
 		and not bool(heron_water_state.get("heron_stalk_pose", false)) \
+		and not bool(heron_water_state.get("duck_paddle_pose", false)) \
+		and not bool(heron_water_state.get("duck_waddle_pose", false)) \
+		and not bool(heron_water_state.get("owl_glide_pose", false)) \
+		and not bool(heron_water_state.get("owl_silent_flight_pose", false)) \
+		and not bool(heron_water_state.get("kingfisher_dart_pose", false)) \
+		and not bool(heron_water_state.get("mosquito_swarm_pose", false)) \
+		and not bool(heron_water_state.get("firefly_hover_pose", false)) \
 		and float(heron_water_state.get("wading_stride", 0.0)) > 0.25 \
 		and float(heron_water_state.get("heron_stalk_intensity", 1.0)) <= 0.001
 	actor.current_environment_profile = {"surface": "land"}
@@ -1107,15 +1114,28 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var heron_land_state: Dictionary = actor.get_render_motion_state()
 	var heron_stalk: bool = bool(heron_land_state.get("heron_stalk_pose", false)) \
 		and not bool(heron_land_state.get("wading_pose", false)) \
+		and not bool(heron_land_state.get("duck_waddle_pose", false)) \
+		and not bool(heron_land_state.get("duck_paddle_pose", false)) \
+		and not bool(heron_land_state.get("owl_glide_pose", false)) \
+		and not bool(heron_land_state.get("owl_silent_flight_pose", false)) \
+		and not bool(heron_land_state.get("kingfisher_dart_pose", false)) \
+		and not bool(heron_land_state.get("mosquito_swarm_pose", false)) \
+		and not bool(heron_land_state.get("firefly_hover_pose", false)) \
 		and float(heron_land_state.get("heron_stalk_intensity", 0.0)) > 0.25 \
 		and float(heron_land_state.get("wading_stride", 1.0)) <= 0.001
 	actor.state = CreatureStateScript.State.PERCHED
 	var heron_perched_state: Dictionary = actor.get_render_motion_state()
 	var heron_perch_suppresses: bool = bool(heron_perched_state.get("perched_pose", false)) \
 		and not bool(heron_perched_state.get("heron_stalk_pose", false)) \
-		and not bool(heron_perched_state.get("wading_pose", false))
+		and not bool(heron_perched_state.get("wading_pose", false)) \
+		and not bool(heron_perched_state.get("duck_paddle_pose", false)) \
+		and not bool(heron_perched_state.get("duck_waddle_pose", false)) \
+		and not bool(heron_perched_state.get("owl_glide_pose", false)) \
+		and not bool(heron_perched_state.get("kingfisher_dart_pose", false)) \
+		and not bool(heron_perched_state.get("mosquito_swarm_pose", false)) \
+		and not bool(heron_perched_state.get("firefly_hover_pose", false))
 	if not heron_wade or not heron_stalk or not heron_perch_suppresses:
-		failures.append("great blue heron should expose water wading and land stalking as separate grounded poses, then suppress both when perched; water=%s land=%s perched=%s state=%s/%s/%s" % [
+		failures.append("great blue heron should expose tall water wading and careful land stalking without duck, owl, kingfisher, swarm, or hover overlap, then suppress both when perched; water=%s land=%s perched=%s state=%s/%s/%s" % [
 			str(heron_wade),
 			str(heron_stalk),
 			str(heron_perch_suppresses),
