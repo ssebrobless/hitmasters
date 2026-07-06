@@ -24,7 +24,10 @@ const DEFAULT_PROFILE := {
 	"body_wiggle": 1.0,
 	"tail_wave": 1.0,
 	"bird_stride": 1.0,
-	"perch_flutter": 1.0
+	"perch_flutter": 1.0,
+	"turtle_stride": 1.0,
+	"shell_stability": 0.0,
+	"waddle_sway": 0.0
 }
 
 const PROFILES := {
@@ -49,6 +52,17 @@ const PROFILES := {
 		"hop_leg_scale": 0.68,
 		"ground_contact": 0.82,
 		"landing_squash": 0.13
+	},
+	"chorus_frog": {
+		"accel_time": 0.06,
+		"decel_time": 0.05,
+		"turn_rate_deg": 1180.0,
+		"gait": "rhythmic_hop",
+		"gait_rate_mult": 1.35,
+		"bob_px": 1.1,
+		"hop_leg_scale": 0.74,
+		"ground_contact": 0.46,
+		"landing_squash": 0.04
 	},
 	"crayfish": {
 		"accel_time": 0.07,
@@ -87,7 +101,9 @@ const PROFILES := {
 		"terrain_lerp_rate": 5.0,
 		"gait": "heavy_creep",
 		"gait_rate_mult": 0.45,
-		"bob_px": 0.2
+		"bob_px": 0.2,
+		"turtle_stride": 0.42,
+		"shell_stability": 0.82
 	},
 	"alligator": {
 		"accel_time": 0.20,
@@ -130,6 +146,51 @@ const PROFILES := {
 		"bird_stride": 1.25,
 		"wingbeat_mult": 1.45,
 		"perch_flutter": 1.35
+	},
+	"owl": {
+		"accel_time": 0.18,
+		"decel_time": 0.16,
+		"turn_rate_deg": 620.0,
+		"terrain_lerp_rate": 5.0,
+		"gait": "silent_glide",
+		"gait_rate_mult": 0.58,
+		"bob_px": 1.0,
+		"bird_stride": 0.72,
+		"wingbeat_mult": 0.55,
+		"perch_flutter": 0.62
+	},
+	"duck": {
+		"accel_time": 0.14,
+		"decel_time": 0.11,
+		"turn_rate_deg": 650.0,
+		"terrain_lerp_rate": 7.0,
+		"gait": "waddle_paddle",
+		"gait_rate_mult": 0.78,
+		"bob_px": 0.65,
+		"bird_stride": 0.76,
+		"wingbeat_mult": 0.85,
+		"waddle_sway": 0.34
+	},
+	"mink": {
+		"accel_time": 0.045,
+		"decel_time": 0.055,
+		"turn_rate_deg": 1450.0,
+		"gait": "elastic_bound",
+		"gait_rate_mult": 1.7,
+		"bob_px": 0.8,
+		"body_wiggle": 1.28,
+		"tail_wave": 1.35
+	},
+	"beaver": {
+		"accel_time": 0.22,
+		"decel_time": 0.16,
+		"turn_rate_deg": 430.0,
+		"terrain_lerp_rate": 5.5,
+		"gait": "builder_trundle",
+		"gait_rate_mult": 0.58,
+		"bob_px": 0.28,
+		"body_wiggle": 0.42,
+		"tail_wave": 0.55
 	},
 	"wolf_spider": {
 		"accel_time": 0.055,
@@ -210,7 +271,10 @@ static func render_anim(profile: Dictionary, walk_phase: float) -> Dictionary:
 		"body_wiggle": float(profile.get("body_wiggle", 1.0)),
 		"tail_wave": float(profile.get("tail_wave", 1.0)),
 		"bird_stride": float(profile.get("bird_stride", 1.0)),
-		"perch_flutter": float(profile.get("perch_flutter", 1.0))
+		"perch_flutter": float(profile.get("perch_flutter", 1.0)),
+		"turtle_stride": float(profile.get("turtle_stride", 1.0)),
+		"shell_stability": float(profile.get("shell_stability", 0.0)),
+		"waddle_sway": float(profile.get("waddle_sway", 0.0))
 	}
 
 static func _turn_limited_direction(current_velocity: Vector2, desired_direction: Vector2, delta: float, turn_rate_deg: float) -> Vector2:

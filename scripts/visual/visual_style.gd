@@ -87,7 +87,7 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		"frog":
 			_base_frog(canvas, radius, rocked_forward, side, skin, walk_phase, moving, anim)
 		"turtle":
-			_base_turtle(canvas, radius, rocked_forward, side, skin, walk_phase, moving, windup_t, strike, attack_aim.normalized(), attack_reach)
+			_base_turtle(canvas, radius, rocked_forward, side, skin, walk_phase, moving, windup_t, strike, attack_aim.normalized(), attack_reach, anim)
 		"mustelid":
 			_base_mustelid(canvas, radius, rocked_forward, side, skin, walk_phase, moving, strike, anim)
 		"bird":
@@ -196,18 +196,20 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 		var sac_pulse := (sin(Time.get_ticks_msec() * 0.008) * 0.5 + 0.5) * 0.35
 		canvas.draw_circle(forward * radius * 0.88, radius * (0.14 + sac_pulse * 0.14), belly)
 
-static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, windup_t: float, strike := 0.0, attack_aim := Vector2.ZERO, attack_reach := 0.0) -> void:
+static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, windup_t: float, strike := 0.0, attack_aim := Vector2.ZERO, attack_reach := 0.0, anim: Dictionary = {}) -> void:
 	var shell_color: Color = skin.get("shell", Color(0.26, 0.3, 0.16))
 	var shell_rim: Color = skin.get("rim", shell_color.darkened(0.3))
 	var skin_color: Color = skin.get("skin", Color(0.45, 0.4, 0.24))
 	var skin_dark := skin_color.darkened(0.22)
+	var turtle_stride := float(anim.get("turtle_stride", 1.0))
+	var shell_stability := float(anim.get("shell_stability", 0.0))
 
-	var tail_direction := (-forward).rotated(sin(walk_phase * 0.5) * 0.15)
+	var tail_direction := (-forward).rotated(sin(walk_phase * 0.5) * 0.15 * maxf(turtle_stride, 0.2))
 	canvas.draw_line(tail_direction * radius * 0.9, tail_direction * radius * 1.45, skin_dark, maxf(radius * 0.16, 3.0))
 
 	for leg_index in 4:
 		var angle := [0.96, -0.96, 2.18, -2.18][leg_index] as float
-		var step := (sin(walk_phase + (PI if leg_index % 2 == 0 else 0.0)) * radius * 0.12) if moving else 0.0
+		var step := (sin(walk_phase + (PI if leg_index % 2 == 0 else 0.0)) * radius * 0.12 * turtle_stride) if moving else 0.0
 		var leg_center := (forward.rotated(angle) * radius * 0.92) + forward * step
 		canvas.draw_circle(leg_center, radius * 0.26, skin_dark)
 		canvas.draw_circle(leg_center, radius * 0.2, skin_color)
@@ -252,7 +254,7 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 	var shell_points := PackedVector2Array()
 	for i in 18:
 		var shell_angle := TAU * float(i) / 18.0
-		shell_points.append(forward * cos(shell_angle) * radius * 1.02 + side * sin(shell_angle) * radius * 0.88)
+		shell_points.append(forward * cos(shell_angle) * radius * (1.02 + shell_stability * 0.03) + side * sin(shell_angle) * radius * (0.88 + shell_stability * 0.02))
 	canvas.draw_colored_polygon(shell_points, shell_rim)
 	var inner_points := PackedVector2Array()
 	for i in 18:
@@ -380,6 +382,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var bird_stride := float(anim.get("bird_stride", 1.0))
 	var wingbeat := float(anim.get("wingbeat_mult", 1.0))
 	var perch_flutter := float(anim.get("perch_flutter", 1.0))
+	var waddle_sway := float(anim.get("waddle_sway", 0.0))
 
 	# Tail fan.
 	canvas.draw_colored_polygon(PackedVector2Array([
@@ -415,7 +418,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var body_points := PackedVector2Array()
 	for i in 14:
 		var body_angle := TAU * float(i) / 14.0
-		body_points.append(forward * cos(body_angle) * radius * 0.8 + side * sin(body_angle) * radius * 0.62)
+		body_points.append(forward * cos(body_angle) * radius * 0.8 + side * sin(body_angle) * radius * (0.62 + waddle_sway * 0.04))
 	canvas.draw_colored_polygon(body_points, main)
 	canvas.draw_circle(forward * radius * 0.3, radius * 0.34, breast)
 	if bool(skin.get("barred", false)):

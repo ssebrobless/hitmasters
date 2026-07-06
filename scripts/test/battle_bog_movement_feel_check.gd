@@ -127,6 +127,30 @@ func _check_render_profile_keys(arena: Node, failures: Array[String]) -> void:
 	kingfisher.apply_creature("kingfisher")
 	if not float(kingfisher.movement_profile.get("perch_flutter", 1.0)) > 1.0:
 		failures.append("kingfisher should expose dart-hover flutter metadata")
+	var chorus: Node = arena.bots[0]
+	chorus.apply_creature("chorus_frog")
+	if not float(chorus.movement_profile.get("gait_rate_mult", 0.0)) > 1.0:
+		failures.append("chorus frog should expose light rhythmic hop metadata")
+	var duck: Node = arena.bots[1]
+	duck.apply_creature("duck")
+	if not float(duck.movement_profile.get("waddle_sway", 0.0)) > 0.0:
+		failures.append("duck should expose waddle-paddle metadata")
+	var beaver: Node = arena.bots[2]
+	beaver.apply_creature("beaver")
+	if not float(beaver.movement_profile.get("body_wiggle", 1.0)) < 1.0:
+		failures.append("beaver should expose builder trundle metadata")
+	var mink: Node = arena.bots[0]
+	mink.apply_creature("mink")
+	if not float(mink.movement_profile.get("body_wiggle", 0.0)) > 1.0:
+		failures.append("mink should expose elastic bound metadata")
+	var owl: Node = arena.bots[1]
+	owl.apply_creature("owl")
+	if not float(owl.movement_profile.get("wingbeat_mult", 1.0)) < 1.0:
+		failures.append("owl should expose slow silent wingbeat metadata")
+	var turtle2: Node = arena.bots[2]
+	turtle2.apply_creature("snapping_turtle")
+	if not float(turtle2.movement_profile.get("shell_stability", 0.0)) > 0.0:
+		failures.append("snapping turtle should expose stable shell metadata")
 
 func _move_frame(direction: Vector2) -> Resource:
 	var frame := InputFrameScript.new()
