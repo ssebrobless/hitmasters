@@ -963,6 +963,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 				canvas.draw_line(forward * radius * 0.02 + side * wing_side * radius * 0.76, wing_tip - forward * radius * 0.22, transition_color, 1.3)
 			if owl_glide:
 				canvas.draw_line(forward * radius * 0.05 + side * wing_side * radius * 0.62, wing_tip - forward * radius * 0.12, Color(breast.r, breast.g, breast.b, 0.28), 1.0)
+				canvas.draw_arc(wing_tip - forward * radius * 0.12, radius * (0.34 + 0.08 * owl_glide_intensity), PI * 0.05, PI * 0.9, 12, Color(breast.r, breast.g, breast.b, 0.16 if owl_silent else 0.24), maxf(radius * 0.04, 1.0))
 				for feather_index in 3:
 					var feather_t := float(feather_index + 1) / 4.0
 					var feather_root := wing_tip.lerp(forward * radius * 0.12 + side * wing_side * radius * 0.62, feather_t)
@@ -978,6 +979,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 				forward * radius * 0.22 - side * radius * 1.42,
 				-forward * radius * 0.85 - side * radius * 1.0
 			]), Color(0.08, 0.09, 0.1, 0.16))
+			canvas.draw_arc(Vector2.ZERO, radius * (1.18 + 0.08 * owl_glide_intensity), PI * 0.08, PI * 0.92, 24, Color(0.58, 0.62, 0.68, 0.12), maxf(radius * 0.055, 1.0))
 			for hush_side: float in [-1.0, 1.0]:
 				var hush_start := -forward * radius * 0.22 + side * hush_side * radius * 0.82
 				canvas.draw_line(hush_start, hush_start - forward * radius * 0.78 + side * hush_side * radius * 0.18, Color(0.58, 0.62, 0.68, 0.12), maxf(radius * 0.045, 1.0))

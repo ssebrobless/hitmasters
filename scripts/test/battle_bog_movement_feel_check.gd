@@ -1006,17 +1006,37 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.state = CreatureStateScript.State.AIRBORNE
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	var owl_glide_state: Dictionary = actor.get_render_motion_state()
-	var owl_glide: bool = bool(owl_glide_state.get("owl_glide_pose", false)) and float(owl_glide_state.get("owl_glide_intensity", 0.0)) > 0.25
+	var owl_glide: bool = bool(owl_glide_state.get("owl_glide_pose", false)) \
+		and float(owl_glide_state.get("owl_glide_intensity", 0.0)) > 0.25 \
+		and not bool(owl_glide_state.get("owl_silent_flight_pose", false)) \
+		and not bool(owl_glide_state.get("kingfisher_dart_pose", false)) \
+		and not bool(owl_glide_state.get("wading_pose", false)) \
+		and not bool(owl_glide_state.get("heron_stalk_pose", false)) \
+		and not bool(owl_glide_state.get("duck_paddle_pose", false)) \
+		and not bool(owl_glide_state.get("duck_waddle_pose", false)) \
+		and not bool(owl_glide_state.get("mosquito_swarm_pose", false)) \
+		and not bool(owl_glide_state.get("firefly_hover_pose", false))
 	actor.begin_stealth(2.0, "Silent Flight")
 	var owl_silent_state: Dictionary = actor.get_render_motion_state()
-	var owl_silent: bool = bool(owl_silent_state.get("owl_silent_flight_pose", false))
+	var owl_silent: bool = bool(owl_silent_state.get("owl_silent_flight_pose", false)) \
+		and bool(owl_silent_state.get("owl_glide_pose", false)) \
+		and not bool(owl_silent_state.get("kingfisher_dart_pose", false)) \
+		and not bool(owl_silent_state.get("mosquito_swarm_pose", false)) \
+		and not bool(owl_silent_state.get("firefly_hover_pose", false))
 	actor.break_stealth()
 	var owl_plain_state: Dictionary = actor.get_render_motion_state()
 	var owl_silent_clear: bool = bool(owl_plain_state.get("owl_glide_pose", false)) \
 		and not bool(owl_plain_state.get("owl_silent_flight_pose", false)) \
+		and not bool(owl_plain_state.get("kingfisher_dart_pose", false)) \
+		and not bool(owl_plain_state.get("wading_pose", false)) \
+		and not bool(owl_plain_state.get("heron_stalk_pose", false)) \
+		and not bool(owl_plain_state.get("duck_paddle_pose", false)) \
+		and not bool(owl_plain_state.get("duck_waddle_pose", false)) \
+		and not bool(owl_plain_state.get("mosquito_swarm_pose", false)) \
+		and not bool(owl_plain_state.get("firefly_hover_pose", false)) \
 		and float(owl_plain_state.get("owl_glide_intensity", 0.0)) > 0.25
 	if not owl_glide or not owl_silent or not owl_silent_clear:
-		failures.append("airborne owl should expose quiet glide, Silent Flight, and return to plain glide when stealth breaks; glide=%s silent=%s clear=%s state=%s/%s/%s" % [
+		failures.append("airborne owl should expose broad quiet glide and Silent Flight without dart, wade, paddle, swarm, or hover overlap, then return to plain glide when stealth breaks; glide=%s silent=%s clear=%s state=%s/%s/%s" % [
 			str(owl_glide),
 			str(owl_silent),
 			str(owl_silent_clear),
