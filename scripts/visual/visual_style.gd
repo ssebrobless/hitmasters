@@ -530,6 +530,8 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	var surface_wake_intensity := clampf(float(anim.get("surface_wake_intensity", 0.0)), 0.0, 1.25)
 	var submerged_shrew := is_water_shrew and bool(anim.get("submerged_shrew_pose", bool(anim.get("in_water", false)) and not surface_walk))
 	var submerged_shrew_intensity := clampf(float(anim.get("submerged_shrew_intensity", 0.0)), 0.0, 1.25)
+	var shrew_land_skitter := is_water_shrew and bool(anim.get("shrew_land_skitter_pose", false))
+	var shrew_land_skitter_intensity := clampf(float(anim.get("shrew_land_skitter_intensity", 0.0)), 0.0, 1.25)
 	var slick_crawl := is_newt and bool(anim.get("slick_crawl_pose", false))
 	var slick_crawl_intensity := clampf(float(anim.get("slick_crawl_intensity", 0.0)), 0.0, 1.25)
 	var newt_swim := is_newt and bool(anim.get("newt_swim_pose", false))
@@ -554,6 +556,10 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	if submerged_shrew:
 		body_wiggle += 0.16 * submerged_shrew_intensity
 		tail_wave += 0.22 * submerged_shrew_intensity
+	if shrew_land_skitter:
+		stretch += 0.06 * shrew_land_skitter_intensity
+		body_wiggle += 0.34 * shrew_land_skitter_intensity
+		tail_wave += 0.28 * shrew_land_skitter_intensity
 	if slick_crawl:
 		body_wiggle += 0.35 * slick_crawl_intensity
 		tail_wave += 0.32 * slick_crawl_intensity
@@ -594,6 +600,7 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 		tail_wave += 0.32
 	var water_tint := Color(0.2, 0.6, 0.85, 0.32 + 0.14 * surface_wake_intensity)
 	var submerged_tint := Color(0.28, 0.56, 0.74, 0.16 + 0.1 * submerged_shrew_intensity)
+	var shrew_dust := Color(0.48, 0.46, 0.42, 0.14 + 0.08 * shrew_land_skitter_intensity)
 	var slick_tint := Color(0.86, 0.58, 0.32, 0.20 + 0.10 * slick_crawl_intensity)
 	var newt_water := Color(0.38, 0.64, 0.78, 0.18 + 0.12 * newt_swim_intensity)
 	var beaver_water := Color(0.42, 0.68, 0.82, 0.20 + 0.12 * beaver_swim_intensity)
@@ -609,6 +616,11 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			canvas.draw_arc(wake_center, radius * (0.42 + 0.16 * surface_wake_intensity), -0.5, 0.9, 10, water_tint, 1.5 + surface_wake_intensity)
 			var streak_origin := -forward * radius * (0.45 + 0.16 * surface_wake_intensity) + side * wake_side * radius * 0.44
 			canvas.draw_line(streak_origin, streak_origin - forward * radius * (0.62 + 0.24 * surface_wake_intensity) + side * wake_side * radius * 0.18, Color(water_tint.r, water_tint.g, water_tint.b, water_tint.a * 0.7), maxf(1.0, radius * 0.07))
+	if shrew_land_skitter:
+		for dust_side: float in [-1.0, 1.0]:
+			var dust_start := -forward * radius * 0.36 + side * dust_side * radius * 0.32
+			canvas.draw_line(dust_start, dust_start - forward * radius * (0.52 + 0.16 * shrew_land_skitter_intensity) + side * dust_side * radius * 0.12, shrew_dust, maxf(radius * 0.045, 1.0))
+			canvas.draw_arc(dust_start + forward * radius * 0.12, radius * (0.22 + 0.05 * shrew_land_skitter_intensity), PI * 0.1, PI * 0.9, 8, shrew_dust, maxf(radius * 0.04, 1.0))
 	if mink_bound:
 		var bound_phase := sin(walk_phase * 1.4)
 		var shadow_center := -forward * radius * (0.18 + 0.12 * bound_phase)
@@ -721,6 +733,9 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			if beaver_lumber:
 				paw_step += sin(walk_phase * 0.72 + PI * float(paw_index)) * radius * 0.05 * beaver_lumber_intensity
 				paw_reach += radius * 0.05 * beaver_lumber_intensity
+			if shrew_land_skitter:
+				paw_step += sin(walk_phase * 2.1 + PI * float(paw_index)) * radius * 0.08 * shrew_land_skitter_intensity
+				paw_reach += radius * 0.08 * shrew_land_skitter_intensity
 			var paw := spine[2].lerp(spine[5], paw_t) + side * paw_side * paw_reach + forward * paw_step
 			canvas.draw_circle(paw, radius * (0.09 if slick_crawl else 0.13), fur_dark)
 			if slick_crawl:
@@ -735,6 +750,8 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 				canvas.draw_line(paw, paw - forward * radius * (0.18 + 0.08 * otter_motion_intensity), fur_dark.lightened(0.08), 1.0)
 			if surface_walk:
 				canvas.draw_circle(paw + side * paw_side * radius * 0.08, maxf(radius * (0.08 + 0.03 * surface_wake_intensity), 1.2), water_tint.lightened(0.2))
+			if shrew_land_skitter:
+				canvas.draw_line(paw, paw - forward * radius * (0.2 + 0.08 * shrew_land_skitter_intensity), fur_dark.lightened(0.08), 1.0)
 			if beaver_swim:
 				canvas.draw_circle(paw - forward * radius * 0.1, maxf(radius * (0.06 + 0.03 * beaver_swim_intensity), 1.1), beaver_water.lightened(0.2))
 			if beaver_lumber:
