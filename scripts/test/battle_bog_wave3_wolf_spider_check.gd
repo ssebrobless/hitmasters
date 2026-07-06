@@ -51,10 +51,13 @@ func _check_lunge_latch_slow(arena: Node, failures: Array[String]) -> void:
 	frame.set_button(InputFrameScript.BUTTON_PRIMARY, true)
 	actor.set_input_frame(frame)
 	actor.kit.tick(actor, 0.016)
+	var lunge_state: Dictionary = actor.get_render_motion_state()
+	var lunge_read: bool = bool(lunge_state.get("spider_lunge_pose", false))
 	actor.dash_timer = 0.0
 	actor.global_position = target.global_position - Vector2.RIGHT * 12.0
 	actor.kit.tick(actor, 0.016)
 	var latched: bool = actor.latch_victim == target and target.latched_attacker == actor
+	var latch_read: bool = bool(actor.get_render_motion_state().get("spider_latch_pose", false))
 	var slowed: bool = target.get_modifier_value("move_speed_mult", 1.0) < 0.7
 	var held_frame := InputFrameScript.new()
 	held_frame.aim = target.global_position
@@ -67,13 +70,16 @@ func _check_lunge_latch_slow(arena: Node, failures: Array[String]) -> void:
 	actor.set_input_frame(release)
 	actor.kit.tick(actor, 0.05)
 	var released: bool = actor.latch_victim == null and target.latched_attacker == null
-	if not latched or not slowed or not held or not released:
-		failures.append("Wolf Spider primary should lunge, latch, ramp slow while held, and release on primary up; latched=%s slowed=%s held=%s released=%s speed=%.2f" % [
+	if not lunge_read or not latched or not latch_read or not slowed or not held or not released:
+		failures.append("Wolf Spider primary should expose lunge/latch poses, latch, ramp slow while held, and release on primary up; lunge=%s latched=%s latch_pose=%s slowed=%s held=%s released=%s speed=%.2f state=%s" % [
+			str(lunge_read),
 			str(latched),
+			str(latch_read),
 			str(slowed),
 			str(held),
 			str(released),
-			target.get_modifier_value("move_speed_mult", 1.0)
+			target.get_modifier_value("move_speed_mult", 1.0),
+			str(lunge_state)
 		])
 
 func _check_burrow_cap_hide_charge(arena: Node, failures: Array[String]) -> void:
@@ -92,6 +98,7 @@ func _check_burrow_cap_hide_charge(arena: Node, failures: Array[String]) -> void
 		actor.kit.tick(actor, 0.016)
 	var capped: bool = actor.kit.burrows.size() == 4
 	var hidden: bool = actor.state == CreatureStateScript.State.BURROWED and actor.is_untargetable() and not TargetFilter.is_live_damage_target(target, actor)
+	var burrow_read: bool = bool(actor.get_render_motion_state().get("spider_burrowed_pose", false))
 
 	target.apply_creature("cane_toad")
 	target.global_position = actor.global_position + Vector2.RIGHT * 48.0
@@ -107,10 +114,11 @@ func _check_burrow_cap_hide_charge(arena: Node, failures: Array[String]) -> void
 	actor.global_position = target.global_position - Vector2.RIGHT * 12.0
 	actor.kit.tick(actor, 0.016)
 	var hit: bool = target.health < target.max_health
-	if not capped or not hidden or not emerged or not charging or not hit:
-		failures.append("Wolf Spider burrows should cap at 4, hide, then charge targets within 4u; capped=%s hidden=%s emerged=%s charging=%s hit=%s count=%d health=%.2f" % [
+	if not capped or not hidden or not burrow_read or not emerged or not charging or not hit:
+		failures.append("Wolf Spider burrows should cap at 4, hide with readable burrow pose, then charge targets within 4u; capped=%s hidden=%s burrow=%s emerged=%s charging=%s hit=%s count=%d health=%.2f" % [
 			str(capped),
 			str(hidden),
+			str(burrow_read),
 			str(emerged),
 			str(charging),
 			str(hit),

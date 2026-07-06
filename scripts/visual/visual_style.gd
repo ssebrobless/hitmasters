@@ -746,6 +746,25 @@ static func _base_spider(canvas: CanvasItem, radius: float, forward: Vector2, si
 	var accent: Color = skin.get("accent", main.lightened(0.3))
 	var scuttle_stride := float(anim.get("scuttle_stride", 1.0))
 	var low_slung := float(anim.get("low_slung", 0.0))
+	var lunge_pose := bool(anim.get("spider_lunge_pose", false))
+	var burrowed_pose := bool(anim.get("spider_burrowed_pose", false))
+	var latch_pose := bool(anim.get("spider_latch_pose", false))
+	if lunge_pose:
+		low_slung = maxf(low_slung, 0.48)
+	if burrowed_pose:
+		low_slung = maxf(low_slung, 0.74)
+
+	if burrowed_pose:
+		canvas.draw_colored_polygon(PackedVector2Array([
+			-forward * radius * 1.05 + side * radius * 0.95,
+			forward * radius * 0.72 + side * radius * 0.78,
+			forward * radius * 0.9,
+			forward * radius * 0.72 - side * radius * 0.78,
+			-forward * radius * 1.05 - side * radius * 0.95,
+			-forward * radius * 1.22
+		]), Color(0.1, 0.07, 0.04, 0.42))
+	if lunge_pose:
+		canvas.draw_line(-forward * radius * 0.85, -forward * radius * 1.45, Color(accent.r, accent.g, accent.b, 0.24), maxf(radius * 0.12, 2.0))
 
 	# Eight legs, two joints each, alternating gait.
 	for leg_index in 8:
@@ -753,22 +772,32 @@ static func _base_spider(canvas: CanvasItem, radius: float, forward: Vector2, si
 		var pair := leg_index / 2
 		var base_angle := lerpf(0.45, 2.2, float(pair) / 3.0) * leg_side
 		var step := sin(walk_phase * 2.0 + float(pair) * PI * 0.5 + (PI if leg_side > 0.0 else 0.0)) * 0.18 * scuttle_stride if moving else 0.0
-		var knee := forward.rotated(base_angle + step) * radius * (0.78 + scuttle_stride * 0.07)
-		var foot := forward.rotated(base_angle + step * 1.4) * radius * (1.22 + scuttle_stride * 0.13)
+		var foreleg := pair == 0
+		var rearleg := pair == 3
+		var lunge_reach := 0.34 if lunge_pose and foreleg else 0.0
+		var burrow_tuck := 0.26 if burrowed_pose else 0.0
+		var knee := forward.rotated(base_angle + step) * radius * (0.78 + scuttle_stride * 0.07 - burrow_tuck * 0.4) + forward * radius * lunge_reach
+		var foot := forward.rotated(base_angle + step * 1.4) * radius * (1.22 + scuttle_stride * 0.13 - burrow_tuck) + forward * radius * (lunge_reach * 1.7 - (0.18 if lunge_pose and rearleg else 0.0))
 		canvas.draw_line(Vector2.ZERO, knee, dark, maxf(radius * 0.09, 1.5))
 		canvas.draw_line(knee, foot, dark, maxf(radius * 0.06, 1.2))
 
 	# Abdomen + cephalothorax with dorsal stripe.
-	canvas.draw_circle(-forward * radius * 0.45, radius * (0.52 - low_slung * 0.08), dark)
-	canvas.draw_circle(-forward * radius * 0.45, radius * (0.45 - low_slung * 0.07), main)
-	canvas.draw_circle(forward * radius * 0.25, radius * (0.4 - low_slung * 0.05), main)
+	var body_push := forward * radius * (0.18 if lunge_pose else 0.0)
+	canvas.draw_circle(-forward * radius * 0.45 + body_push * 0.35, radius * (0.52 - low_slung * 0.08), dark)
+	canvas.draw_circle(-forward * radius * 0.45 + body_push * 0.35, radius * (0.45 - low_slung * 0.07), main)
+	canvas.draw_circle(forward * radius * 0.25 + body_push, radius * (0.4 - low_slung * 0.05), main)
 	canvas.draw_line(-forward * radius * 0.85, forward * radius * 0.55, accent, maxf(radius * 0.12, 2.0))
 
 	# Eye cluster: wolf spiders have two big forward eyes.
-	canvas.draw_circle(forward * radius * 0.52 + side * radius * 0.1, maxf(radius * 0.08, 1.4), Color(0.05, 0.04, 0.03))
-	canvas.draw_circle(forward * radius * 0.52 - side * radius * 0.1, maxf(radius * 0.08, 1.4), Color(0.05, 0.04, 0.03))
-	canvas.draw_circle(forward * radius * 0.58 + side * radius * 0.22, maxf(radius * 0.04, 1.0), Color(0.05, 0.04, 0.03))
-	canvas.draw_circle(forward * radius * 0.58 - side * radius * 0.22, maxf(radius * 0.04, 1.0), Color(0.05, 0.04, 0.03))
+	var eye_anchor := forward * radius * 0.52 + body_push
+	canvas.draw_circle(eye_anchor + side * radius * 0.1, maxf(radius * 0.08, 1.4), Color(0.05, 0.04, 0.03))
+	canvas.draw_circle(eye_anchor - side * radius * 0.1, maxf(radius * 0.08, 1.4), Color(0.05, 0.04, 0.03))
+	canvas.draw_circle(eye_anchor + forward * radius * 0.06 + side * radius * 0.22, maxf(radius * 0.04, 1.0), Color(0.05, 0.04, 0.03))
+	canvas.draw_circle(eye_anchor + forward * radius * 0.06 - side * radius * 0.22, maxf(radius * 0.04, 1.0), Color(0.05, 0.04, 0.03))
+	if latch_pose:
+		var fang_origin := eye_anchor + forward * radius * 0.15
+		canvas.draw_line(fang_origin + side * radius * 0.06, fang_origin + forward * radius * 0.34 + side * radius * 0.12, Color(0.9, 0.86, 0.72, 0.82), maxf(radius * 0.06, 1.2))
+		canvas.draw_line(fang_origin - side * radius * 0.06, fang_origin + forward * radius * 0.34 - side * radius * 0.12, Color(0.9, 0.86, 0.72, 0.82), maxf(radius * 0.06, 1.2))
 
 static func _base_swarm(canvas: CanvasItem, radius: float, skin: Dictionary, walk_phase: float, moving: bool, anim: Dictionary = {}) -> void:
 	var main: Color = skin.get("main", Color(0.4, 0.4, 0.42))
