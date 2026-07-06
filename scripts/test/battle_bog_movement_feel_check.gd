@@ -788,12 +788,19 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.begin_stealth(2.0, "Silent Flight")
 	var owl_silent_state: Dictionary = actor.get_render_motion_state()
 	var owl_silent: bool = bool(owl_silent_state.get("owl_silent_flight_pose", false))
-	if not owl_glide or not owl_silent:
-		failures.append("airborne owl should expose quiet glide and Silent Flight render states; glide=%s silent=%s state=%s/%s" % [
+	actor.break_stealth()
+	var owl_plain_state: Dictionary = actor.get_render_motion_state()
+	var owl_silent_clear: bool = bool(owl_plain_state.get("owl_glide_pose", false)) \
+		and not bool(owl_plain_state.get("owl_silent_flight_pose", false)) \
+		and float(owl_plain_state.get("owl_glide_intensity", 0.0)) > 0.25
+	if not owl_glide or not owl_silent or not owl_silent_clear:
+		failures.append("airborne owl should expose quiet glide, Silent Flight, and return to plain glide when stealth breaks; glide=%s silent=%s clear=%s state=%s/%s/%s" % [
 			str(owl_glide),
 			str(owl_silent),
+			str(owl_silent_clear),
 			str(owl_glide_state),
-			str(owl_silent_state)
+			str(owl_silent_state),
+			str(owl_plain_state)
 		])
 	actor.apply_creature("kingfisher")
 	actor.state = CreatureStateScript.State.AIRBORNE

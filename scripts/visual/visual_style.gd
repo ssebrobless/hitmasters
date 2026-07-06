@@ -873,6 +873,11 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 				canvas.draw_line(forward * radius * 0.02 + side * wing_side * radius * 0.76, wing_tip - forward * radius * 0.22, transition_color, 1.3)
 			if owl_glide:
 				canvas.draw_line(forward * radius * 0.05 + side * wing_side * radius * 0.62, wing_tip - forward * radius * 0.12, Color(breast.r, breast.g, breast.b, 0.28), 1.0)
+				for feather_index in 3:
+					var feather_t := float(feather_index + 1) / 4.0
+					var feather_root := wing_tip.lerp(forward * radius * 0.12 + side * wing_side * radius * 0.62, feather_t)
+					var feather_tip := feather_root + side * wing_side * radius * (0.18 + 0.05 * owl_glide_intensity) - forward * radius * (0.22 + 0.04 * feather_t)
+					canvas.draw_line(feather_root, feather_tip, Color(breast.r, breast.g, breast.b, 0.20 if owl_silent else 0.3), maxf(radius * 0.035, 1.0))
 			if kingfisher_dart:
 				canvas.draw_line(forward * radius * 0.12 + side * wing_side * radius * 0.55, wing_tip - forward * radius * (0.1 + 0.12 * kingfisher_dart_intensity), Color(0.52, 0.82, 1.0, 0.24 + 0.08 * kingfisher_dart_intensity), maxf(radius * 0.045, 1.0))
 		if owl_silent:
@@ -883,6 +888,9 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 				forward * radius * 0.22 - side * radius * 1.42,
 				-forward * radius * 0.85 - side * radius * 1.0
 			]), Color(0.08, 0.09, 0.1, 0.16))
+			for hush_side: float in [-1.0, 1.0]:
+				var hush_start := -forward * radius * 0.22 + side * hush_side * radius * 0.82
+				canvas.draw_line(hush_start, hush_start - forward * radius * 0.78 + side * hush_side * radius * 0.18, Color(0.58, 0.62, 0.68, 0.12), maxf(radius * 0.045, 1.0))
 		if kingfisher_dart:
 			var dart_color := Color(0.42, 0.76, 1.0, 0.18 + 0.1 * kingfisher_dart_intensity)
 			canvas.draw_line(-forward * radius * 0.28, -forward * radius * (1.18 + 0.32 * kingfisher_dart_intensity), dart_color, maxf(radius * 0.08, 1.2))
