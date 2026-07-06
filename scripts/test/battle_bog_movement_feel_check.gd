@@ -423,13 +423,17 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
 	var chorus_hop_state: Dictionary = actor.get_render_motion_state()
-	var chorus_hop: bool = bool(chorus_hop_state.get("chorus_hop_pose", false)) and float(chorus_hop_state.get("chorus_hop_intensity", 0.0)) > 0.25
+	var chorus_hop: bool = bool(chorus_hop_state.get("chorus_hop_pose", false)) \
+		and float(chorus_hop_state.get("chorus_hop_intensity", 0.0)) > 0.25 \
+		and not bool(chorus_hop_state.get("cane_squat_hop_pose", false)) \
+		and not bool(chorus_hop_state.get("bullfrog_coil_pose", false)) \
+		and not bool(chorus_hop_state.get("bullfrog_lunge_pose", false))
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
 	var chorus_idle_state: Dictionary = actor.get_render_motion_state()
 	var chorus_idle_clear: bool = not bool(chorus_idle_state.get("chorus_hop_pose", false)) and float(chorus_idle_state.get("chorus_hop_intensity", 1.0)) <= 0.001
 	if not chorus_hop or not chorus_idle_clear:
-		failures.append("moving chorus frog should expose rhythmic hop render pose and clear when idle; moving=%s idle=%s state=%s/%s" % [
+		failures.append("moving chorus frog should expose rhythmic hop without cane/bullfrog poses and clear when idle; moving=%s idle=%s state=%s/%s" % [
 			str(chorus_hop),
 			str(chorus_idle_clear),
 			str(chorus_hop_state),

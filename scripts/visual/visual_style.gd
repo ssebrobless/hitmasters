@@ -299,6 +299,11 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 			var streak_start := -forward * radius * (0.45 + 0.12 * bullfrog_lunge_intensity) + side * streak_side * radius
 			var streak_end := streak_start - forward * radius * (0.52 + 0.18 * bullfrog_lunge_intensity)
 			canvas.draw_line(streak_start, streak_end, Color(belly.r, belly.g, belly.b, 0.2 + 0.1 * bullfrog_lunge_intensity), maxf(radius * 0.055, 1.0))
+	if chorus_hop:
+		var pulse_alpha := 0.14 + 0.08 * chorus_hop_intensity
+		for pulse_side: float in [-1.0, 0.0, 1.0]:
+			var pulse_center := forward * radius * (0.18 + 0.08 * absf(pulse_side)) + side * pulse_side * radius * 0.28
+			canvas.draw_arc(pulse_center, radius * (0.24 + 0.08 * chorus_hop_intensity), -PI * 0.1, PI * 0.85, 10, Color(belly.r, belly.g, belly.b, pulse_alpha), maxf(radius * 0.04, 1.0))
 
 	for leg_side: float in [-1.0, 1.0]:
 		var hip := -forward * radius * 0.45 + side * leg_side * radius * 0.62
