@@ -835,6 +835,8 @@ func try_eat_nearby_food(actor: Node) -> bool:
 		if food == null or not is_instance_valid(food):
 			food_sources.remove_at(i)
 			continue
+		if food.has_method("requires_attack_harvest") and food.requires_attack_harvest():
+			continue
 		var reach := float(actor.get("body_radius") if actor.get("body_radius") != null else 10.0) + float(food.get("body_radius")) + FOOD_EAT_RADIUS_PAD
 		if actor.global_position.distance_to(food.global_position) > reach:
 			continue
@@ -842,6 +844,58 @@ func try_eat_nearby_food(actor: Node) -> bool:
 			food.consume()
 			food_sources.remove_at(i)
 			return true
+	return false
+
+func try_harvest_food_with_hit_shape(actor: Node, shape: Dictionary, source_ability := "") -> bool:
+	if actor == null or not is_instance_valid(actor) or not actor.has_method("consume_food"):
+		return false
+	var best_food: Node = null
+	var best_distance := INF
+	for i in range(food_sources.size() - 1, -1, -1):
+		var food: Node = food_sources[i]
+		if food == null or not is_instance_valid(food):
+			food_sources.remove_at(i)
+			continue
+		if String(food.get("kind")) != FoodSourceScript.KIND_PLANT:
+			continue
+		if actor.has_method("can_eat_food_kind") and not actor.can_eat_food_kind(String(food.get("kind"))):
+			continue
+		if not _food_hit_shape_hit(shape, food):
+			continue
+		var distance: float = actor.global_position.distance_to(food.global_position)
+		if distance < best_distance:
+			best_distance = distance
+			best_food = food
+	if best_food == null:
+		return false
+	var completed := true
+	if best_food.has_method("harvest_hit"):
+		completed = best_food.harvest_hit(actor)
+	if actor.has_method("emit_vfx_event"):
+		actor.emit_vfx_event("harvest_hit", {
+			"actor": actor,
+			"food": best_food,
+			"position": best_food.global_position,
+			"source_ability": source_ability,
+			"remaining": int(best_food.get("harvest_hits_remaining") if best_food.get("harvest_hits_remaining") != null else 0)
+		})
+	if not completed:
+		return true
+	if actor.consume_food(String(best_food.get("kind")), float(best_food.get("food_value")), float(best_food.get("heal_fraction"))):
+		best_food.consume()
+		food_sources.erase(best_food)
+		return true
+	return false
+
+func _food_hit_shape_hit(shape: Dictionary, food: Node) -> bool:
+	match String(shape.get("kind", "")):
+		"melee_arc":
+			return bool(HitShapeScript.melee_arc_hit(shape, food).get("hit", false))
+		"line":
+			return bool(HitShapeScript.line_hit(shape, food).get("hit", false))
+		_:
+			if shape.has("center") and shape.has("radius"):
+				return bool(HitShapeScript.circle_hit(shape.get("center", Vector2.ZERO), float(shape.get("radius", 0.0)), food).get("hit", false))
 	return false
 
 func record_food_consumed(actor: Node, food_kind: String, hunger_gain: float) -> void:

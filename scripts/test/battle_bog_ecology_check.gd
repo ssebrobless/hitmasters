@@ -4,6 +4,11 @@ extends SceneTree
 # hunger/deposit loop, and visible habitat reserve/cue data.
 
 const ARENA_SCENE := "res://scenes/Arena.tscn"
+const SimConstants := preload("res://scripts/sim/sim_constants.gd")
+const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
+const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
+const MeleeHit := preload("res://scripts/sim/abilities/melee_hit.gd")
+const Projectile := preload("res://scripts/sim/abilities/projectile.gd")
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -30,6 +35,7 @@ func _run() -> void:
 
 	_check_day_and_spawns(arena, failures)
 	_check_diet_gates(arena, failures)
+	_check_attack_harvest(arena, failures)
 	_check_deposit_cue(arena, failures)
 	_check_starvation(arena, failures)
 
@@ -109,8 +115,83 @@ func _check_starvation(arena: Node, failures: Array[String]) -> void:
 	if actor.is_alive():
 		failures.append("starvation should eliminate a creature at 0 hunger")
 
-func _first_food(arena: Node, kind: String) -> Node:
+func _check_attack_harvest(arena: Node, failures: Array[String]) -> void:
+	var actor: Node = arena.player
+	actor.apply_creature("duck")
+	actor.hunger = 40.0
+	actor.hunger_satiated = false
+	var tree := _first_food(arena, "plant", "tree")
+	if tree == null:
+		failures.append("expected at least one tree harvest resource")
+		return
+	var start_count: int = arena.food_sources.size()
+	_aim_actor_at_food(actor, tree, 1.5)
+	var contact_ate: bool = arena.try_eat_nearby_food(actor)
+	if contact_ate or actor.hunger > 40.01:
+		failures.append("plant resources should not be eaten by contact; contact=%s hunger=%.2f" % [str(contact_ate), actor.hunger])
+	for _i in 2:
+		MeleeHit.hit(actor, 3.0 * SimConstants.UNIT_PX, 0.0, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "Harvest Test")
+	var tree_partial: bool = arena.food_sources.has(tree) and int(tree.get("harvest_hits_remaining")) == 1 and actor.hunger <= 40.01
+	MeleeHit.hit(actor, 3.0 * SimConstants.UNIT_PX, 0.0, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "Harvest Test")
+	var tree_done: bool = not arena.food_sources.has(tree) and arena.food_sources.size() == start_count - 1 and actor.hunger > 40.0
+	if not tree_partial or not tree_done:
+		failures.append("tree harvest should require 3 attack hits before giving hunger; partial=%s done=%s remaining=%s hunger=%.2f count=%d->%d" % [
+			str(tree_partial),
+			str(tree_done),
+			str(tree.get("harvest_hits_remaining") if tree != null and is_instance_valid(tree) else "freed"),
+			actor.hunger,
+			start_count,
+			arena.food_sources.size()
+		])
+
+	var flower := _first_food(arena, "plant", "flower")
+	if flower == null:
+		failures.append("expected at least one flower harvest resource")
+		return
+	actor.hunger = 40.0
+	actor.hunger_satiated = false
+	var line_count: int = arena.food_sources.size()
+	_aim_actor_at_food(actor, flower, 3.0)
+	Projectile.instant_line(actor, 4.0 * SimConstants.UNIT_PX, 0.0, DamageEventScript.DELIVERY_RANGED, DamageEventScript.PLANE_GROUND, "Harvest Line")
+	var line_harvested: bool = not arena.food_sources.has(flower) and arena.food_sources.size() == line_count - 1 and actor.hunger > 40.0
+	if not line_harvested:
+		failures.append("line primary harvest should resolve one-hit plants; harvested=%s hunger=%.2f count=%d->%d" % [
+			str(line_harvested),
+			actor.hunger,
+			line_count,
+			arena.food_sources.size()
+		])
+
+	var seed := _first_food(arena, "plant", "seed")
+	if seed == null:
+		failures.append("expected at least one seed harvest resource")
+		return
+	actor.apply_creature("chorus_frog")
+	actor.hunger = 40.0
+	var seed_remaining := int(seed.get("harvest_hits_remaining"))
+	_aim_actor_at_food(actor, seed, 1.5)
+	MeleeHit.hit(actor, 3.0 * SimConstants.UNIT_PX, 0.0, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "Carnivore Harvest Probe")
+	var carnivore_blocked: bool = arena.food_sources.has(seed) and int(seed.get("harvest_hits_remaining")) == seed_remaining and actor.hunger <= 40.01
+	if not carnivore_blocked:
+		failures.append("carnivores should not harvest plant resources they cannot eat; blocked=%s remaining %d->%s hunger=%.2f" % [
+			str(carnivore_blocked),
+			seed_remaining,
+			str(seed.get("harvest_hits_remaining") if seed != null and is_instance_valid(seed) else "freed"),
+			actor.hunger
+		])
+
+func _aim_actor_at_food(actor: Node, food: Node, distance_units: float) -> void:
+	actor.global_position = food.global_position - Vector2.RIGHT * distance_units * SimConstants.UNIT_PX
+	actor.velocity = Vector2.ZERO
+	actor.last_aim_direction = Vector2.RIGHT
+	var frame := InputFrameScript.new()
+	frame.aim = food.global_position
+	actor.set_input_frame(frame)
+
+func _first_food(arena: Node, kind: String, plant_type: String = "") -> Node:
 	for food in arena.food_sources:
 		if food != null and is_instance_valid(food) and String(food.kind) == kind:
+			if kind == "plant" and not plant_type.is_empty() and String(food.get("plant_type")) != plant_type:
+				continue
 			return food
 	return null

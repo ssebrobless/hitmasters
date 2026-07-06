@@ -55,6 +55,16 @@ func consume() -> void:
 	consumed = true
 	queue_free()
 
+func requires_attack_harvest() -> bool:
+	return kind == KIND_PLANT
+
+func harvest_hit(_actor: Node = null) -> bool:
+	if consumed or kind != KIND_PLANT:
+		return false
+	harvest_hits_remaining = maxi(0, harvest_hits_remaining - 1)
+	queue_redraw()
+	return harvest_hits_remaining <= 0
+
 func _draw() -> void:
 	if consumed:
 		return
@@ -73,6 +83,7 @@ func _draw_plant() -> void:
 			_draw_flower()
 		_:
 			_draw_berry_bush()
+	_draw_harvest_pips()
 
 func _plant_body_radius() -> float:
 	match plant_type:
@@ -124,6 +135,16 @@ func _draw_flower() -> void:
 	draw_circle(Vector2(5.0, -7.0), 4.0, petal.lightened(0.05))
 	draw_circle(Vector2(0.0, -12.0), 4.0, petal)
 	draw_circle(Vector2(0.0, -7.0), 3.0, center)
+
+func _draw_harvest_pips() -> void:
+	if harvest_hits_required <= 1:
+		return
+	var pip_color := Color(0.95, 0.82, 0.35)
+	var empty_color := Color(0.12, 0.1, 0.07, 0.72)
+	for i in harvest_hits_required:
+		var x := (float(i) - float(harvest_hits_required - 1) * 0.5) * 5.0
+		var color := pip_color if i < harvest_hits_remaining else empty_color
+		draw_circle(Vector2(x, body_radius + 5.0), 1.8, color)
 
 func _draw_critter() -> void:
 	var shell := Color(0.5, 0.36, 0.2)

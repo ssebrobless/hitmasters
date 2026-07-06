@@ -99,7 +99,7 @@ func _update_lunge(actor: Node) -> void:
 	if lunge_hit_done:
 		return
 	lunge_hit_done = true
-	var hits := MeleeHit.hit(actor, LUNGE_IMPACT_REACH_UNITS * SimConstants.UNIT_PX, 15.0, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "Lunge")
+	var hits := MeleeHit.hit(actor, LUNGE_IMPACT_REACH_UNITS * SimConstants.UNIT_PX, 15.0, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "Lunge", {"allow_harvest": false})
 	var knock_dir: Vector2 = actor.get_aim_direction()
 	for hit in hits:
 		if hit != null and is_instance_valid(hit):

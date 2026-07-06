@@ -17,6 +17,8 @@ static func instant_line(actor: Node, range_px: float, damage: float, delivery: 
 			"source_ability": source_ability
 		})
 		actor.emit_vfx_event("projectile_tracer", payload)
+	if int(plane) == 0 and bool(opts.get("allow_harvest", true)) and actor.arena.has_method("try_harvest_food_with_hit_shape"):
+		actor.arena.try_harvest_food_with_hit_shape(actor, shape, source_ability)
 	for target in actor.arena.entities:
 		if not TargetFilter.is_live_blind_damage_target(actor, target):
 			continue

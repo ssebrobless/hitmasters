@@ -40,7 +40,7 @@ func tick(actor: Node, _delta: float) -> void:
 			choke_contact_resolved = false
 			actor.q_timer = 3.0
 		elif not choke_contact_resolved:
-			var hits := MeleeHit.hit(actor, actor.body_radius * 1.5, _choke_damage(actor), DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "Choke", {"max_hits": 1})
+			var hits := MeleeHit.hit(actor, actor.body_radius * 1.5, _choke_damage(actor), DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "Choke", {"max_hits": 1, "allow_harvest": false})
 			# Only creatures that can be latched consume the Choke.
 			choke_contact_resolved = not hits.is_empty()
 			var latchable: Node = null

@@ -81,7 +81,7 @@ func _escape(actor: Node) -> void:
 	var aim: Vector2 = actor.get_aim_direction()
 	if actor.has_method("begin_render_escape_curl"):
 		actor.begin_render_escape_curl()
-	MeleeHit.hit(actor, front_reach_units * SimConstants.UNIT_PX, smack_damage, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "Caridoid Escape", {"max_hits": 1})
+	MeleeHit.hit(actor, front_reach_units * SimConstants.UNIT_PX, smack_damage, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "Caridoid Escape", {"max_hits": 1, "allow_harvest": false})
 	Dash.start(actor, -aim, dash_units * SimConstants.UNIT_PX, 0.22)
 	escape_charges.spend()
 	actor.q_charges = escape_charges.charges
