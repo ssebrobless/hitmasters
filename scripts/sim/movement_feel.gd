@@ -7,7 +7,12 @@ const DEFAULT_PROFILE := {
 	"terrain_lerp_rate": 9.0,
 	"gait": "walk",
 	"gait_rate_mult": 1.0,
-	"bob_px": 0.0
+	"bob_px": 0.0,
+	"hop_leg_scale": 1.0,
+	"ground_contact": 0.6,
+	"landing_squash": 0.0,
+	"scuttle_stride": 1.0,
+	"tail_curl": 0.0
 }
 
 const PROFILES := {
@@ -17,7 +22,10 @@ const PROFILES := {
 		"turn_rate_deg": 620.0,
 		"gait": "heavy_hop",
 		"gait_rate_mult": 0.72,
-		"bob_px": 2.4
+		"bob_px": 2.4,
+		"hop_leg_scale": 1.18,
+		"ground_contact": 0.56,
+		"landing_squash": 0.08
 	},
 	"cane_toad": {
 		"accel_time": 0.18,
@@ -25,7 +33,10 @@ const PROFILES := {
 		"turn_rate_deg": 540.0,
 		"gait": "squat_hop",
 		"gait_rate_mult": 0.55,
-		"bob_px": 1.2
+		"bob_px": 1.2,
+		"hop_leg_scale": 0.68,
+		"ground_contact": 0.82,
+		"landing_squash": 0.13
 	},
 	"crayfish": {
 		"accel_time": 0.07,
@@ -33,7 +44,9 @@ const PROFILES := {
 		"turn_rate_deg": 1120.0,
 		"gait": "scuttle",
 		"gait_rate_mult": 1.55,
-		"bob_px": 0.4
+		"bob_px": 0.4,
+		"scuttle_stride": 1.35,
+		"tail_curl": 0.55
 	},
 	"water_shrew": {
 		"accel_time": 0.035,
@@ -126,7 +139,12 @@ static func render_anim(profile: Dictionary, walk_phase: float) -> Dictionary:
 	return {
 		"movement_gait": String(profile.get("gait", "walk")),
 		"movement_bob_px": float(profile.get("bob_px", 0.0)),
-		"movement_bob": sin(walk_phase) * float(profile.get("bob_px", 0.0))
+		"movement_bob": sin(walk_phase) * float(profile.get("bob_px", 0.0)),
+		"hop_leg_scale": float(profile.get("hop_leg_scale", 1.0)),
+		"ground_contact": float(profile.get("ground_contact", 0.6)),
+		"landing_squash": float(profile.get("landing_squash", 0.0)),
+		"scuttle_stride": float(profile.get("scuttle_stride", 1.0)),
+		"tail_curl": float(profile.get("tail_curl", 0.0))
 	}
 
 static func _turn_limited_direction(current_velocity: Vector2, desired_direction: Vector2, delta: float, turn_rate_deg: float) -> Vector2:

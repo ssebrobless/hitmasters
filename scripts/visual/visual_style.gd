@@ -85,7 +85,7 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 
 	match String(skin.get("base", "blob")):
 		"frog":
-			_base_frog(canvas, radius, rocked_forward, side, skin, walk_phase, moving)
+			_base_frog(canvas, radius, rocked_forward, side, skin, walk_phase, moving, anim)
 		"turtle":
 			_base_turtle(canvas, radius, rocked_forward, side, skin, walk_phase, moving, windup_t, strike, attack_aim.normalized(), attack_reach)
 		"mustelid":
@@ -97,7 +97,7 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		"croc":
 			_base_croc(canvas, radius, rocked_forward, side, skin, walk_phase, moving)
 		"crustacean":
-			_base_crustacean(canvas, radius, rocked_forward, side, skin, walk_phase, moving, strike)
+			_base_crustacean(canvas, radius, rocked_forward, side, skin, walk_phase, moving, strike, anim)
 		"spider":
 			_base_spider(canvas, radius, rocked_forward, side, skin, walk_phase, moving)
 		"swarm":
@@ -130,14 +130,17 @@ static func _strike_curve(t: float) -> float:
 
 # ---------- bases ----------
 
-static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool) -> void:
+static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, anim: Dictionary = {}) -> void:
 	var main: Color = skin.get("main", Color(0.36, 0.42, 0.2))
 	var dark: Color = skin.get("dark", main.darkened(0.4))
 	var belly: Color = skin.get("belly", main.lightened(0.25))
 	var eye_color: Color = skin.get("eye", Color(0.8, 0.7, 0.3))
 
-	var hop := sin(walk_phase * 1.2) * 0.5 + 0.5 if moving else 0.0
-	var leg_extend := 0.55 + hop * 0.55
+	var raw_hop := sin(walk_phase * 1.2) * 0.5 + 0.5 if moving else 0.0
+	var ground_contact := clampf(float(anim.get("ground_contact", 0.6)), 0.1, 0.95)
+	var hop := maxf(0.0, (raw_hop - ground_contact) / maxf(1.0 - ground_contact, 0.001)) if moving else 0.0
+	var leg_extend := 0.55 + hop * 0.55 * float(anim.get("hop_leg_scale", 1.0))
+	var landing_squash := (1.0 - hop) * float(anim.get("landing_squash", 0.0)) if moving else 0.0
 
 	for leg_side: float in [-1.0, 1.0]:
 		var hip := -forward * radius * 0.45 + side * leg_side * radius * 0.62
@@ -156,7 +159,7 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 	for i in 16:
 		var body_angle := TAU * float(i) / 16.0
 		var ry := radius * lerpf(0.85, 0.6, (cos(body_angle) * 0.5 + 0.5))
-		body_points.append(forward * cos(body_angle) * radius * 0.95 + side * sin(body_angle) * ry)
+		body_points.append(forward * cos(body_angle) * radius * (0.95 - landing_squash * 0.16) + side * sin(body_angle) * ry * (1.0 + landing_squash))
 	canvas.draw_colored_polygon(body_points, dark)
 	var inner := PackedVector2Array()
 	for point in body_points:
@@ -516,16 +519,18 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 	canvas.draw_circle(forward * radius * 0.78 + side * radius * 0.22, maxf(radius * 0.05, 1.2), Color(0.85, 0.75, 0.3))
 	canvas.draw_circle(forward * radius * 0.78 - side * radius * 0.22, maxf(radius * 0.05, 1.2), Color(0.85, 0.75, 0.3))
 
-static func _base_crustacean(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, strike := 0.0) -> void:
+static func _base_crustacean(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, strike := 0.0, anim: Dictionary = {}) -> void:
 	var main: Color = skin.get("main", Color(0.5, 0.2, 0.1))
 	var dark: Color = skin.get("dark", main.darkened(0.35))
+	var scuttle_stride := float(anim.get("scuttle_stride", 1.0))
+	var tail_curl := float(anim.get("tail_curl", 0.0)) if moving else 0.0
 
 	# Fan tail.
 	canvas.draw_colored_polygon(PackedVector2Array([
 		-forward * radius * 0.6,
-		-forward * radius * 1.25 + side * radius * 0.4,
-		-forward * radius * 1.35,
-		-forward * radius * 1.25 - side * radius * 0.4
+		-forward * radius * (1.25 - tail_curl * 0.12) + side * radius * (0.4 + tail_curl * 0.18),
+		-forward * radius * (1.35 - tail_curl * 0.22),
+		-forward * radius * (1.25 - tail_curl * 0.12) - side * radius * (0.4 + tail_curl * 0.18)
 	]), dark)
 
 	# Walking legs.
@@ -533,8 +538,9 @@ static func _base_crustacean(canvas: CanvasItem, radius: float, forward: Vector2
 		var leg_side := 1.0 if leg_index % 2 == 0 else -1.0
 		var leg_t := float(leg_index / 2) / 3.0
 		var leg_base := forward * lerpf(0.3, -0.5, leg_t) * radius
-		var leg_step := sin(walk_phase * 1.8 + float(leg_index) * PI * 0.5) * 0.15 if moving else 0.0
-		var leg_tip := leg_base + side * leg_side * radius * 0.85 + forward * radius * leg_step
+		var leg_step := sin(walk_phase * 1.8 + float(leg_index) * PI * 0.5) * 0.15 * scuttle_stride if moving else 0.0
+		var side_reach := radius * (0.82 + 0.08 * scuttle_stride)
+		var leg_tip := leg_base + side * leg_side * side_reach + forward * radius * leg_step
 		canvas.draw_line(leg_base, leg_tip, dark, 1.5)
 
 	# Segmented abdomen + carapace.

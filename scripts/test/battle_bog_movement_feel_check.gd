@@ -87,6 +87,14 @@ func _check_render_profile_keys(arena: Node, failures: Array[String]) -> void:
 		failures.append("bullfrog should expose heavy_hop gait metadata")
 	if not float(toad.movement_profile.get("bob_px", 0.0)) < float(frog.movement_profile.get("bob_px", 0.0)):
 		failures.append("cane toad should expose a smaller hop bob than bullfrog")
+	if not float(toad.movement_profile.get("hop_leg_scale", 0.0)) < float(frog.movement_profile.get("hop_leg_scale", 0.0)):
+		failures.append("cane toad should use shorter hop legs than bullfrog")
+	if not float(toad.movement_profile.get("ground_contact", 0.0)) > float(frog.movement_profile.get("ground_contact", 0.0)):
+		failures.append("cane toad should keep longer ground contact than bullfrog")
+	var crayfish: Node = arena.bots[1]
+	crayfish.apply_creature("crayfish")
+	if not float(crayfish.movement_profile.get("scuttle_stride", 0.0)) > 1.0:
+		failures.append("crayfish should expose a wider scuttle stride")
 
 func _move_frame(direction: Vector2) -> Resource:
 	var frame := InputFrameScript.new()
