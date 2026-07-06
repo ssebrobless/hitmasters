@@ -846,14 +846,24 @@ static func _base_bug(canvas: CanvasItem, radius: float, forward: Vector2, side:
 	var breathe := float(anim.get("glow_breathe", 0.0))
 	var pulse := sin(Time.get_ticks_msec() * 0.006 + walk_phase * 0.4) * 0.5 + 0.5
 	var wingbeat := float(anim.get("wingbeat_mult", 1.0))
-	var glow_scale := 1.0 + breathe * pulse
+	var hover_pose := String(anim.get("creature_id", "")) == "firefly" and bool(anim.get("firefly_hover_pose", false))
+	var hover_intensity := clampf(float(anim.get("firefly_hover_intensity", 0.0)), 0.0, 1.25)
+	var flash_pose := String(anim.get("creature_id", "")) == "firefly" and bool(anim.get("firefly_flash_pose", false))
+	var glow_scale := 1.0 + breathe * pulse + (0.24 if flash_pose else 0.0)
 	# Bioluminescent glow halo.
 	canvas.draw_circle(-forward * radius * 0.4, radius * (1.55 + pulse * 0.5) * glow_scale, Color(glow.r, glow.g, glow.b, 0.1 + pulse * 0.08))
 	canvas.draw_circle(-forward * radius * 0.4, radius * 0.55 * glow_scale, Color(glow.r, glow.g, glow.b, 0.55 + pulse * 0.35))
+	if hover_pose:
+		for trail_index in 3:
+			var t := float(trail_index + 1) / 3.0
+			var trail := -forward * radius * (0.8 + t * 0.55) + side * sin(walk_phase * 0.9 + t * 2.4) * radius * 0.18
+			canvas.draw_circle(trail, radius * (0.18 + 0.08 * t) * hover_intensity, Color(glow.r, glow.g, glow.b, (0.18 - t * 0.04) * hover_intensity))
+	if flash_pose:
+		canvas.draw_arc(-forward * radius * 0.4, radius * 2.05, -0.25, TAU * 0.72, 28, Color(glow.r, glow.g, glow.b, 0.32 + pulse * 0.16), maxf(radius * 0.1, 1.5))
 	# Wings blurred mid-beat.
 	for wing_side: float in [-1.0, 1.0]:
-		var wing_flare := sin(walk_phase * wingbeat + wing_side) * radius * 0.08 if moving else 0.0
-		canvas.draw_circle(side * wing_side * (radius * 0.5 + wing_flare) + forward * radius * 0.1, radius * 0.4, Color(0.8, 0.85, 0.9, 0.25))
+		var wing_flare := sin(walk_phase * wingbeat + wing_side) * radius * (0.08 + 0.05 * hover_intensity) if moving else 0.0
+		canvas.draw_circle(side * wing_side * (radius * 0.5 + wing_flare) + forward * radius * 0.1, radius * (0.4 + 0.05 * hover_intensity), Color(0.8, 0.85, 0.9, 0.25 + 0.07 * hover_intensity))
 	# Body + head.
 	canvas.draw_circle(Vector2.ZERO, radius * 0.42, dark)
 	canvas.draw_circle(forward * radius * 0.42, radius * 0.28, main)

@@ -553,6 +553,9 @@ func get_render_motion_state() -> Dictionary:
 	var wolf_spider_lunge := creature_id == "wolf_spider" and kit != null and bool(kit.get("lunge_active"))
 	var wolf_spider_burrowed := creature_id == "wolf_spider" and state == CreatureStateScript.State.BURROWED
 	var wolf_spider_latched := creature_id == "wolf_spider" and latch_victim != null and latch_source == "Bite"
+	var firefly_hover := creature_id == "firefly" and moving
+	var firefly_hover_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if firefly_hover else 0.0
+	var firefly_flash := creature_id == "firefly" and kit != null and float(kit.get("flash_timer")) > 0.0
 	return {
 		"creature_id": creature_id,
 		"terrain_surface": surface,
@@ -569,6 +572,9 @@ func get_render_motion_state() -> Dictionary:
 		"spider_lunge_pose": wolf_spider_lunge,
 		"spider_burrowed_pose": wolf_spider_burrowed,
 		"spider_latch_pose": wolf_spider_latched,
+		"firefly_hover_pose": firefly_hover,
+		"firefly_hover_intensity": firefly_hover_intensity,
+		"firefly_flash_pose": firefly_flash,
 		"water_walk_active": water_walk_active,
 		"rooted_pose": _has_modifier_source("Thanatosis"),
 		"display_stance": _has_modifier_source("Meral Display"),

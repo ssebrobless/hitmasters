@@ -27,6 +27,7 @@ func _run() -> void:
 		return
 
 	_check_bioluminescence_and_flash(arena, failures)
+	_check_hover_flash_render(arena, failures)
 	_check_reveal_projectile(arena, failures)
 	_check_glowworms(arena, failures)
 	_check_bot_hook(arena, failures)
@@ -68,6 +69,31 @@ func _check_bioluminescence_and_flash(arena: Node, failures: Array[String]) -> v
 			str(flash_speed),
 			ally.health,
 			ally.get_modifier_value("move_speed_mult", 1.0)
+		])
+
+func _check_hover_flash_render(arena: Node, failures: Array[String]) -> void:
+	var actor: Node = arena.player
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	var hover_state: Dictionary = actor.get_render_motion_state()
+	var hover_read: bool = bool(hover_state.get("firefly_hover_pose", false)) and float(hover_state.get("firefly_hover_intensity", 0.0)) > 0.25
+	actor.velocity = Vector2.ZERO
+	var idle_state: Dictionary = actor.get_render_motion_state()
+	var idle_clear: bool = not bool(idle_state.get("firefly_hover_pose", false)) and float(idle_state.get("firefly_hover_intensity", 1.0)) <= 0.001
+	actor.q_timer = 0.0
+	var q := InputFrameScript.new()
+	q.set_button(InputFrameScript.BUTTON_ABILITY_Q, true)
+	actor.set_input_frame(q)
+	actor.kit.tick(actor, 0.016)
+	var flash_state: Dictionary = actor.get_render_motion_state()
+	var flash_read: bool = bool(flash_state.get("firefly_flash_pose", false))
+	if not hover_read or not idle_clear or not flash_read:
+		failures.append("Firefly should expose drift glow trail while moving and a flash pulse during Flash-Train; hover=%s idle=%s flash=%s state=%s/%s/%s" % [
+			str(hover_read),
+			str(idle_clear),
+			str(flash_read),
+			str(hover_state),
+			str(idle_state),
+			str(flash_state)
 		])
 
 func _check_reveal_projectile(arena: Node, failures: Array[String]) -> void:
