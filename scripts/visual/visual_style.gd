@@ -1455,6 +1455,7 @@ static func _base_spider(canvas: CanvasItem, radius: float, forward: Vector2, si
 		for trail_side: float in [-1.0, 1.0]:
 			var trail_start := -forward * radius * 0.36 + side * trail_side * radius * 0.52
 			canvas.draw_line(trail_start, trail_start - forward * radius * (0.42 + 0.18 * skitter_intensity) + side * trail_side * radius * 0.16, Color(accent.r, accent.g, accent.b, 0.14 + 0.08 * skitter_intensity), maxf(radius * 0.045, 1.0))
+			canvas.draw_arc(trail_start + side * trail_side * radius * 0.16, radius * (0.16 + 0.05 * skitter_intensity), PI * 0.08, PI * 0.9, 8, Color(accent.r, accent.g, accent.b, 0.16 + 0.06 * skitter_intensity), maxf(radius * 0.035, 1.0))
 
 	# Eight legs, two joints each, alternating gait.
 	for leg_index in 8:
@@ -1472,6 +1473,7 @@ static func _base_spider(canvas: CanvasItem, radius: float, forward: Vector2, si
 		canvas.draw_line(knee, foot, dark, maxf(radius * 0.06, 1.2))
 		if skitter_pose and pair % 2 == 0:
 			canvas.draw_line(foot, foot - forward * radius * (0.18 + 0.1 * skitter_intensity), Color(accent.r, accent.g, accent.b, 0.2 + 0.08 * skitter_intensity), maxf(radius * 0.035, 1.0))
+			canvas.draw_line(foot, foot + side * leg_side * radius * (0.16 + 0.08 * skitter_intensity), Color(accent.r, accent.g, accent.b, 0.18 + 0.07 * skitter_intensity), maxf(radius * 0.035, 1.0))
 
 	# Abdomen + cephalothorax with dorsal stripe.
 	var body_push := forward * radius * (0.18 if lunge_pose else 0.0)
