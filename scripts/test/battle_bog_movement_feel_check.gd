@@ -30,6 +30,7 @@ func _run() -> void:
 	_check_dash_bypass(arena, failures)
 	_check_dash_residual_bleed(arena, failures)
 	_check_render_profile_keys(arena, failures)
+	_check_landing_tell(arena, failures)
 	_check_water_profile_overlay(arena, failures)
 	_check_wave4_profile_seeds(failures)
 	_check_render_state_flags(arena, failures)
@@ -165,6 +166,8 @@ func _check_render_profile_keys(arena: Node, failures: Array[String]) -> void:
 		failures.append("cane toad should use shorter hop legs than bullfrog")
 	if not float(toad.movement_profile.get("ground_contact", 0.0)) > float(frog.movement_profile.get("ground_contact", 0.0)):
 		failures.append("cane toad should keep longer ground contact than bullfrog")
+	if not float(frog.movement_profile.get("landing_thump", 0.0)) > float(toad.movement_profile.get("landing_thump", 0.0)):
+		failures.append("bullfrog should expose heavier landing thump metadata than cane toad")
 	var crayfish: Node = arena.bots[1]
 	crayfish.apply_creature("crayfish")
 	if not float(crayfish.movement_profile.get("scuttle_stride", 0.0)) > 1.0:
@@ -225,6 +228,39 @@ func _check_render_profile_keys(arena: Node, failures: Array[String]) -> void:
 	turtle2.apply_creature("snapping_turtle")
 	if not float(turtle2.movement_profile.get("shell_stability", 0.0)) > 0.0:
 		failures.append("snapping turtle should expose stable shell metadata")
+
+func _check_landing_tell(arena: Node, failures: Array[String]) -> void:
+	var actor: Node = arena.player
+	actor.apply_creature("bullfrog")
+	actor.global_position = Vector2.ZERO
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	actor.render_landing_timer = 0.0
+	actor.render_landing_impact = 0.0
+	actor.render_last_hop_airborne = true
+	actor.anim_walk_phase = PI
+	actor._process(1.0 / 60.0)
+	var landing_state: Dictionary = actor.get_render_motion_state()
+	var triggered: bool = float(landing_state.get("landing_t", 0.0)) > 0.85 and absf(float(landing_state.get("landing_impact", 0.0)) - 1.0) < 0.001
+	actor._process(0.08)
+	var decayed_state: Dictionary = actor.get_render_motion_state()
+	var decayed: bool = float(decayed_state.get("landing_t", 1.0)) < float(landing_state.get("landing_t", 0.0))
+	actor.apply_creature("water_shrew")
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.render_last_hop_airborne = true
+	actor.anim_walk_phase = PI
+	actor._process(1.0 / 60.0)
+	var shrew_state: Dictionary = actor.get_render_motion_state()
+	var gated: bool = float(shrew_state.get("landing_t", 0.0)) <= 0.001 and float(shrew_state.get("landing_impact", 0.0)) <= 0.001
+	if not triggered or not decayed or not gated:
+		failures.append("hop landing tell should trigger/decay for bullfrog and stay gated for non-hop profiles; triggered=%s decayed=%s gated=%s states=%s/%s/%s" % [
+			str(triggered),
+			str(decayed),
+			str(gated),
+			str(landing_state),
+			str(decayed_state),
+			str(shrew_state)
+		])
 
 func _check_water_profile_overlay(arena: Node, failures: Array[String]) -> void:
 	var turtle: Node = arena.player

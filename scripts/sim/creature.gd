@@ -41,6 +41,7 @@ const HITSTOP_SEC := 3.0 / 60.0
 const COUNTER_HIT_MULT := 1.2
 const RESIDUAL_DASH_DECAY_PER_TICK := 0.68
 const RESIDUAL_DASH_STOP_SPEED := 3.0
+const LANDING_TELL_SEC := 0.16
 
 var arena: Node = null
 var terrain_map: RefCounted = null
@@ -110,6 +111,9 @@ var anim_attack_reach := 0.0
 var anim_attack_aim := Vector2.RIGHT
 var anim_windup_timer := 0.0
 var anim_windup_duration := 0.001
+var render_landing_timer := 0.0
+var render_landing_impact := 0.0
+var render_last_hop_airborne := false
 var last_move_displacement_px := 0.0
 var stealth_timer := 0.0
 var low_window_timer := 0.0
@@ -160,6 +164,9 @@ func apply_creature(next_creature_id: String) -> void:
 	latch_execute_timer = 0.0
 	steering_velocity = Vector2.ZERO
 	residual_velocity = Vector2.ZERO
+	render_landing_timer = 0.0
+	render_landing_impact = 0.0
+	render_last_hop_airborne = false
 	body_heading = last_aim_direction.normalized() if last_aim_direction != Vector2.ZERO else Vector2.RIGHT
 	kit = _make_kit()
 	if kit != null:
@@ -190,6 +197,7 @@ func _process(delta: float) -> void:
 	anim_windup_timer = maxf(anim_windup_timer - delta, 0.0)
 	if velocity.length() > 4.0:
 		anim_walk_phase += MovementFeelScript.gait_phase_delta(velocity.length(), delta, _active_movement_profile())
+	_update_render_landing(delta)
 	if arena == null or not arena.has_method("is_near_view") or arena.is_near_view(global_position):
 		queue_redraw()
 
@@ -504,6 +512,7 @@ func get_render_motion_state() -> Dictionary:
 	var moving: bool = velocity.length() > 4.0 or (input_frame != null and input_frame.move.length() > 0.05)
 	var water_walk_active: bool = get_modifier_value("water_walk", 1.0) > 1.5
 	var backward_dash := dash_timer > 0.0 and dash_velocity.length() > 0.0 and dash_velocity.normalized().dot(-last_aim_direction.normalized()) > 0.55
+	var landing_t := clampf(render_landing_timer / LANDING_TELL_SEC, 0.0, 1.0) if LANDING_TELL_SEC > 0.0 else 0.0
 	return {
 		"creature_id": creature_id,
 		"terrain_surface": surface,
@@ -515,7 +524,9 @@ func get_render_motion_state() -> Dictionary:
 		"escape_dash": creature_id == "crayfish" and backward_dash,
 		"ambush_pose": _has_modifier_source("Ambush"),
 		"off_balance_pose": _has_modifier_source("Whiff Recovery"),
-		"perched_pose": state == CreatureStateScript.State.PERCHED
+		"perched_pose": state == CreatureStateScript.State.PERCHED,
+		"landing_t": landing_t,
+		"landing_impact": render_landing_impact
 	}
 
 func get_swim_ratio() -> float:
@@ -845,6 +856,9 @@ func _respawn() -> void:
 	dash_velocity = Vector2.ZERO
 	dash_timer = 0.0
 	residual_velocity = Vector2.ZERO
+	render_landing_timer = 0.0
+	render_landing_impact = 0.0
+	render_last_hop_airborne = false
 	pass_obstacles_timer = 0.0
 	primary_timer = 0.4
 	q_timer = maxf(q_timer, 1.0)
@@ -1245,3 +1259,20 @@ func _draw_wrong_terrain_warning() -> void:
 		var angle := TAU * float(i) / 3.0 + pulse * 0.5
 		var bubble := Vector2(cos(angle), sin(angle)) * (body_radius * 0.55 + float(i) * 2.0)
 		draw_circle(bubble, 1.8 + danger_t * 1.4, color.lightened(0.15))
+
+func _update_render_landing(delta: float) -> void:
+	render_landing_timer = maxf(render_landing_timer - delta, 0.0)
+	if render_landing_timer <= 0.0:
+		render_landing_impact = 0.0
+	var profile := _active_movement_profile()
+	var thump := clampf(float(profile.get("landing_thump", 0.0)), 0.0, 1.5)
+	if thump <= 0.0 or velocity.length() <= 4.0:
+		render_last_hop_airborne = false
+		return
+	var ground_contact := clampf(float(profile.get("ground_contact", 0.6)), 0.1, 0.95)
+	var raw_hop := sin(anim_walk_phase * 1.2) * 0.5 + 0.5
+	var hop_airborne := raw_hop > ground_contact
+	if render_last_hop_airborne and not hop_airborne:
+		render_landing_timer = LANDING_TELL_SEC
+		render_landing_impact = thump
+	render_last_hop_airborne = hop_airborne

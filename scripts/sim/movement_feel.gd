@@ -11,6 +11,7 @@ const DEFAULT_PROFILE := {
 	"hop_leg_scale": 1.0,
 	"ground_contact": 0.6,
 	"landing_squash": 0.0,
+	"landing_thump": 0.0,
 	"scuttle_stride": 1.0,
 	"tail_curl": 0.0,
 	"low_slung": 0.0,
@@ -48,7 +49,8 @@ const PROFILES := {
 		"bob_px": 2.4,
 		"hop_leg_scale": 1.18,
 		"ground_contact": 0.56,
-		"landing_squash": 0.08
+		"landing_squash": 0.08,
+		"landing_thump": 1.0
 	},
 	"cane_toad": {
 		"accel_time": 0.18,
@@ -59,7 +61,8 @@ const PROFILES := {
 		"bob_px": 1.2,
 		"hop_leg_scale": 0.68,
 		"ground_contact": 0.82,
-		"landing_squash": 0.13
+		"landing_squash": 0.13,
+		"landing_thump": 0.45
 	},
 	"chorus_frog": {
 		"accel_time": 0.06,
@@ -70,7 +73,8 @@ const PROFILES := {
 		"bob_px": 1.1,
 		"hop_leg_scale": 0.74,
 		"ground_contact": 0.46,
-		"landing_squash": 0.04
+		"landing_squash": 0.04,
+		"landing_thump": 0.2
 	},
 	"crayfish": {
 		"accel_time": 0.07,
@@ -387,6 +391,7 @@ static func render_anim(profile: Dictionary, walk_phase: float) -> Dictionary:
 		"hop_leg_scale": float(profile.get("hop_leg_scale", 1.0)),
 		"ground_contact": float(profile.get("ground_contact", 0.6)),
 		"landing_squash": float(profile.get("landing_squash", 0.0)),
+		"landing_thump": float(profile.get("landing_thump", 0.0)),
 		"scuttle_stride": float(profile.get("scuttle_stride", 1.0)),
 		"tail_curl": float(profile.get("tail_curl", 0.0)),
 		"low_slung": float(profile.get("low_slung", 0.0)),

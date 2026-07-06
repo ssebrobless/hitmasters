@@ -58,6 +58,8 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		attack_aim = forward
 	var attack_reach := float(anim.get("attack_reach", radius * 1.6))
 	var off_balance := bool(anim.get("off_balance_pose", false))
+	var landing_t := clampf(float(anim.get("landing_t", 0.0)), 0.0, 1.0)
+	var landing_impact := clampf(float(anim.get("landing_impact", 0.0)), 0.0, 1.5)
 
 	var body_offset := Vector2.ZERO
 	var strike := 0.0
@@ -84,6 +86,12 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 	if airborne:
 		canvas.draw_set_transform(shake_offset, 0.0, Vector2.ONE)
 		canvas.draw_circle(Vector2(0.0, radius * 0.55), radius * 0.8, _with_alpha(Color(0.0, 0.0, 0.0, 0.3), alpha))
+	elif landing_t > 0.0 and landing_impact > 0.0:
+		var thump_color := _with_alpha(Color(0.58, 0.64, 0.42, 0.24 * landing_t * landing_impact), alpha)
+		var thump_radius := radius * (1.05 + (1.0 - landing_t) * 0.45 * landing_impact)
+		canvas.draw_set_transform(shake_offset, 0.0, Vector2.ONE)
+		canvas.draw_arc(Vector2.ZERO, thump_radius, 0.0, TAU, 40, thump_color, maxf(2.0, radius * 0.12))
+		canvas.draw_arc(Vector2.ZERO, thump_radius * 0.72, 0.0, TAU, 32, Color(thump_color.r, thump_color.g, thump_color.b, thump_color.a * 0.6), maxf(1.5, radius * 0.08))
 	canvas.draw_set_transform(shake_offset + body_offset + movement_bob + (Vector2(0.0, -radius * 0.5) if airborne else Vector2.ZERO), 0.0, Vector2.ONE)
 
 	canvas.draw_arc(Vector2.ZERO, radius + 3.0, 0.0, TAU, 40, outline, 2.5)
@@ -159,6 +167,9 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 	if rooted_pose:
 		leg_extend = 0.38
 	var landing_squash := (1.0 - hop) * float(anim.get("landing_squash", 0.0)) if moving else 0.0
+	var landing_t := clampf(float(anim.get("landing_t", 0.0)), 0.0, 1.0)
+	var landing_impact := clampf(float(anim.get("landing_impact", 0.0)), 0.0, 1.5)
+	landing_squash = maxf(landing_squash, landing_t * landing_impact * 0.18)
 	if rooted_pose:
 		landing_squash = maxf(landing_squash, 0.22)
 
