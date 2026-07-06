@@ -321,6 +321,7 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 		for pulse_side: float in [-1.0, 0.0, 1.0]:
 			var pulse_center := forward * radius * (0.18 + 0.08 * absf(pulse_side)) + side * pulse_side * radius * 0.28
 			canvas.draw_arc(pulse_center, radius * (0.24 + 0.08 * chorus_hop_intensity), -PI * 0.1, PI * 0.85, 10, Color(belly.r, belly.g, belly.b, pulse_alpha), maxf(radius * 0.04, 1.0))
+		canvas.draw_arc(forward * radius * 0.72, radius * (0.42 + 0.12 * chorus_hop_intensity), -PI * 0.18, TAU * 0.72, 18, Color(belly.r, belly.g, belly.b, 0.18 + 0.08 * chorus_hop_intensity), maxf(radius * 0.045, 1.0))
 
 	for leg_side: float in [-1.0, 1.0]:
 		var hip := -forward * radius * 0.45 + side * leg_side * radius * 0.62
@@ -335,6 +336,7 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 		if chorus_hop:
 			var toe_trail := foot - forward * radius * (0.22 + 0.12 * chorus_hop_intensity)
 			canvas.draw_line(foot, toe_trail + side * leg_side * radius * 0.08, Color(dark.r, dark.g, dark.b, 0.32 + 0.12 * chorus_hop_intensity), maxf(radius * 0.06, 1.1))
+			canvas.draw_arc(toe_trail + side * leg_side * radius * 0.1, radius * (0.14 + 0.04 * chorus_hop_intensity), PI * 0.08, PI * 0.9, 8, Color(belly.r, belly.g, belly.b, 0.18 + 0.08 * chorus_hop_intensity), maxf(radius * 0.035, 1.0))
 		if cane_squat_hop:
 			var scuff := foot - forward * radius * (0.18 + 0.12 * cane_squat_hop_intensity)
 			canvas.draw_arc(scuff, radius * (0.18 + 0.05 * cane_squat_hop_intensity), PI * 0.08, PI * 0.9, 8, Color(dark.r, dark.g, dark.b, 0.2 + 0.08 * cane_squat_hop_intensity), maxf(radius * 0.05, 1.0))

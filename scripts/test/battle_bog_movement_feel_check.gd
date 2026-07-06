@@ -455,15 +455,23 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var chorus_hop_state: Dictionary = actor.get_render_motion_state()
 	var chorus_hop: bool = bool(chorus_hop_state.get("chorus_hop_pose", false)) \
 		and float(chorus_hop_state.get("chorus_hop_intensity", 0.0)) > 0.25 \
+		and not bool(chorus_hop_state.get("rooted_pose", false)) \
 		and not bool(chorus_hop_state.get("cane_squat_hop_pose", false)) \
+		and not bool(chorus_hop_state.get("bullfrog_heavy_hop_pose", false)) \
 		and not bool(chorus_hop_state.get("bullfrog_coil_pose", false)) \
 		and not bool(chorus_hop_state.get("bullfrog_lunge_pose", false))
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
 	var chorus_idle_state: Dictionary = actor.get_render_motion_state()
-	var chorus_idle_clear: bool = not bool(chorus_idle_state.get("chorus_hop_pose", false)) and float(chorus_idle_state.get("chorus_hop_intensity", 1.0)) <= 0.001
+	var chorus_idle_clear: bool = not bool(chorus_idle_state.get("chorus_hop_pose", false)) \
+		and not bool(chorus_idle_state.get("rooted_pose", false)) \
+		and not bool(chorus_idle_state.get("cane_squat_hop_pose", false)) \
+		and not bool(chorus_idle_state.get("bullfrog_heavy_hop_pose", false)) \
+		and not bool(chorus_idle_state.get("bullfrog_coil_pose", false)) \
+		and not bool(chorus_idle_state.get("bullfrog_lunge_pose", false)) \
+		and float(chorus_idle_state.get("chorus_hop_intensity", 1.0)) <= 0.001
 	if not chorus_hop or not chorus_idle_clear:
-		failures.append("moving chorus frog should expose rhythmic hop without cane/bullfrog poses and clear when idle; moving=%s idle=%s state=%s/%s" % [
+		failures.append("moving chorus frog should expose rhythmic vocal hop without rooted, cane, or bullfrog overlap and clear when idle; moving=%s idle=%s state=%s/%s" % [
 			str(chorus_hop),
 			str(chorus_idle_clear),
 			str(chorus_hop_state),
