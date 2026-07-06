@@ -4,6 +4,7 @@ const ARENA_SCENE := "res://scenes/Arena.tscn"
 const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
 const MeleeHit := preload("res://scripts/sim/abilities/melee_hit.gd")
 const TargetFilter := preload("res://scripts/sim/combat/target_filter.gd")
+const StockManagerScript := preload("res://scripts/game/stock_manager.gd")
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -160,6 +161,7 @@ func _check_boss_activation(arena: Node, failures: Array[String]) -> void:
 		actor.hunger_satiated = true
 		if arena._try_manual_habitat_deposit(actor):
 			accepted += 1
+		arena._tick_breeding(StockManagerScript.BREEDING_DURATION_SEC + 0.1)
 	var progress: Dictionary = arena.get_boss_progress_state()
 	var blue_boss := _zone(arena.get_animal_zone_state(), "blue", "Boss")
 	var red_boss := _zone(arena.get_animal_zone_state(), "red", "Boss")

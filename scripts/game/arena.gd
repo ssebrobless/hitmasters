@@ -52,6 +52,24 @@ const WILDLIFE_HUNGER_REWARD := 18.0
 const WILDLIFE_HEAL_FRACTION := 0.05
 const BOSS_WILDLIFE_HUNGER_REWARD := 48.0
 const BOSS_WILDLIFE_HEAL_FRACTION := 0.12
+const BREEDING_STACK_VALUE := 0.03
+const BREEDING_TEAM_CAP := 6
+const BREEDING_FAMILY_CAP := 3
+const BREEDING_BUFF_FAMILIES := ["amphibian", "reptile", "bird", "mammal", "crawly"]
+const BREEDING_BUFF_EFFECT_BY_FAMILY := {
+	"amphibian": "regen",
+	"reptile": "max_health",
+	"bird": "move_speed",
+	"mammal": "damage",
+	"crawly": "ability_haste"
+}
+const BREEDING_BUFF_LABEL_BY_FAMILY := {
+	"amphibian": "AMPH",
+	"reptile": "REPT",
+	"bird": "BIRD",
+	"mammal": "MAMM",
+	"crawly": "CRAW"
+}
 
 var entities: Array[Node] = []
 var minions: Array[Node] = []
@@ -79,6 +97,7 @@ var wildlife_encounters: Array[Node] = []
 var bred_animal_count := 0
 var boss_activation_count := 0
 var animal_zone_tick_timer := 0.0
+var team_breeding_buffs: Dictionary = {}
 var huts_lost := {0: 0, 1: 0}
 var hut_defend_hint_timer := 0.0
 var habitat_deposit_feedback_timer := 0.0
@@ -173,7 +192,7 @@ func _physics_process(delta: float) -> void:
 		squad_switch_feedback_slot_index = -1
 	_tick_squad_command(delta)
 	_tick_day_cycle(delta)
-	stock_manager.tick_breeding_cues(delta)
+	_tick_breeding(delta)
 	if _is_1v1_trio_mode():
 		_feed_player_squad_inputs()
 	elif player != null and is_instance_valid(player):
@@ -341,6 +360,7 @@ func _build_ui() -> void:
 func _spawn_match() -> void:
 	_seed_match_rng()
 	stock_manager.reset()
+	_reset_breeding_buffs()
 	day_index = 1
 	day_timer = 0.0
 	_setup_animal_zones()
@@ -427,6 +447,8 @@ func get_squad_hud_data() -> Dictionary:
 		"command_timer": squad_command_timer,
 		"own": get_trio_hud_rows(BLUE),
 		"enemy": get_trio_hud_rows(RED),
+		"own_buffs": get_team_breeding_buff_state(BLUE),
+		"enemy_buffs": get_team_breeding_buff_state(RED),
 		"switch_feedback": get_squad_switch_feedback_state(),
 		"deposit_prompt": get_deposit_prompt_state()
 	}
@@ -479,6 +501,38 @@ func get_boss_progress_state() -> Dictionary:
 		"boss_active": _boss_zones_active()
 	}
 
+func get_team_breeding_buff_summary(team: int) -> Dictionary:
+	var family_counts := _team_breeding_stack_map(team)
+	return {
+		"team": team,
+		"total_stacks": _team_breeding_stack_count(team),
+		"family_counts": family_counts.duplicate(true),
+		"effects": _team_breeding_effects(team)
+	}
+
+func get_team_breeding_buff_state(team := -1) -> Array[Dictionary]:
+	var states: Array[Dictionary] = []
+	for team_id in [BLUE, RED]:
+		if team >= 0 and team_id != team:
+			continue
+		var family_counts := _team_breeding_stack_map(team_id)
+		for family in BREEDING_BUFF_FAMILIES:
+			var count := int(family_counts.get(family, 0))
+			if count <= 0:
+				continue
+			states.append({
+				"team": team_id,
+				"family": family,
+				"label": String(BREEDING_BUFF_LABEL_BY_FAMILY.get(family, family.to_upper())),
+				"effect": String(BREEDING_BUFF_EFFECT_BY_FAMILY.get(family, "")),
+				"count": count,
+				"value": float(count) * BREEDING_STACK_VALUE
+			})
+	return states
+
+func get_team_breeding_effect(team: int, effect: String) -> float:
+	return float(_team_breeding_effects(team).get(effect, 0.0))
+
 func _setup_animal_zones() -> void:
 	_clear_wildlife_encounters()
 	animal_zone_states.clear()
@@ -523,10 +577,107 @@ func _boss_zone_occupants(zone: Dictionary) -> Array:
 	var activation := int(zone.get("activation_count", 0))
 	return ["%s_boss_%d" % [side, maxi(activation, 1)]]
 
-func _record_bred_animal(_actor: Node) -> void:
+func _tick_breeding(delta: float) -> void:
+	var completed_cues: Array = stock_manager.tick_breeding_cues(delta)
+	for cue: Dictionary in completed_cues:
+		_complete_breeding_cue(cue)
+
+func _complete_breeding_cue(cue: Dictionary) -> void:
+	var team := int(cue.get("team", -1))
+	var family := String(cue.get("family", ""))
+	var creature_id := String(cue.get("creature_id", "animal"))
+	var result := _add_breeding_buff_stack(team, family)
+	_record_bred_animal()
+	if bool(result.get("accepted", false)):
+		add_kill_feed("%s breeding complete: %s +%d%% %s" % [
+			_team_name(team),
+			String(result.get("label", creature_id)),
+			roundi(BREEDING_STACK_VALUE * 100.0),
+			String(result.get("effect", "buff")).replace("_", " ")
+		])
+	else:
+		add_kill_feed("%s breeding complete: buff cap held %s" % [_team_name(team), creature_id])
+
+func _add_breeding_buff_stack(team: int, family: String) -> Dictionary:
+	var clean_family := family.to_lower()
+	if team != BLUE and team != RED:
+		return {"accepted": false, "reason": "invalid_team", "team": team, "family": clean_family}
+	if not BREEDING_BUFF_FAMILIES.has(clean_family):
+		return {"accepted": false, "reason": "unknown_family", "team": team, "family": clean_family}
+	var current_total := _team_breeding_stack_count(team)
+	var family_counts := _team_breeding_stack_map(team)
+	var current_family := int(family_counts.get(clean_family, 0))
+	if current_total >= BREEDING_TEAM_CAP:
+		return {"accepted": false, "reason": "team_cap", "team": team, "family": clean_family, "total": current_total}
+	if current_family >= BREEDING_FAMILY_CAP:
+		return {"accepted": false, "reason": "family_cap", "team": team, "family": clean_family, "count": current_family}
+	family_counts[clean_family] = current_family + 1
+	team_breeding_buffs[team] = family_counts
+	_refresh_team_breeding_buffs(team)
+	return {
+		"accepted": true,
+		"team": team,
+		"family": clean_family,
+		"label": String(BREEDING_BUFF_LABEL_BY_FAMILY.get(clean_family, clean_family.to_upper())),
+		"effect": String(BREEDING_BUFF_EFFECT_BY_FAMILY.get(clean_family, "")),
+		"count": current_family + 1,
+		"total": current_total + 1,
+		"value": BREEDING_STACK_VALUE
+	}
+
+func _record_bred_animal(_actor: Node = null) -> void:
 	bred_animal_count += 1
 	if bred_animal_count % BOSS_BREED_INTERVAL == 0:
 		_activate_boss_zones()
+
+func _reset_breeding_buffs() -> void:
+	team_breeding_buffs = {
+		BLUE: _empty_breeding_stack_map(),
+		RED: _empty_breeding_stack_map()
+	}
+
+func _empty_breeding_stack_map() -> Dictionary:
+	var stacks := {}
+	for family in BREEDING_BUFF_FAMILIES:
+		stacks[family] = 0
+	return stacks
+
+func _team_breeding_stack_map(team: int) -> Dictionary:
+	if not team_breeding_buffs.has(team):
+		team_breeding_buffs[team] = _empty_breeding_stack_map()
+	return team_breeding_buffs[team]
+
+func _team_breeding_stack_count(team: int) -> int:
+	var total := 0
+	var family_counts := _team_breeding_stack_map(team)
+	for family in BREEDING_BUFF_FAMILIES:
+		total += int(family_counts.get(family, 0))
+	return total
+
+func _team_breeding_effects(team: int) -> Dictionary:
+	var effects := {
+		"regen": 0.0,
+		"max_health": 0.0,
+		"move_speed": 0.0,
+		"damage": 0.0,
+		"ability_haste": 0.0
+	}
+	var family_counts := _team_breeding_stack_map(team)
+	for family in BREEDING_BUFF_FAMILIES:
+		var effect := String(BREEDING_BUFF_EFFECT_BY_FAMILY.get(family, ""))
+		if effect.is_empty():
+			continue
+		effects[effect] = float(effects.get(effect, 0.0)) + float(family_counts.get(family, 0)) * BREEDING_STACK_VALUE
+	return effects
+
+func _refresh_team_breeding_buffs(team: int) -> void:
+	for entity in entities:
+		if entity == null or not is_instance_valid(entity):
+			continue
+		if not ("team" in entity) or int(entity.get("team")) != team:
+			continue
+		if entity.has_method("refresh_team_breeding_buffs"):
+			entity.refresh_team_breeding_buffs()
 
 func _activate_boss_zones() -> void:
 	boss_activation_count += 1
@@ -1235,6 +1386,8 @@ func register_entity(entity: Node) -> void:
 		entities.append(entity)
 	if entity.has_method("is_scored_actor") and entity.is_scored_actor():
 		_ensure_actor_stats(entity)
+	if entity.has_method("refresh_team_breeding_buffs"):
+		entity.refresh_team_breeding_buffs()
 
 func unregister_entity(entity: Node) -> void:
 	entities.erase(entity)
@@ -1243,7 +1396,7 @@ func unregister_entity(entity: Node) -> void:
 func spawn_projectile(projectile_team: int, start_position: Vector2, direction: Vector2, damage: float, speed: float, color: Color, pierce := false, radius := 7.0, lifetime := 1.6, source_actor: Node = null) -> void:
 	var projectile = ProjectileScript.new()
 	add_child(projectile)
-	projectile.setup(self, projectile_team, start_position, direction, damage, speed, color, pierce, radius, lifetime, source_actor)
+	projectile.setup(self, projectile_team, start_position, direction, _outgoing_damage(source_actor, damage), speed, color, pierce, radius, lifetime, source_actor)
 
 func add_line_telegraph(from: Vector2, to: Vector2, color: Color, duration := 0.16, width := 4.0) -> void:
 	telegraphs.append({
@@ -1347,6 +1500,7 @@ func _projectile_allows_wildlife(projectile: Node) -> bool:
 	return source_actor != null and is_instance_valid(source_actor) and source_actor.has_method("is_scored_actor") and source_actor.is_scored_actor()
 
 func damage_enemies_in_radius(source_team: int, center: Vector2, radius: float, damage: float, source_actor: Node = null, source_ability := "Area") -> void:
+	var final_damage := _outgoing_damage(source_actor, damage)
 	for entity in entities:
 		if not _valid_target(entity) or entity.team == source_team:
 			continue
@@ -1356,11 +1510,11 @@ func damage_enemies_in_radius(source_team: int, center: Vector2, radius: float, 
 		if bool(hit_info.hit):
 			if entity.has_method("take_damage_event"):
 				var event := DamageEventScript.new()
-				event.setup(damage, DamageEventScript.DELIVERY_AREA, DamageEventScript.PLANE_GROUND, source_actor, source_ability)
+				event.setup(final_damage, DamageEventScript.DELIVERY_AREA, DamageEventScript.PLANE_GROUND, source_actor, source_ability)
 				event.set_hit(hit_info.point, hit_info.normal, String(hit_info.get("region", "hull")), float(hit_info.get("region_mult", 1.0)))
 				entity.take_damage_event(event)
 			else:
-				entity.take_damage(damage, source_team, source_actor)
+				entity.take_damage(final_damage, source_team, source_actor)
 
 	for core_team in cores.keys():
 		var core = cores[core_team]
@@ -1368,9 +1522,14 @@ func damage_enemies_in_radius(source_team: int, center: Vector2, radius: float, 
 			if not can_damage_core(core.team):
 				_show_core_shielded(core)
 				continue
-			var core_damage: float = damage * get_core_damage_multiplier(source_team)
+			var core_damage: float = final_damage * get_core_damage_multiplier(source_team)
 			core.take_damage(core_damage, source_team, source_actor)
 			record_core_damage(source_team, core_damage, source_actor)
+
+func _outgoing_damage(source_actor: Node, amount: float) -> float:
+	if source_actor != null and is_instance_valid(source_actor) and source_actor.has_method("modify_outgoing_damage"):
+		return source_actor.modify_outgoing_damage(amount)
+	return amount
 
 func heal_allies_in_radius(source_team: int, center: Vector2, radius: float, amount: float) -> void:
 	for entity in entities:
@@ -2063,8 +2222,9 @@ func _draw_breeding_cues() -> void:
 			continue
 		var slot_index := int(cue.get("slot_index", 0))
 		var center := habitat.get_center() + Vector2(0.0, (float(slot_index) - 1.0) * 32.0)
-		var remaining := clampf(float(cue.get("remaining", 0.0)), 0.0, 45.0)
-		var progress := 1.0 - remaining / 45.0
+		var duration := maxf(float(cue.get("duration", StockManagerScript.BREEDING_DURATION_SEC)), 0.01)
+		var remaining := clampf(float(cue.get("remaining", 0.0)), 0.0, duration)
+		var progress := 1.0 - remaining / duration
 		var color := Color(0.9, 0.75, 0.28, 0.85)
 		draw_arc(center, 24.0, -PI * 0.5, -PI * 0.5 + TAU * progress, 36, color, 4.0)
 		draw_string(ThemeDB.fallback_font, center + Vector2(-16.0, -28.0), "%ds" % ceili(remaining), HORIZONTAL_ALIGNMENT_LEFT, 36.0, 10, color)
@@ -2213,6 +2373,7 @@ func _get_scoreboard_text() -> String:
 			blue["kills"], blue["deaths"], int(blue["core_damage"]),
 			red["kills"], red["deaths"], int(red["core_damage"]),
 		],
+		"Breed  Blue %s    Red %s" % [_format_breeding_buff_line(BLUE), _format_breeding_buff_line(RED)],
 		"Players"
 	]
 
@@ -2228,6 +2389,18 @@ func _get_scoreboard_text() -> String:
 		])
 
 	return "\n".join(lines)
+
+func _format_breeding_buff_line(team: int) -> String:
+	var chunks: Array[String] = []
+	var family_counts := _team_breeding_stack_map(team)
+	for family in BREEDING_BUFF_FAMILIES:
+		var count := int(family_counts.get(family, 0))
+		if count <= 0:
+			continue
+		chunks.append("%s%d" % [String(BREEDING_BUFF_LABEL_BY_FAMILY.get(family, family.to_upper())).substr(0, 1), count])
+	if chunks.is_empty():
+		return "none"
+	return " ".join(chunks)
 
 func _get_match_summary(winner: String) -> String:
 	var blue: Dictionary = team_stats[BLUE]
@@ -2271,13 +2444,18 @@ func _try_manual_habitat_deposit(actor: Node) -> bool:
 		habitat_deposit_prompt_state = "needs_food"
 		add_kill_feed("U: eat wild food until satiated first")
 		return false
+	var cue: Dictionary = {}
 	if uses_stock_respawn(actor):
-		stock_manager.record_habitat_visit(actor)
+		cue = stock_manager.record_habitat_visit(actor)
+		if not bool(cue.get("accepted", true)):
+			habitat_deposit_prompt_state = "duplicate"
+			add_kill_feed("U: %s is already breeding" % actor.get_actor_name())
+			return false
 	if actor.has_method("reset_hunger_after_deposit") and actor.has_method("is_satiated") and actor.is_satiated():
 		actor.reset_hunger_after_deposit()
 	habitat_deposit_prompt_state = "accepted"
-	_record_bred_animal(actor)
-	add_kill_feed("%s deposited at habitat; breeding cue started" % actor.get_actor_name())
+	var duration := float(cue.get("duration", StockManagerScript.BREEDING_DURATION_SEC)) if not cue.is_empty() else StockManagerScript.BREEDING_DURATION_SEC
+	add_kill_feed("%s deposited at habitat; breeding %.0fs" % [actor.get_actor_name(), duration])
 	return true
 
 func _is_actor_in_home_habitat(actor: Node) -> bool:

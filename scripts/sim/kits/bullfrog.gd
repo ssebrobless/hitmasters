@@ -37,7 +37,7 @@ func reset_for_respawn(actor: Node) -> void:
 	actor.e_charges = lunge_charges.charges
 
 func tick(actor: Node, delta: float) -> void:
-	lunge_charges.tick(delta)
+	lunge_charges.tick(actor.get_ability_delta(delta) if actor.has_method("get_ability_delta") else delta)
 	actor.e_charges = lunge_charges.charges
 	_update_lunge(actor)
 	if actor.input_frame == null:

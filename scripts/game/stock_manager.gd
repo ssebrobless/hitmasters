@@ -4,6 +4,7 @@ const MAX_STOCKS := 3
 const STATE_FIELD := "field"
 const STATE_RESPAWNING := "respawning"
 const STATE_EXHAUSTED := "exhausted"
+const BREEDING_DURATION_SEC := 45.0
 
 var slots: Dictionary = {}
 var actor_keys: Dictionary = {}
@@ -123,23 +124,45 @@ func team_exhausted(team: int) -> bool:
 			return false
 	return found_team_slot
 
-func record_habitat_visit(actor: Node) -> void:
+func record_habitat_visit(actor: Node) -> Dictionary:
 	var slot := get_slot_for_actor(actor)
+	var team := int(slot.get("team", actor.team if actor != null else -1))
+	var slot_index := int(slot.get("slot_index", -1))
+	var creature_id := String(slot.get("creature_id", actor.creature_id if actor != null else ""))
+	var family := _family_for_actor(actor)
+	if _has_active_breeding_cue(team, creature_id):
+		return {
+			"accepted": false,
+			"reason": "already_breeding",
+			"team": team,
+			"slot_index": slot_index,
+			"creature_id": creature_id,
+			"family": family,
+			"actor": actor
+		}
 	var cue := {
-		"team": int(slot.get("team", actor.team if actor != null else -1)),
-		"slot_index": int(slot.get("slot_index", -1)),
-		"creature_id": String(slot.get("creature_id", actor.creature_id if actor != null else "")),
+		"accepted": true,
+		"team": team,
+		"slot_index": slot_index,
+		"creature_id": creature_id,
+		"family": family,
 		"actor": actor,
-		"remaining": 45.0
+		"remaining": BREEDING_DURATION_SEC,
+		"duration": BREEDING_DURATION_SEC
 	}
 	habitat_visits.append(cue.duplicate())
 	breeding_cues.append(cue)
+	return cue.duplicate(true)
 
-func tick_breeding_cues(delta: float) -> void:
+func tick_breeding_cues(delta: float) -> Array[Dictionary]:
+	var completed: Array[Dictionary] = []
 	for i in range(breeding_cues.size() - 1, -1, -1):
 		breeding_cues[i]["remaining"] = float(breeding_cues[i].get("remaining", 0.0)) - delta
 		if float(breeding_cues[i]["remaining"]) <= 0.0:
+			completed.append(breeding_cues[i].duplicate(true))
 			breeding_cues.remove_at(i)
+	completed.reverse()
+	return completed
 
 func get_breeding_cues(team := -1) -> Array[Dictionary]:
 	var cues: Array[Dictionary] = []
@@ -153,6 +176,23 @@ func _key_for_actor(actor: Node) -> String:
 	if actor == null:
 		return ""
 	return String(actor_keys.get(_actor_key(actor), ""))
+
+func _has_active_breeding_cue(team: int, creature_id: String) -> bool:
+	if creature_id.is_empty():
+		return false
+	for cue: Dictionary in breeding_cues:
+		if int(cue.get("team", -1)) == team and String(cue.get("creature_id", "")) == creature_id:
+			return true
+	return false
+
+func _family_for_actor(actor: Node) -> String:
+	if actor == null:
+		return ""
+	var data_value: Variant = actor.get("creature_data")
+	if typeof(data_value) == TYPE_DICTIONARY:
+		var data: Dictionary = data_value
+		return String(data.get("family", ""))
+	return ""
 
 func _actor_key(actor: Node) -> String:
 	return str(actor.get_instance_id())

@@ -35,7 +35,7 @@ func reset_for_respawn(actor: Node) -> void:
 	actor.remove_modifiers_from_source(WATER_WALK_SOURCE)
 
 func tick(actor: Node, delta: float) -> void:
-	proenkephalin_charges.tick(delta)
+	proenkephalin_charges.tick(actor.get_ability_delta(delta) if actor.has_method("get_ability_delta") else delta)
 	actor.e_charges = proenkephalin_charges.charges
 	_tick_water_walk(actor, delta)
 	if actor.input_frame == null:

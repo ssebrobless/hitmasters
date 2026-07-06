@@ -43,7 +43,7 @@ func _physics_process(delta: float) -> void:
 				continue
 			var before: float = entity.health if "health" in entity else 0.0
 			var event := DamageEventScript.new()
-			event.setup(AOE_DPS * delta, DamageEventScript.DELIVERY_RANGED, DamageEventScript.PLANE_GROUND, source_actor, "Mosquito AOE")
+			event.setup(_outgoing_damage(AOE_DPS * delta), DamageEventScript.DELIVERY_RANGED, DamageEventScript.PLANE_GROUND, source_actor, "Mosquito AOE")
 			entity.take_damage_event(event)
 			entity.add_modifier("Mosquito AOE", {"move_speed_mult": SLOW_MULT}, SLOW_REFRESH_SEC)
 			var dealt: float = maxf(before - float(entity.health if "health" in entity else before), 0.0)
@@ -53,6 +53,11 @@ func _physics_process(delta: float) -> void:
 
 func is_alive() -> bool:
 	return not retired
+
+func _outgoing_damage(amount: float) -> float:
+	if source_actor != null and is_instance_valid(source_actor) and source_actor.has_method("modify_outgoing_damage"):
+		return source_actor.modify_outgoing_damage(amount)
+	return amount
 
 func retire() -> void:
 	if retired:

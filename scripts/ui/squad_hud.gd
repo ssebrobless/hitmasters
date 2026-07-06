@@ -134,11 +134,16 @@ func _draw_prompt_strip(data: Dictionary, rect: Rect2) -> void:
 		"needs_food":
 			prompt_text = "EAT TO DEPOSIT"
 			prompt_color = Color(0.95, 0.72, 0.3, 0.95)
+		"duplicate":
+			prompt_text = "ALREADY BREEDING"
+			prompt_color = Color(1.0, 0.58, 0.36, 0.95)
 		"near":
 			prompt_text = "HOME HABITAT NEAR"
 		_:
 			prompt_text = "STOCKS LIVE"
 	draw_string(ThemeDB.fallback_font, rect.position + Vector2(8.0, 18.0), prompt_text, HORIZONTAL_ALIGNMENT_LEFT, 150.0, 11, prompt_color)
+	_draw_buff_stack_strip(data.get("own_buffs", []), rect.position + Vector2(160.0, 7.0), true)
+	_draw_buff_stack_strip(data.get("enemy_buffs", []), rect.position + Vector2(230.0, 7.0), false)
 
 	var feedback: Dictionary = data.get("switch_feedback", {})
 	var state := String(feedback.get("state", "idle"))
@@ -146,6 +151,23 @@ func _draw_prompt_strip(data: Dictionary, rect: Rect2) -> void:
 		var width := 54.0 * clampf(float(feedback.get("timer", 0.0)) / 0.85, 0.0, 1.0)
 		draw_rect(Rect2(rect.position + Vector2(304.0, 10.0), Vector2(54.0, 5.0)), Color(0.02, 0.025, 0.024, 0.92))
 		draw_rect(Rect2(rect.position + Vector2(304.0, 10.0), Vector2(width, 5.0)), Color(0.45, 0.78, 1.0, 0.9))
+
+func _draw_buff_stack_strip(buffs: Array, at: Vector2, own: bool) -> void:
+	var color := Color(0.55, 0.86, 1.0, 0.9) if own else Color(1.0, 0.55, 0.45, 0.88)
+	draw_string(ThemeDB.fallback_font, at + Vector2(0.0, 9.0), "B" if own else "R", HORIZONTAL_ALIGNMENT_LEFT, 10.0, 8, color)
+	var x := 13.0
+	for buff_value in buffs:
+		if typeof(buff_value) != TYPE_DICTIONARY:
+			continue
+		var buff: Dictionary = buff_value
+		var count := clampi(int(buff.get("count", 0)), 0, 3)
+		if count <= 0:
+			continue
+		var label := String(buff.get("label", "?")).substr(0, 1)
+		draw_string(ThemeDB.fallback_font, at + Vector2(x, 9.0), label, HORIZONTAL_ALIGNMENT_LEFT, 8.0, 8, color)
+		for i in count:
+			draw_rect(Rect2(at + Vector2(x + 8.0 + float(i) * 4.0, 2.0), Vector2(3.0, 7.0)), color)
+		x += 23.0
 
 func _draw_stock_pips(start: Vector2, stocks: int, max_stocks: int, color: Color, pip_size: Vector2 = STOCK_PIP_SIZE, gap: float = 3.0) -> void:
 	var count := clampi(max_stocks, 0, 6)

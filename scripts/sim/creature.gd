@@ -482,6 +482,16 @@ func consume_food(kind: String, food_value: float, heal_fraction: float) -> bool
 		arena.record_food_consumed(self, kind, hunger - before)
 	return true
 
+func refresh_team_breeding_buffs() -> void:
+	var previous_max := maxf(max_health, 0.001)
+	var health_ratio := clampf(health / previous_max, 0.0, 1.0)
+	max_health = _stat_float("health", 1.0)
+	health = clampf(max_health * health_ratio, 0.0, max_health)
+	base_speed_px = _speed_px_for_ground()
+	terrain_speed_target_px = _terrain_target_speed_px(current_terrain_zone)
+	terrain_speed_px = terrain_speed_target_px
+	queue_redraw()
+
 func is_satiated() -> bool:
 	return hunger_satiated
 
@@ -861,8 +871,14 @@ func get_body_axis() -> Vector2:
 
 func make_damage_event(amount: float, delivery: int, plane: int, source_ability: String) -> Resource:
 	var event := DamageEventScript.new()
-	event.setup(amount * _modifier_value("damage_dealt_mult", 1.0), delivery, plane, self, source_ability)
+	event.setup(modify_outgoing_damage(amount), delivery, plane, self, source_ability)
 	return event
+
+func modify_outgoing_damage(amount: float) -> float:
+	return amount * _modifier_value("damage_dealt_mult", 1.0) * _team_breeding_multiplier("damage")
+
+func get_ability_delta(delta: float) -> float:
+	return delta * _team_breeding_multiplier("ability_haste")
 
 func add_modifier(source: String, values: Dictionary, duration: float) -> void:
 	if _modifier_value("cc_immune", 1.0) > 1.5 and _is_disruption_modifier(values):
@@ -984,6 +1000,7 @@ func on_kill(_victim: Node) -> void:
 func damage_enemy_cores_near(center: Vector2, radius: float, damage: float, source_ability: String) -> void:
 	if arena == null or not arena.has_method("record_core_damage"):
 		return
+	var final_damage := modify_outgoing_damage(damage)
 	for core_team in arena.cores.keys():
 		var core = arena.cores[core_team]
 		if core.team == team:
@@ -991,12 +1008,13 @@ func damage_enemy_cores_near(center: Vector2, radius: float, damage: float, sour
 		if arena.has_method("can_damage_core") and not arena.can_damage_core(core.team):
 			continue
 		if core.global_position.distance_to(center) <= radius + core.radius:
-			core.take_damage(damage, team, self)
-			arena.record_core_damage(team, damage, self)
+			core.take_damage(final_damage, team, self)
+			arena.record_core_damage(team, final_damage, self)
 
 func damage_enemy_cores_line(range_px: float, damage: float, source_ability: String) -> void:
 	if arena == null:
 		return
+	var final_damage := modify_outgoing_damage(damage)
 	var aim := get_aim_direction()
 	for core_team in arena.cores.keys():
 		var core = arena.cores[core_team]
@@ -1007,8 +1025,8 @@ func damage_enemy_cores_line(range_px: float, damage: float, source_ability: Str
 		var offset: Vector2 = core.global_position - global_position
 		var along := offset.dot(aim)
 		if along >= 0.0 and along <= range_px and absf(offset.cross(aim)) <= core.radius:
-			core.take_damage(damage, team, self)
-			arena.record_core_damage(team, damage, self)
+			core.take_damage(final_damage, team, self)
+			arena.record_core_damage(team, final_damage, self)
 
 func _respawn() -> void:
 	alive = true
@@ -1058,9 +1076,11 @@ func _respawn() -> void:
 	queue_redraw()
 
 func _tick_timers(delta: float) -> void:
+	var ability_delta := get_ability_delta(delta)
 	primary_timer = maxf(primary_timer - delta, 0.0)
-	q_timer = maxf(q_timer - delta, 0.0)
-	e_timer = maxf(e_timer - delta, 0.0)
+	q_timer = maxf(q_timer - ability_delta, 0.0)
+	e_timer = maxf(e_timer - ability_delta, 0.0)
+	_tick_breeding_regen(delta)
 	var previous_dash_timer := dash_timer
 	var previous_dash_velocity := dash_velocity
 	dash_timer = maxf(dash_timer - delta, 0.0)
@@ -1103,6 +1123,12 @@ func _tick_timers(delta: float) -> void:
 		damage_ticks[i] = tick
 		if float(tick["remaining"]) <= 0.0 or float(tick["amount_remaining"]) <= 0.0:
 			damage_ticks.remove_at(i)
+
+func _tick_breeding_regen(delta: float) -> void:
+	var regen_bonus := _team_breeding_bonus("regen")
+	if regen_bonus <= 0.0 or health <= 0.0 or health >= max_health:
+		return
+	heal(max_health * regen_bonus * delta)
 
 func _tick_hunger(delta: float) -> void:
 	if hunger_satiated:
@@ -1373,13 +1399,27 @@ func get_hurtbox_hull() -> Dictionary:
 	return HurtboxScript.hull_of(self)
 
 func _stat_float(key: String, fallback: float) -> float:
-	return _numeric_stat(key, fallback)
+	var value := _numeric_stat(key, fallback)
+	match key:
+		"health":
+			value *= _team_breeding_multiplier("max_health")
+		"speed", "ground_speed", "swim_speed", "flight_speed":
+			value *= _team_breeding_multiplier("move_speed")
+	return value
 
 func _numeric_stat(key: String, fallback: float) -> float:
 	var value: Variant = stats.get(key, fallback)
 	if typeof(value) == TYPE_INT or typeof(value) == TYPE_FLOAT:
 		return float(value)
 	return fallback
+
+func _team_breeding_bonus(effect: String) -> float:
+	if arena != null and arena.has_method("get_team_breeding_effect"):
+		return float(arena.get_team_breeding_effect(team, effect))
+	return 0.0
+
+func _team_breeding_multiplier(effect: String) -> float:
+	return 1.0 + _team_breeding_bonus(effect)
 
 func _catalog() -> Node:
 	return Engine.get_main_loop().root.get_node("CreatureCatalog")

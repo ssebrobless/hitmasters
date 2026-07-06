@@ -55,7 +55,7 @@ func _hit_scan() -> void:
 		if not Hurtbox.overlaps_circle(Hurtbox.hull_of(entity), global_position, radius):
 			continue
 		var event := DamageEventScript.new()
-		event.setup(damage, DamageEventScript.DELIVERY_RANGED, DamageEventScript.PLANE_GROUND, source_actor, "Firefly Spark")
+		event.setup(_outgoing_damage(damage), DamageEventScript.DELIVERY_RANGED, DamageEventScript.PLANE_GROUND, source_actor, "Firefly Spark")
 		entity.take_damage_event(event)
 		if entity.has_method("break_stealth"):
 			entity.break_stealth()
@@ -81,6 +81,11 @@ func _find_target() -> Node:
 
 func _target_ok(entity: Node) -> bool:
 	return TargetFilter.is_live_damage_target(source_actor, entity, {"allow_stealthed": true})
+
+func _outgoing_damage(amount: float) -> float:
+	if source_actor != null and is_instance_valid(source_actor) and source_actor.has_method("modify_outgoing_damage"):
+		return source_actor.modify_outgoing_damage(amount)
+	return amount
 
 func _draw() -> void:
 	draw_circle(Vector2.ZERO, radius + 3.0, Color(1.0, 0.92, 0.25, 0.25))

@@ -49,7 +49,7 @@ func reset_for_respawn(actor: Node) -> void:
 	molt_stacks = 0
 
 func tick(actor: Node, delta: float) -> void:
-	escape_charges.tick(delta)
+	escape_charges.tick(actor.get_ability_delta(delta) if actor.has_method("get_ability_delta") else delta)
 	actor.q_charges = escape_charges.charges
 	_tick_meral(actor, delta)
 	_tick_molting(actor, delta)

@@ -43,7 +43,7 @@ func reset_for_respawn(_actor: Node) -> void:
 
 func tick(actor: Node, delta: float) -> void:
 	_prune()
-	glowworm_charges.tick(delta)
+	glowworm_charges.tick(actor.get_ability_delta(delta) if actor.has_method("get_ability_delta") else delta)
 	actor.e_charges = glowworm_charges.charges
 	flash_timer = maxf(flash_timer - delta, 0.0)
 	_tick_bioluminescence(actor, delta)
