@@ -647,6 +647,8 @@ func get_render_motion_state() -> Dictionary:
 	var bullfrog_coil_intensity := 1.0 if bullfrog_camouflage else maxf(0.55, bullfrog_lunge_intensity) if bullfrog_lunge else 0.0
 	var cane_squat_hop := creature_id == "cane_toad" and moving and not is_airborne() and not _has_modifier_source("Thanatosis")
 	var cane_squat_hop_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if cane_squat_hop else 0.0
+	var alligator_water_cruise := creature_id == "alligator" and moving and surface == EnvironmentProfileScript.SURFACE_WATER and not is_airborne() and not _has_modifier_source("Ambush")
+	var alligator_water_cruise_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if alligator_water_cruise else 0.0
 	var alligator_high_walk := creature_id == "alligator" and moving and surface != EnvironmentProfileScript.SURFACE_WATER and not _has_modifier_source("Ambush")
 	var heron_wading := creature_id == "great_blue_heron" and surface == EnvironmentProfileScript.SURFACE_WATER and not is_airborne() and state != CreatureStateScript.State.PERCHED
 	var wading_stride := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if heron_wading and moving else 0.0
@@ -722,6 +724,8 @@ func get_render_motion_state() -> Dictionary:
 		"chorus_hop_intensity": chorus_hop_intensity,
 		"cane_squat_hop_pose": cane_squat_hop,
 		"cane_squat_hop_intensity": cane_squat_hop_intensity,
+		"alligator_water_cruise_pose": alligator_water_cruise,
+		"alligator_water_cruise_intensity": alligator_water_cruise_intensity,
 		"wading_pose": heron_wading,
 		"wading_stride": wading_stride,
 		"slick_crawl_pose": newt_crawling,

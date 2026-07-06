@@ -716,8 +716,32 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.velocity = Vector2.RIGHT * 80.0
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
 	var gator_walk_state: Dictionary = actor.get_render_motion_state()
-	if not bool(gator_walk_state.get("high_walk_pose", false)) or bool(gator_walk_state.get("ambush_pose", false)):
-		failures.append("moving alligator should expose high-walk posture outside Ambush; state=%s" % str(gator_walk_state))
+	var gator_walk: bool = bool(gator_walk_state.get("high_walk_pose", false)) \
+		and not bool(gator_walk_state.get("ambush_pose", false)) \
+		and not bool(gator_walk_state.get("alligator_water_cruise_pose", false))
+	actor.current_environment_profile = {"surface": "water"}
+	actor.velocity = Vector2.RIGHT * 80.0
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var gator_water_state: Dictionary = actor.get_render_motion_state()
+	var gator_cruise: bool = bool(gator_water_state.get("alligator_water_cruise_pose", false)) \
+		and not bool(gator_water_state.get("high_walk_pose", false)) \
+		and not bool(gator_water_state.get("ambush_pose", false)) \
+		and float(gator_water_state.get("alligator_water_cruise_intensity", 0.0)) > 0.25
+	actor.velocity = Vector2.ZERO
+	actor.set_input_frame(InputFrameScript.new())
+	var gator_idle_state: Dictionary = actor.get_render_motion_state()
+	var gator_idle_clear: bool = not bool(gator_idle_state.get("alligator_water_cruise_pose", false)) \
+		and not bool(gator_idle_state.get("high_walk_pose", false)) \
+		and float(gator_idle_state.get("alligator_water_cruise_intensity", 1.0)) <= 0.001
+	if not gator_walk or not gator_cruise or not gator_idle_clear:
+		failures.append("moving alligator should expose land high-walk and water cruise poses outside Ambush, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
+			str(gator_walk),
+			str(gator_cruise),
+			str(gator_idle_clear),
+			str(gator_walk_state),
+			str(gator_water_state),
+			str(gator_idle_state)
+		])
 	actor.apply_creature("owl")
 	actor.state = CreatureStateScript.State.PERCHED
 	if not bool(actor.get_render_motion_state().get("perched_pose", false)):

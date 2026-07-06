@@ -1077,6 +1077,8 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var crawl_weight := float(anim.get("crawl_weight", 0.0))
 	var ambush_pose := bool(anim.get("ambush_pose", false))
 	var high_walk_pose := bool(anim.get("high_walk_pose", false))
+	var water_cruise_pose := String(anim.get("creature_id", "")) == "alligator" and bool(anim.get("alligator_water_cruise_pose", false))
+	var water_cruise_intensity := clampf(float(anim.get("alligator_water_cruise_intensity", 0.0)), 0.0, 1.25)
 	var jaw_hold_pose := bool(anim.get("alligator_jaw_hold_pose", false))
 	var death_roll_pose := bool(anim.get("alligator_death_roll_pose", false))
 	if ambush_pose:
@@ -1085,6 +1087,9 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 	elif high_walk_pose:
 		crawl_weight = minf(crawl_weight, 0.16)
 		tail_sway *= 1.18
+	elif water_cruise_pose:
+		crawl_weight = maxf(crawl_weight, 0.5)
+		tail_sway *= 1.55
 	if jaw_hold_pose:
 		crawl_weight = maxf(crawl_weight, 0.42)
 		tail_sway *= 1.28
@@ -1105,6 +1110,12 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 		canvas.draw_arc(Vector2.ZERO, radius * 1.08, PI * 0.22, PI * 1.48, 34, Color(churn.r, churn.g, churn.b, 0.18), maxf(radius * 0.1, 1.5))
 		for roll_side: float in [-1.0, 1.0]:
 			canvas.draw_line(-forward * radius * 0.7 + side * roll_side * radius * 0.55, forward * radius * 1.15 - side * roll_side * radius * 0.36, Color(churn.r, churn.g, churn.b, 0.22), maxf(radius * 0.08, 1.3))
+	if water_cruise_pose:
+		var cruise_water := Color(0.36, 0.62, 0.74, 0.2 + 0.1 * water_cruise_intensity)
+		for wake_side: float in [-1.0, 1.0]:
+			var wake_origin := -forward * radius * 0.45 + side * wake_side * radius * 0.58
+			canvas.draw_line(wake_origin, wake_origin - forward * radius * (0.92 + 0.28 * water_cruise_intensity) + side * wake_side * radius * 0.18, cruise_water, maxf(radius * 0.08, 1.3))
+			canvas.draw_arc(wake_origin + forward * radius * 0.18, radius * (0.36 + 0.1 * water_cruise_intensity), -0.35, 0.85, 12, Color(cruise_water.r, cruise_water.g, cruise_water.b, cruise_water.a * 0.82), maxf(radius * 0.055, 1.0))
 
 	# Keeled tail, swaying.
 	var tail_direction := (-forward).rotated((sin(walk_phase * 0.9) * 0.25 * tail_sway) if moving else 0.08)
@@ -1122,10 +1133,15 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 		var stride_mult := 1.45 if high_walk_pose else 1.0
 		var step := (sin(walk_phase + (PI if leg_index % 2 == 0 else 0.0)) * radius * 0.1 * (1.0 - crawl_weight * 0.35) * stride_mult) if moving else 0.0
 		var leg_reach := 0.9 if high_walk_pose else 0.78
+		if water_cruise_pose:
+			step *= 0.42
+			leg_reach = 0.66
 		var leg_center := forward.rotated(angle) * radius * (leg_reach + crawl_weight * 0.08) + forward * step
 		canvas.draw_circle(leg_center, radius * (0.18 + crawl_weight * 0.03), dark)
 		if high_walk_pose:
 			canvas.draw_line(leg_center, leg_center + leg_center.normalized() * radius * 0.18, dark, maxf(radius * 0.08, 1.5))
+		if water_cruise_pose and leg_index % 2 == 0:
+			canvas.draw_circle(leg_center - forward * radius * 0.08, maxf(radius * (0.05 + 0.025 * water_cruise_intensity), 1.0), Color(0.36, 0.62, 0.74, 0.18 + 0.08 * water_cruise_intensity))
 
 	# Body: broad armored oval.
 	var body_points := PackedVector2Array()
@@ -1169,6 +1185,9 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 	elif high_walk_pose:
 		canvas.draw_line(-forward * radius * 0.35 - side * radius * 0.18, forward * radius * 0.7 - side * radius * 0.12, dark.lightened(0.22), 1.5)
 		canvas.draw_line(-forward * radius * 0.35 + side * radius * 0.18, forward * radius * 0.7 + side * radius * 0.12, dark.lightened(0.22), 1.5)
+	elif water_cruise_pose:
+		canvas.draw_line(-forward * radius * 0.62 - side * radius * 0.28, forward * radius * 1.08 - side * radius * 0.18, Color(0.48, 0.72, 0.78, 0.34), maxf(radius * 0.05, 1.0))
+		canvas.draw_line(-forward * radius * 0.62 + side * radius * 0.28, forward * radius * 1.08 + side * radius * 0.18, Color(0.48, 0.72, 0.78, 0.34), maxf(radius * 0.05, 1.0))
 
 static func _base_crustacean(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, strike := 0.0, anim: Dictionary = {}) -> void:
 	var main: Color = skin.get("main", Color(0.5, 0.2, 0.1))
