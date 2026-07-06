@@ -279,6 +279,9 @@ func take_damage_event(event: Resource) -> void:
 			"amount": amount,
 			"heavy": amount >= 50.0,
 			"position": global_position,
+			"hit_position": event.hit_position,
+			"hit_normal": event.hit_normal,
+			"region": event.region,
 			"source_ability": event.source_ability
 		})
 	if health <= 0.0:
@@ -864,6 +867,7 @@ func _modified_incoming_damage(event: Resource) -> float:
 	if _modifier_value("invulnerable", 1.0) > 1.5:
 		return 0.0
 	var amount: float = event.amount
+	amount *= float(event.region_mult)
 	amount *= _modifier_value("damage_taken_mult", 1.0)
 	# Decision #33: while latched on, third parties deal 75% — the victim's
 	# own fight-back stays the premier answer to a latch.

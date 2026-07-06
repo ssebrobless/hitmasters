@@ -12,12 +12,16 @@ class AreaProbe:
 	var max_health := 100.0
 	var body_radius := 10.0
 	var last_delivery := -1
+	var hit_position := Vector2.ZERO
+	var hit_normal := Vector2.ZERO
 
 	func is_alive() -> bool:
 		return health > 0.0
 
 	func take_damage_event(event: Resource) -> void:
 		last_delivery = int(event.delivery)
+		hit_position = event.hit_position
+		hit_normal = event.hit_normal
 		health = maxf(health - float(event.amount), 0.0)
 
 class DeliveryProbeKit:
@@ -71,12 +75,16 @@ func _check_area_delivery(arena: Node, failures: Array[String]) -> void:
 	arena.damage_enemies_in_radius(0, center, 48.0, 35.0, source, "Area Probe")
 
 	var probe_event: bool = probe.last_delivery == DamageEventScript.DELIVERY_AREA and probe.health < probe.max_health
+	var probe_meta: bool = probe.hit_position != Vector2.ZERO and probe.hit_normal.length() > 0.9
 	var owl_hit_not_spiked: bool = owl.health < owl_start and owl.state == CreatureStateScript.State.AIRBORNE
 	var no_melee_retaliation: bool = source.damage_ticks.size() == source_ticks_before
-	if not probe_event or not owl_hit_not_spiked or not no_melee_retaliation:
-		failures.append("area damage should use DELIVERY_AREA, hit airborne targets without ranged spike, and avoid melee retaliation; probe=%s/%d owl=%s state=%d retaliated=%s toad=%.2f" % [
+	if not probe_event or not probe_meta or not owl_hit_not_spiked or not no_melee_retaliation:
+		failures.append("area damage should use DELIVERY_AREA with metadata, hit airborne targets without ranged spike, and avoid melee retaliation; probe=%s/%d meta=%s/%s/%s owl=%s state=%d retaliated=%s toad=%.2f" % [
 			str(probe_event),
 			probe.last_delivery,
+			str(probe_meta),
+			str(probe.hit_position),
+			str(probe.hit_normal),
 			str(owl_hit_not_spiked),
 			owl.state,
 			str(not no_melee_retaliation),

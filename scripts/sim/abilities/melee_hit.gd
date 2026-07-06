@@ -20,9 +20,12 @@ static func hit(actor: Node, reach_px: float, damage: float, delivery: int, plan
 	for target in actor.arena.entities:
 		if not TargetFilter.is_live_blind_damage_target(actor, target):
 			continue
-		if not HitShape.overlaps_melee_arc(shape, target):
+		var hit_info := HitShape.melee_arc_hit(shape, target)
+		if not bool(hit_info.hit):
 			continue
-		target.take_damage_event(actor.make_damage_event(damage, delivery, plane, source_ability))
+		var event: Resource = actor.make_damage_event(damage, delivery, plane, source_ability)
+		event.set_hit(hit_info.point, hit_info.normal)
+		target.take_damage_event(event)
 		hits.append(target)
 		if max_hits > 0 and hits.size() >= max_hits:
 			break

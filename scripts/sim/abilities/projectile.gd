@@ -20,9 +20,12 @@ static func instant_line(actor: Node, range_px: float, damage: float, delivery: 
 	for target in actor.arena.entities:
 		if not TargetFilter.is_live_blind_damage_target(actor, target):
 			continue
-		if not HitShape.overlaps_line(shape, target):
+		var hit_info := HitShape.line_hit(shape, target)
+		if not bool(hit_info.hit):
 			continue
-		target.take_damage_event(actor.make_damage_event(damage, delivery, plane, source_ability))
+		var event: Resource = actor.make_damage_event(damage, delivery, plane, source_ability)
+		event.set_hit(hit_info.point, hit_info.normal)
+		target.take_damage_event(event)
 		hits.append(target)
 	actor.damage_enemy_cores_line(range_px, damage, source_ability)
 	return hits

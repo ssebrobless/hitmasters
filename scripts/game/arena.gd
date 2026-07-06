@@ -26,6 +26,7 @@ const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
 const SimConstants := preload("res://scripts/sim/sim_constants.gd")
 const TargetFilter := preload("res://scripts/sim/combat/target_filter.gd")
 const HurtboxScript := preload("res://scripts/sim/combat/hurtbox.gd")
+const HitShapeScript := preload("res://scripts/sim/combat/hit_shape.gd")
 const PerfOverlayScript := preload("res://scripts/ui/perf_overlay.gd")
 const PerfStats := preload("res://scripts/game/perf_stats.gd")
 const AbilityBarScript := preload("res://scripts/ui/ability_bar.gd")
@@ -976,12 +977,14 @@ func resolve_projectile_hits(projectile: Node) -> void:
 		if not TargetFilter.is_live_damage_target(projectile, entity, {"require_damage_api": false}):
 			continue
 		# Hull test (decision #21): capsule bodies are hittable along their length.
-		if HurtboxScript.overlaps_circle(HurtboxScript.hull_of(entity), projectile.global_position, projectile.radius):
+		var hit_info := HitShapeScript.circle_hit(projectile.global_position, projectile.radius, entity)
+		if bool(hit_info.hit):
 			# Projectiles are RANGED (decision #1) — flying targets are hit
 			# normally and heavy shots can spike birds (decision #20).
 			if entity.has_method("take_damage_event"):
 				var event := DamageEventScript.new()
 				event.setup(projectile.damage, DamageEventScript.DELIVERY_RANGED, DamageEventScript.PLANE_GROUND, projectile.source_actor, "projectile")
+				event.set_hit(hit_info.point, hit_info.normal)
 				entity.take_damage_event(event)
 			else:
 				entity.take_damage(projectile.damage, projectile.team, projectile.source_actor)
@@ -1025,10 +1028,12 @@ func damage_enemies_in_radius(source_team: int, center: Vector2, radius: float, 
 			continue
 		if cover_blocks_point(center, entity.global_position, minf(radius, 18.0)):
 			continue
-		if HurtboxScript.overlaps_circle(HurtboxScript.hull_of(entity), center, radius):
+		var hit_info := HitShapeScript.circle_hit(center, radius, entity)
+		if bool(hit_info.hit):
 			if entity.has_method("take_damage_event"):
 				var event := DamageEventScript.new()
 				event.setup(damage, DamageEventScript.DELIVERY_AREA, DamageEventScript.PLANE_GROUND, source_actor, source_ability)
+				event.set_hit(hit_info.point, hit_info.normal)
 				entity.take_damage_event(event)
 			else:
 				entity.take_damage(damage, source_team, source_actor)
