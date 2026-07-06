@@ -38,6 +38,7 @@ const TERRAIN_SPEED_LERP_RATE := 9.0
 const HUNGER_MAX := 100.0
 const HUNGER_FULL_TO_EMPTY_SEC := 105.0
 const HITSTOP_SEC := 3.0 / 60.0
+const COUNTER_HIT_MULT := 1.2
 
 var arena: Node = null
 var terrain_map: RefCounted = null
@@ -106,6 +107,7 @@ var anim_windup_duration := 0.001
 var last_move_displacement_px := 0.0
 var stealth_timer := 0.0
 var low_window_timer := 0.0
+var counter_hit_window_timer := 0.0
 var respawn_timer := 0.0
 var respawn_duration := 5.0
 var hunger := HUNGER_MAX
@@ -198,6 +200,7 @@ func tick_sim(delta: float) -> void:
 	flight_grounded_timer = maxf(flight_grounded_timer - delta, 0.0)
 	stealth_timer = maxf(stealth_timer - delta, 0.0)
 	low_window_timer = maxf(low_window_timer - delta, 0.0)
+	counter_hit_window_timer = maxf(counter_hit_window_timer - delta, 0.0)
 	_update_flight(delta)
 	_update_terrain(delta)
 	_move_from_input(delta)
@@ -225,6 +228,9 @@ func take_area_damage(amount: float, source_ability := "", source_actor: Node = 
 
 func begin_render_hitstop(duration := HITSTOP_SEC) -> void:
 	render_hitstop_timer = maxf(render_hitstop_timer, duration)
+
+func begin_counter_hit_window(duration: float) -> void:
+	counter_hit_window_timer = maxf(counter_hit_window_timer, duration)
 
 func begin_stealth(duration: float, _source: String) -> void:
 	stealth_timer = duration
@@ -263,6 +269,9 @@ func take_damage_event(event: Resource) -> void:
 	break_stealth()
 	var before_health := health
 	var amount: float = _modified_incoming_damage(event)
+	var counter_hit := counter_hit_window_timer > 0.0 and amount > 0.0
+	if counter_hit:
+		amount *= COUNTER_HIT_MULT
 	if health - amount <= 0.0 and kit != null and kit.has_method("intercept_fatal_damage"):
 		if kit.intercept_fatal_damage(self, event, amount):
 			return
@@ -287,11 +296,19 @@ func take_damage_event(event: Resource) -> void:
 			begin_render_hitstop()
 			if event.source_actor != null and is_instance_valid(event.source_actor) and event.source_actor.has_method("begin_render_hitstop"):
 				event.source_actor.begin_render_hitstop()
+		if counter_hit:
+			emit_vfx_event("counter_hit", {
+				"source": event.source_actor,
+				"target": self,
+				"position": event.hit_position if event.hit_position != Vector2.ZERO else global_position,
+				"source_ability": event.source_ability
+			})
 		emit_vfx_event("hit_landed", {
 			"source": event.source_actor,
 			"target": self,
 			"amount": amount,
 			"heavy": amount >= 50.0,
+			"counter_hit": counter_hit,
 			"position": global_position,
 			"hit_position": event.hit_position,
 			"hit_normal": event.hit_normal,
@@ -403,6 +420,8 @@ func _apply_own_anim(event_type: String, payload: Dictionary) -> void:
 		"windup_started":
 			anim_windup_duration = maxf(float(payload.get("duration", 0.001)), 0.001)
 			anim_windup_timer = anim_windup_duration
+			if bool(payload.get("counter_hit_window", false)):
+				begin_counter_hit_window(anim_windup_duration)
 		"attack_swung":
 			break_stealth()
 			anim_attack_duration = clampf(_attack_interval_sec() * 0.55, 0.32, 0.6)

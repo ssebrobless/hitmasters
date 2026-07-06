@@ -40,6 +40,7 @@ func _initialize() -> void:
 	_check_metadata_from_line(failures)
 	_check_region_multiplier(failures)
 	_check_render_hitstop(failures)
+	_check_counter_hit(failures)
 	print("damage_meta failures=%d" % failures.size())
 	for failure in failures:
 		push_error(failure)
@@ -119,10 +120,49 @@ func _check_render_hitstop(failures: Array[String]) -> void:
 		])
 	arena.queue_free()
 
+func _check_counter_hit(failures: Array[String]) -> void:
+	var arena := FakeArena.new()
+	get_root().add_child(arena)
+	var actor := _creature(arena, "bullfrog", 0, Vector2.ZERO)
+	var target := _creature(arena, "cane_toad", 1, Vector2.RIGHT * 40.0)
+	target.emit_vfx_event("windup_started", {
+		"actor": target,
+		"position": target.global_position,
+		"aim": Vector2.RIGHT,
+		"reach_px": 20.0,
+		"duration": 0.2,
+		"source_ability": "Counter Probe",
+		"counter_hit_window": true
+	})
+	var windup_window: bool = target.counter_hit_window_timer > 0.19
+	var before: float = target.health
+	var event: Resource = actor.make_damage_event(10.0, DamageEventScript.DELIVERY_RANGED, DamageEventScript.PLANE_GROUND, "Counter Probe")
+	event.set_hit(target.global_position, Vector2.LEFT)
+	target.take_damage_event(event)
+	var loss: float = before - target.health
+	var landed := _last_hit(arena)
+	var counter_event: bool = _has_event(arena, "counter_hit")
+	var marked: bool = bool(landed.get("counter_hit", false))
+	if not windup_window or absf(loss - 12.0) > 0.01 or not counter_event or not marked:
+		failures.append("counter hit should opt in from windup and scale/mark damage; windup=%s loss=%.2f vfx=%s marked=%s event=%s" % [
+			str(windup_window),
+			loss,
+			str(counter_event),
+			str(marked),
+			str(landed)
+		])
+	arena.queue_free()
+
 func _has_hit_meta(event: Dictionary) -> bool:
 	var hit_position: Vector2 = event.get("hit_position", Vector2.ZERO)
 	var hit_normal: Vector2 = event.get("hit_normal", Vector2.ZERO)
 	return hit_position != Vector2.ZERO and hit_normal.length() > 0.9 and String(event.get("region", "")) == "hull"
+
+func _has_event(arena: FakeArena, event_type: String) -> bool:
+	for event in arena.vfx_events:
+		if String(event.get("type", "")) == event_type:
+			return true
+	return false
 
 func _last_hit(arena: FakeArena) -> Dictionary:
 	for i in range(arena.vfx_events.size() - 1, -1, -1):

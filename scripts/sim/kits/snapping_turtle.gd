@@ -59,7 +59,8 @@ func tick(actor: Node, delta: float) -> void:
 				"aim": actor.get_aim_direction(),
 				"reach_px": reach_units * SimConstants.UNIT_PX,
 				"duration": primary_windup_remaining,
-				"source_ability": "Bite"
+				"source_ability": "Bite",
+				"counter_hit_window": true
 			})
 		if primary_windup_remaining <= 0.0:
 			_land_bite(actor)

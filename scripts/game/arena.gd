@@ -1440,6 +1440,26 @@ func _spawn_vfx_for_event(event: Dictionary) -> void:
 				"duration": 0.16,
 				"remaining": 0.16
 			})
+		"counter_hit":
+			telegraphs.append({
+				"type": "float_text",
+				"position": event.get("position", Vector2.ZERO),
+				"text": "COUNTER",
+				"color": Color(1.0, 0.25, 0.18, 1.0),
+				"size": 17,
+				"duration": 0.55,
+				"remaining": 0.55
+			})
+			telegraphs.append({
+				"type": "circle",
+				"center": event.get("position", Vector2.ZERO),
+				"radius": 18.0,
+				"color": Color(1.0, 0.25, 0.18, 0.8),
+				"width": 3.0,
+				"filled": false,
+				"duration": 0.18,
+				"remaining": 0.18
+			})
 		"heal_tick":
 			var heal_amount: float = float(event.get("amount", 0.0))
 			telegraphs.append({

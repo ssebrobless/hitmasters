@@ -86,7 +86,7 @@ func _start_lunge(actor: Node, direction: Vector2, source: String) -> void:
 	Dash.start(actor, direction, LUNGE_UNITS * SimConstants.UNIT_PX, LUNGE_SEC)
 	actor.primary_timer = float(actor.stats.get("attack_interval_sec", 0.7)) / actor.get_modifier_value("attack_speed_mult", 1.0)
 	if actor.has_method("emit_vfx_event"):
-		actor.emit_vfx_event("windup_started", {"actor": actor, "position": actor.global_position, "aim": direction, "reach_px": BITE_REACH_UNITS * SimConstants.UNIT_PX, "duration": LUNGE_SEC, "source_ability": source})
+		actor.emit_vfx_event("windup_started", {"actor": actor, "position": actor.global_position, "aim": direction, "reach_px": BITE_REACH_UNITS * SimConstants.UNIT_PX, "duration": LUNGE_SEC, "source_ability": source, "counter_hit_window": true})
 
 func _tick_lunge(actor: Node) -> void:
 	if not lunge_active or actor.dash_timer > 0.0:
