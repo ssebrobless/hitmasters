@@ -653,11 +653,13 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			canvas.draw_arc(wake_center, radius * (0.42 + 0.16 * surface_wake_intensity), -0.5, 0.9, 10, water_tint, 1.5 + surface_wake_intensity)
 			var streak_origin := -forward * radius * (0.45 + 0.16 * surface_wake_intensity) + side * wake_side * radius * 0.44
 			canvas.draw_line(streak_origin, streak_origin - forward * radius * (0.62 + 0.24 * surface_wake_intensity) + side * wake_side * radius * 0.18, Color(water_tint.r, water_tint.g, water_tint.b, water_tint.a * 0.7), maxf(1.0, radius * 0.07))
+			canvas.draw_arc(wake_center + forward * radius * 0.18, radius * (0.18 + 0.05 * surface_wake_intensity), PI * 0.08, PI * 0.9, 8, Color(water_tint.r, water_tint.g, water_tint.b, water_tint.a * 0.82), maxf(radius * 0.04, 1.0))
 	if shrew_land_skitter:
 		for dust_side: float in [-1.0, 1.0]:
 			var dust_start := -forward * radius * 0.36 + side * dust_side * radius * 0.32
 			canvas.draw_line(dust_start, dust_start - forward * radius * (0.52 + 0.16 * shrew_land_skitter_intensity) + side * dust_side * radius * 0.12, shrew_dust, maxf(radius * 0.045, 1.0))
 			canvas.draw_arc(dust_start + forward * radius * 0.12, radius * (0.22 + 0.05 * shrew_land_skitter_intensity), PI * 0.1, PI * 0.9, 8, shrew_dust, maxf(radius * 0.04, 1.0))
+			canvas.draw_line(dust_start + forward * radius * 0.18, dust_start + forward * radius * 0.4 + side * dust_side * radius * 0.08, Color(shrew_dust.r, shrew_dust.g, shrew_dust.b, shrew_dust.a * 0.8), maxf(radius * 0.035, 1.0))
 	if mink_bound:
 		var bound_phase := sin(walk_phase * 1.4)
 		var shadow_center := -forward * radius * (0.18 + 0.12 * bound_phase)
@@ -679,6 +681,9 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			canvas.draw_line(wake_start, wake_start - forward * radius * (0.62 + 0.2 * newt_swim_intensity) + side * wake_side * radius * 0.14, newt_water, maxf(radius * 0.045, 1.0))
 	if submerged_shrew and submerged_shrew_intensity > 0.0:
 		canvas.draw_line(-forward * radius * 0.2, -forward * radius * (0.86 + 0.18 * submerged_shrew_intensity), Color(submerged_tint.r, submerged_tint.g, submerged_tint.b, submerged_tint.a * 0.72), maxf(radius * 0.045, 1.0))
+		for dive_side: float in [-1.0, 1.0]:
+			var dive_start := -forward * radius * 0.18 + side * dive_side * radius * 0.26
+			canvas.draw_line(dive_start, dive_start - forward * radius * (0.56 + 0.16 * submerged_shrew_intensity) + side * dive_side * radius * 0.12, Color(submerged_tint.r, submerged_tint.g, submerged_tint.b, submerged_tint.a * 0.66), maxf(radius * 0.04, 1.0))
 	if otter_land_slide:
 		var slide_center := -forward * radius * 0.35
 		canvas.draw_arc(slide_center, radius * (0.72 + 0.1 * otter_motion_intensity), PI * 0.12, PI * 0.88, 14, otter_slide_dust, maxf(radius * 0.07, 1.2))

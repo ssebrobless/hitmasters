@@ -478,6 +478,15 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var shrew_skim: bool = bool(shrew_skim_state.get("surface_walk", false)) \
 		and not bool(shrew_skim_state.get("submerged_shrew_pose", false)) \
 		and not bool(shrew_skim_state.get("shrew_land_skitter_pose", false)) \
+		and not bool(shrew_skim_state.get("newt_swim_pose", false)) \
+		and not bool(shrew_skim_state.get("leech_undulate_pose", false)) \
+		and not bool(shrew_skim_state.get("water_slither_pose", false)) \
+		and not bool(shrew_skim_state.get("turtle_swim_pose", false)) \
+		and not bool(shrew_skim_state.get("duck_paddle_pose", false)) \
+		and not bool(shrew_skim_state.get("beaver_swim_pose", false)) \
+		and not bool(shrew_skim_state.get("mink_swim_pose", false)) \
+		and not bool(shrew_skim_state.get("otter_swim_pose", false)) \
+		and not bool(shrew_skim_state.get("crayfish_tail_flick_swim_pose", false)) \
 		and float(shrew_skim_state.get("surface_wake_intensity", 0.0)) > 0.25
 	actor.remove_modifiers_from_source("Water Walk")
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
@@ -486,6 +495,15 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var shrew_submerged: bool = bool(shrew_submerged_state.get("submerged_shrew_pose", false)) \
 		and not bool(shrew_submerged_state.get("surface_walk", false)) \
 		and not bool(shrew_submerged_state.get("shrew_land_skitter_pose", false)) \
+		and not bool(shrew_submerged_state.get("newt_swim_pose", false)) \
+		and not bool(shrew_submerged_state.get("leech_undulate_pose", false)) \
+		and not bool(shrew_submerged_state.get("water_slither_pose", false)) \
+		and not bool(shrew_submerged_state.get("turtle_swim_pose", false)) \
+		and not bool(shrew_submerged_state.get("duck_paddle_pose", false)) \
+		and not bool(shrew_submerged_state.get("beaver_swim_pose", false)) \
+		and not bool(shrew_submerged_state.get("mink_swim_pose", false)) \
+		and not bool(shrew_submerged_state.get("otter_swim_pose", false)) \
+		and not bool(shrew_submerged_state.get("crayfish_tail_flick_swim_pose", false)) \
 		and float(shrew_submerged_state.get("submerged_shrew_intensity", 0.0)) > 0.25
 	actor.current_environment_profile = {"surface": "land"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
@@ -494,6 +512,15 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var shrew_land_skitter: bool = bool(shrew_land_state.get("shrew_land_skitter_pose", false)) \
 		and not bool(shrew_land_state.get("surface_walk", false)) \
 		and not bool(shrew_land_state.get("submerged_shrew_pose", false)) \
+		and not bool(shrew_land_state.get("slick_crawl_pose", false)) \
+		and not bool(shrew_land_state.get("leech_inchworm_pose", false)) \
+		and not bool(shrew_land_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(shrew_land_state.get("turtle_plod_pose", false)) \
+		and not bool(shrew_land_state.get("duck_waddle_pose", false)) \
+		and not bool(shrew_land_state.get("beaver_lumber_pose", false)) \
+		and not bool(shrew_land_state.get("mink_bound_pose", false)) \
+		and not bool(shrew_land_state.get("otter_land_slide_pose", false)) \
+		and not bool(shrew_land_state.get("crayfish_scuttle_pose", false)) \
 		and float(shrew_land_state.get("shrew_land_skitter_intensity", 0.0)) > 0.25
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
@@ -501,9 +528,23 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var shrew_idle_clear: bool = not bool(shrew_idle_state.get("surface_walk", false)) \
 		and not bool(shrew_idle_state.get("submerged_shrew_pose", false)) \
 		and not bool(shrew_idle_state.get("shrew_land_skitter_pose", false)) \
+		and not bool(shrew_idle_state.get("newt_swim_pose", false)) \
+		and not bool(shrew_idle_state.get("slick_crawl_pose", false)) \
+		and not bool(shrew_idle_state.get("leech_undulate_pose", false)) \
+		and not bool(shrew_idle_state.get("leech_inchworm_pose", false)) \
+		and not bool(shrew_idle_state.get("water_slither_pose", false)) \
+		and not bool(shrew_idle_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(shrew_idle_state.get("beaver_swim_pose", false)) \
+		and not bool(shrew_idle_state.get("beaver_lumber_pose", false)) \
+		and not bool(shrew_idle_state.get("mink_swim_pose", false)) \
+		and not bool(shrew_idle_state.get("mink_bound_pose", false)) \
+		and not bool(shrew_idle_state.get("otter_swim_pose", false)) \
+		and not bool(shrew_idle_state.get("otter_land_slide_pose", false)) \
+		and not bool(shrew_idle_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(shrew_idle_state.get("crayfish_tail_flick_swim_pose", false)) \
 		and float(shrew_idle_state.get("shrew_land_skitter_intensity", 1.0)) <= 0.001
 	if not shrew_skim or not shrew_submerged or not shrew_land_skitter or not shrew_idle_clear:
-		failures.append("water shrew should expose mutually exclusive surface skim, submerged swim, and land skitter poses, then clear when idle; skim=%s submerged=%s land=%s idle=%s state=%s/%s/%s/%s" % [
+		failures.append("water shrew should expose tiny surface skim, submerged swim, and land skitter without low swimmer/crawler overlap, then clear when idle; skim=%s submerged=%s land=%s idle=%s state=%s/%s/%s/%s" % [
 			str(shrew_skim),
 			str(shrew_submerged),
 			str(shrew_land_skitter),
