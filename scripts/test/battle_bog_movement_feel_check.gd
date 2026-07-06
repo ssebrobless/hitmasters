@@ -874,6 +874,15 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(mink_bound_state.get("otter_swim_pose", false)) \
 		and not bool(mink_bound_state.get("beaver_lumber_pose", false)) \
 		and not bool(mink_bound_state.get("beaver_swim_pose", false)) \
+		and not bool(mink_bound_state.get("duck_waddle_pose", false)) \
+		and not bool(mink_bound_state.get("turtle_plod_pose", false)) \
+		and not bool(mink_bound_state.get("bog_turtle_creep_pose", false)) \
+		and not bool(mink_bound_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(mink_bound_state.get("slick_crawl_pose", false)) \
+		and not bool(mink_bound_state.get("leech_inchworm_pose", false)) \
+		and not bool(mink_bound_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(mink_bound_state.get("shrew_land_skitter_pose", false)) \
+		and not bool(mink_bound_state.get("high_walk_pose", false)) \
 		and float(mink_bound_state.get("mink_bound_intensity", 0.0)) > 0.25 \
 		and float(mink_bound_state.get("mink_swim_intensity", 1.0)) <= 0.001
 	actor.current_environment_profile = {"surface": "water"}
@@ -887,6 +896,16 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(mink_swim_state.get("otter_swim_pose", false)) \
 		and not bool(mink_swim_state.get("beaver_lumber_pose", false)) \
 		and not bool(mink_swim_state.get("beaver_swim_pose", false)) \
+		and not bool(mink_swim_state.get("duck_paddle_pose", false)) \
+		and not bool(mink_swim_state.get("turtle_swim_pose", false)) \
+		and not bool(mink_swim_state.get("bog_turtle_paddle_pose", false)) \
+		and not bool(mink_swim_state.get("water_slither_pose", false)) \
+		and not bool(mink_swim_state.get("newt_swim_pose", false)) \
+		and not bool(mink_swim_state.get("leech_undulate_pose", false)) \
+		and not bool(mink_swim_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and not bool(mink_swim_state.get("surface_walk", false)) \
+		and not bool(mink_swim_state.get("submerged_shrew_pose", false)) \
+		and not bool(mink_swim_state.get("alligator_water_cruise_pose", false)) \
 		and float(mink_swim_state.get("mink_swim_intensity", 0.0)) > 0.25 \
 		and float(mink_swim_state.get("mink_bound_intensity", 1.0)) <= 0.001
 	actor.velocity = Vector2.ZERO
@@ -899,10 +918,29 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(mink_idle_state.get("otter_swim_pose", false)) \
 		and not bool(mink_idle_state.get("beaver_lumber_pose", false)) \
 		and not bool(mink_idle_state.get("beaver_swim_pose", false)) \
+		and not bool(mink_idle_state.get("duck_waddle_pose", false)) \
+		and not bool(mink_idle_state.get("duck_paddle_pose", false)) \
+		and not bool(mink_idle_state.get("turtle_plod_pose", false)) \
+		and not bool(mink_idle_state.get("turtle_swim_pose", false)) \
+		and not bool(mink_idle_state.get("bog_turtle_creep_pose", false)) \
+		and not bool(mink_idle_state.get("bog_turtle_paddle_pose", false)) \
+		and not bool(mink_idle_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(mink_idle_state.get("water_slither_pose", false)) \
+		and not bool(mink_idle_state.get("slick_crawl_pose", false)) \
+		and not bool(mink_idle_state.get("newt_swim_pose", false)) \
+		and not bool(mink_idle_state.get("leech_inchworm_pose", false)) \
+		and not bool(mink_idle_state.get("leech_undulate_pose", false)) \
+		and not bool(mink_idle_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(mink_idle_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and not bool(mink_idle_state.get("shrew_land_skitter_pose", false)) \
+		and not bool(mink_idle_state.get("surface_walk", false)) \
+		and not bool(mink_idle_state.get("submerged_shrew_pose", false)) \
+		and not bool(mink_idle_state.get("high_walk_pose", false)) \
+		and not bool(mink_idle_state.get("alligator_water_cruise_pose", false)) \
 		and float(mink_idle_state.get("mink_bound_intensity", 1.0)) <= 0.001 \
 		and float(mink_idle_state.get("mink_swim_intensity", 1.0)) <= 0.001
 	if not mink_bound or not mink_swim or not mink_idle_clear:
-		failures.append("moving mink should expose elastic land bound and water swim without otter/beaver/choke overlap, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
+		failures.append("moving mink should expose small elastic land bound and narrow darting water swim without otter, beaver, crawler, turtle, bird, snake, shrew, gator, or crustacean overlap, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
 			str(mink_bound),
 			str(mink_swim),
 			str(mink_idle_clear),
