@@ -638,6 +638,11 @@ func get_render_motion_state() -> Dictionary:
 	var wake_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if surface_walk else 0.0
 	var chorus_hop := creature_id == "chorus_frog" and moving and not is_airborne()
 	var chorus_hop_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if chorus_hop else 0.0
+	var bullfrog_lunge := creature_id == "bullfrog" and kit != null and bool(kit.get("lunge_active"))
+	var bullfrog_camouflage := creature_id == "bullfrog" and stealth_timer > 0.0
+	var bullfrog_coil := creature_id == "bullfrog" and (bullfrog_lunge or bullfrog_camouflage)
+	var bullfrog_lunge_intensity := clampf(dash_timer / 0.18, 0.0, 1.0) if bullfrog_lunge else 0.0
+	var bullfrog_coil_intensity := 1.0 if bullfrog_camouflage else maxf(0.55, bullfrog_lunge_intensity) if bullfrog_lunge else 0.0
 	var cane_squat_hop := creature_id == "cane_toad" and moving and not is_airborne() and not _has_modifier_source("Thanatosis")
 	var cane_squat_hop_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if cane_squat_hop else 0.0
 	var alligator_high_walk := creature_id == "alligator" and moving and surface != EnvironmentProfileScript.SURFACE_WATER and not _has_modifier_source("Ambush")
@@ -691,6 +696,11 @@ func get_render_motion_state() -> Dictionary:
 		"in_water": surface == EnvironmentProfileScript.SURFACE_WATER,
 		"surface_walk": surface_walk,
 		"surface_wake_intensity": wake_intensity,
+		"bullfrog_coil_pose": bullfrog_coil,
+		"bullfrog_coil_intensity": bullfrog_coil_intensity,
+		"bullfrog_lunge_pose": bullfrog_lunge,
+		"bullfrog_lunge_intensity": bullfrog_lunge_intensity,
+		"camouflage_eye_cue": bullfrog_camouflage,
 		"chorus_hop_pose": chorus_hop,
 		"chorus_hop_intensity": chorus_hop_intensity,
 		"cane_squat_hop_pose": cane_squat_hop,

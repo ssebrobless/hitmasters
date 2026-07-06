@@ -256,6 +256,11 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var toxic_recoil_t := clampf(float(anim.get("toxic_recoil_t", 0.0)), 0.0, 1.0)
 	var chorus_hop := String(anim.get("creature_id", "")) == "chorus_frog" and bool(anim.get("chorus_hop_pose", false))
 	var chorus_hop_intensity := clampf(float(anim.get("chorus_hop_intensity", 0.0)), 0.0, 1.25)
+	var bullfrog_coil := String(anim.get("creature_id", "")) == "bullfrog" and bool(anim.get("bullfrog_coil_pose", false))
+	var bullfrog_coil_intensity := clampf(float(anim.get("bullfrog_coil_intensity", 0.0)), 0.0, 1.25)
+	var bullfrog_lunge := String(anim.get("creature_id", "")) == "bullfrog" and bool(anim.get("bullfrog_lunge_pose", false))
+	var bullfrog_lunge_intensity := clampf(float(anim.get("bullfrog_lunge_intensity", 0.0)), 0.0, 1.25)
+	var camouflage_eye_cue := String(anim.get("creature_id", "")) == "bullfrog" and bool(anim.get("camouflage_eye_cue", false))
 	var cane_squat_hop := String(anim.get("creature_id", "")) == "cane_toad" and bool(anim.get("cane_squat_hop_pose", false))
 	var cane_squat_hop_intensity := clampf(float(anim.get("cane_squat_hop_intensity", 0.0)), 0.0, 1.25)
 
@@ -265,11 +270,17 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var leg_extend := 0.55 + hop * 0.55 * float(anim.get("hop_leg_scale", 1.0))
 	if chorus_hop:
 		leg_extend += 0.16 * chorus_hop_intensity * (0.35 + hop)
+	if bullfrog_coil:
+		leg_extend = maxf(0.32, leg_extend - 0.22 * bullfrog_coil_intensity)
+	if bullfrog_lunge:
+		leg_extend += 0.22 * bullfrog_lunge_intensity
 	if cane_squat_hop:
 		leg_extend = maxf(0.36, leg_extend - 0.18 * cane_squat_hop_intensity)
 	if rooted_pose:
 		leg_extend = 0.38
 	var landing_squash := (1.0 - hop) * float(anim.get("landing_squash", 0.0)) if moving else 0.0
+	if bullfrog_coil:
+		landing_squash = maxf(landing_squash, 0.16 * bullfrog_coil_intensity)
 	if cane_squat_hop:
 		landing_squash = maxf(landing_squash, 0.08 * cane_squat_hop_intensity * (1.0 - hop * 0.35))
 	var landing_t := clampf(float(anim.get("landing_t", 0.0)), 0.0, 1.0)
@@ -278,10 +289,24 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 	if rooted_pose:
 		landing_squash = maxf(landing_squash, 0.22)
 
+	if bullfrog_coil:
+		for ring_side: float in [-1.0, 1.0]:
+			var ring_origin := -forward * radius * 0.44 + side * ring_side * radius * 0.32
+			var ring_alpha := 0.18 + 0.08 * bullfrog_coil_intensity
+			canvas.draw_arc(ring_origin, radius * (0.44 + 0.1 * bullfrog_coil_intensity), PI * 0.08, PI * 0.92, 12, Color(dark.r, dark.g, dark.b, ring_alpha), maxf(radius * 0.045, 1.0))
+	if bullfrog_lunge:
+		for streak_side: float in [-0.55, 0.0, 0.55]:
+			var streak_start := -forward * radius * (0.45 + 0.12 * bullfrog_lunge_intensity) + side * streak_side * radius
+			var streak_end := streak_start - forward * radius * (0.52 + 0.18 * bullfrog_lunge_intensity)
+			canvas.draw_line(streak_start, streak_end, Color(belly.r, belly.g, belly.b, 0.2 + 0.1 * bullfrog_lunge_intensity), maxf(radius * 0.055, 1.0))
+
 	for leg_side: float in [-1.0, 1.0]:
 		var hip := -forward * radius * 0.45 + side * leg_side * radius * 0.62
 		var knee := hip - forward * radius * 0.35 * leg_extend + side * leg_side * radius * 0.4
 		var foot := knee - forward * radius * 0.55 * leg_extend - side * leg_side * radius * 0.08
+		if bullfrog_coil:
+			var coil_shadow := foot - forward * radius * (0.12 + 0.1 * bullfrog_coil_intensity)
+			canvas.draw_arc(coil_shadow, radius * (0.22 + 0.04 * bullfrog_coil_intensity), -0.25, PI * 0.85, 8, Color(dark.r, dark.g, dark.b, 0.2 + 0.08 * bullfrog_coil_intensity), maxf(radius * 0.045, 1.0))
 		if chorus_hop:
 			var toe_trail := foot - forward * radius * (0.22 + 0.12 * chorus_hop_intensity)
 			canvas.draw_line(foot, toe_trail + side * leg_side * radius * 0.08, Color(dark.r, dark.g, dark.b, 0.32 + 0.12 * chorus_hop_intensity), maxf(radius * 0.06, 1.1))
@@ -345,6 +370,10 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 		canvas.draw_circle(eye, radius * 0.22, dark)
 		canvas.draw_circle(eye, radius * 0.17, eye_color)
 		canvas.draw_circle(eye + forward * radius * 0.05, maxf(radius * 0.08, 1.3), Color(0.08, 0.07, 0.04))
+		if camouflage_eye_cue:
+			var glint := eye + forward * radius * 0.12 - side * eye_side * radius * 0.06
+			canvas.draw_circle(glint, maxf(radius * 0.045, 1.0), Color(0.94, 0.9, 0.42, 0.82))
+			canvas.draw_arc(eye + forward * radius * 0.02, radius * 0.26, -0.25, PI + 0.25, 12, Color(0.94, 0.9, 0.42, 0.28), maxf(radius * 0.04, 1.0))
 
 	if bool(skin.get("call_sac", false)):
 		var sac_pulse := (sin(Time.get_ticks_msec() * 0.008) * 0.5 + 0.5) * 0.35
