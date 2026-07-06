@@ -19,8 +19,9 @@ static func hit(actor: Node, reach_px: float, damage: float, delivery: int, plan
 	if int(plane) == 0 and bool(opts.get("allow_harvest", true)) and actor.arena.has_method("try_harvest_food_with_hit_shape"):
 		actor.arena.try_harvest_food_with_hit_shape(actor, shape, source_ability)
 	var max_hits := int(opts.get("max_hits", 0))
+	var target_opts := {"allow_wildlife": bool(opts.get("allow_wildlife", true))}
 	for target in actor.arena.entities:
-		if not TargetFilter.is_live_blind_damage_target(actor, target):
+		if not TargetFilter.is_live_blind_damage_target(actor, target, target_opts):
 			continue
 		var hit_info := HitShape.melee_arc_hit(shape, target)
 		if not bool(hit_info.hit):
@@ -36,7 +37,7 @@ static func hit(actor: Node, reach_px: float, damage: float, delivery: int, plan
 	var latcher_value: Variant = actor.get("latched_attacker")
 	if latcher_value is Node:
 		var latcher := latcher_value as Node
-		if is_instance_valid(latcher) and latcher.get("latch_victim") == actor and not hits.has(latcher) and TargetFilter.is_live_blind_damage_target(actor, latcher):
+		if is_instance_valid(latcher) and latcher.get("latch_victim") == actor and not hits.has(latcher) and TargetFilter.is_live_blind_damage_target(actor, latcher, target_opts):
 			latcher.take_damage_event(actor.make_damage_event(damage, delivery, plane, source_ability))
 			hits.append(latcher)
 	actor.damage_enemy_cores_near(shape.get("center", actor.global_position), reach_px, damage, source_ability)

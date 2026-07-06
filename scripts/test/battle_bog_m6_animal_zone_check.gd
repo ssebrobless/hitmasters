@@ -1,6 +1,9 @@
 extends SceneTree
 
 const ARENA_SCENE := "res://scenes/Arena.tscn"
+const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
+const MeleeHit := preload("res://scripts/sim/abilities/melee_hit.gd")
+const TargetFilter := preload("res://scripts/sim/combat/target_filter.gd")
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -27,6 +30,7 @@ func _run() -> void:
 
 	_check_zone_spawn_state(arena, failures)
 	_check_zone_occupancy(arena, failures)
+	_check_wildlife_encounters(arena, failures)
 	_check_boss_activation(arena, failures)
 
 	print("m6_animal_zones failures=%d" % failures.size())
@@ -44,6 +48,7 @@ func _check_zone_spawn_state(arena: Node, failures: Array[String]) -> void:
 		if not bool(zone.get("boss", false)) and bool(zone.get("active", false)):
 			nonboss_active += 1
 	var blue_a_ok := blue_a.size() > 0 and bool(blue_a.get("active", false)) and (blue_a.get("occupants", []) as Array).size() == 5
+	blue_a_ok = blue_a_ok and int(blue_a.get("alive_count", 0)) == 5 and (blue_a.get("alive_occupants", []) as Array).size() == 5
 	var boss_dormant := blue_boss.size() > 0 and red_boss.size() > 0 \
 		and not bool(blue_boss.get("active", true)) \
 		and not bool(red_boss.get("active", true)) \
@@ -56,6 +61,39 @@ func _check_zone_spawn_state(arena: Node, failures: Array[String]) -> void:
 			str(blue_a),
 			str(blue_boss),
 			str(red_boss)
+		])
+
+func _check_wildlife_encounters(arena: Node, failures: Array[String]) -> void:
+	var before_count: int = arena.wildlife_encounters.size()
+	var blue_a := _zone(arena.get_animal_zone_state(), "blue", "A")
+	var wildlife: Node = _wildlife_for_zone(arena, "blue:A")
+	var actor: Node = arena.player
+	if before_count != 40 or wildlife == null or actor == null:
+		failures.append("active side zones should spawn 40 wildlife encounters; count=%d wildlife=%s actor=%s" % [
+			before_count,
+			str(wildlife),
+			str(actor)
+		])
+		return
+	var filtered_by_default := not TargetFilter.is_live_damage_target(actor, wildlife, {"require_damage_api": false})
+	var targetable_by_attack := TargetFilter.is_live_damage_target(actor, wildlife, {"require_damage_api": false, "allow_wildlife": true})
+	actor.global_position = wildlife.global_position - Vector2(float(actor.get("body_radius")) + float(wildlife.get("body_radius")) + 6.0, 0.0)
+	actor.input_frame = null
+	actor.last_aim_direction = Vector2.RIGHT
+	var hits := MeleeHit.hit(actor, 42.0, float(wildlife.get("health")) + 10.0, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "Wildlife Probe")
+	var after_zone := _zone(arena.get_animal_zone_state(), "blue", "A")
+	var defeated: bool = not arena.wildlife_encounters.has(wildlife)
+	var state_updated: bool = int(after_zone.get("alive_count", -1)) == int(blue_a.get("alive_count", 0)) - 1 \
+		and int(after_zone.get("defeated_count", 0)) == 1 \
+		and (after_zone.get("alive_occupants", []) as Array).size() == 4
+	if not filtered_by_default or not targetable_by_attack or hits.is_empty() or not defeated or not state_updated:
+		failures.append("wildlife should be attack-interactable without becoming a default target; filtered=%s targetable=%s hits=%d defeated=%s before=%s after=%s" % [
+			str(filtered_by_default),
+			str(targetable_by_attack),
+			hits.size(),
+			str(defeated),
+			str(blue_a),
+			str(after_zone)
 		])
 
 func _check_zone_occupancy(arena: Node, failures: Array[String]) -> void:
@@ -106,16 +144,18 @@ func _check_boss_activation(arena: Node, failures: Array[String]) -> void:
 	var red_boss := _zone(arena.get_animal_zone_state(), "red", "Boss")
 	var bosses_active := bool(blue_boss.get("active", false)) and bool(red_boss.get("active", false))
 	var occupants_spawned := not (blue_boss.get("occupants", []) as Array).is_empty() and not (red_boss.get("occupants", []) as Array).is_empty()
+	var boss_wildlife_spawned := _wildlife_for_zone(arena, "blue:Boss") != null and _wildlife_for_zone(arena, "red:Boss") != null
 	var progress_ok := accepted == 5 \
 		and int(progress.get("bred_count", 0)) == 5 \
 		and int(progress.get("activations", 0)) == 1 \
 		and bool(progress.get("boss_active", false))
-	if not progress_ok or not bosses_active or not occupants_spawned:
-		failures.append("five breeding deposits should activate boss animal zones; accepted=%d progress=%s blue=%s red=%s" % [
+	if not progress_ok or not bosses_active or not occupants_spawned or not boss_wildlife_spawned:
+		failures.append("five breeding deposits should activate boss animal zones; accepted=%d progress=%s blue=%s red=%s boss_wildlife=%s" % [
 			accepted,
 			str(progress),
 			str(blue_boss),
-			str(red_boss)
+			str(red_boss),
+			str(boss_wildlife_spawned)
 		])
 
 func _zone(zones: Array, side: String, group: String) -> Dictionary:
@@ -123,3 +163,9 @@ func _zone(zones: Array, side: String, group: String) -> Dictionary:
 		if String(zone.get("side", "")) == side and String(zone.get("group", "")) == group:
 			return zone
 	return {}
+
+func _wildlife_for_zone(arena: Node, zone_id: String) -> Node:
+	for encounter in arena.wildlife_encounters:
+		if encounter != null and is_instance_valid(encounter) and String(encounter.get("zone_id")) == zone_id:
+			return encounter
+	return null

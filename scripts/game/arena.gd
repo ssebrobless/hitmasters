@@ -33,6 +33,7 @@ const AbilityBarScript := preload("res://scripts/ui/ability_bar.gd")
 const CreatureInfoPanelScript := preload("res://scripts/ui/creature_info_panel.gd")
 const StockManagerScript := preload("res://scripts/game/stock_manager.gd")
 const FoodSourceScript := preload("res://scripts/game/food_source.gd")
+const WildlifeEncounterScript := preload("res://scripts/game/wildlife_encounter.gd")
 
 const PLAYABLE_CREATURE_POOL := ["snapping_turtle", "chorus_frog", "mink", "beaver", "owl", "duck", "bullfrog", "cane_toad", "crayfish", "water_shrew", "newt", "great_blue_heron", "kingfisher", "water_snake", "alligator", "wolf_spider", "firefly", "mosquito_swarm"]
 const SQUAD_COMMAND_FARM := "farm"
@@ -70,6 +71,7 @@ var dams: Array[Node] = []
 var huts: Array[Node] = []
 var food_sources: Array[Node] = []
 var animal_zone_states: Array[Dictionary] = []
+var wildlife_encounters: Array[Node] = []
 var bred_animal_count := 0
 var boss_activation_count := 0
 var animal_zone_tick_timer := 0.0
@@ -474,6 +476,7 @@ func get_boss_progress_state() -> Dictionary:
 	}
 
 func _setup_animal_zones() -> void:
+	_clear_wildlife_encounters()
 	animal_zone_states.clear()
 	bred_animal_count = 0
 	boss_activation_count = 0
@@ -488,11 +491,16 @@ func _setup_animal_zones() -> void:
 		state["activation_count"] = 0
 		state["occupants"] = _spawn_zone_occupants(state)
 		state["spawned_count"] = (state["occupants"] as Array).size()
+		state["alive_occupants"] = []
+		state["alive_count"] = 0
+		state["defeated_count"] = 0
+		state["wildlife_count"] = 0
 		state["blue_count"] = 0
 		state["red_count"] = 0
 		state["contested"] = false
 		state["control_team"] = -1
 		state["last_control_team"] = -1
+		_spawn_wildlife_for_zone(state)
 		animal_zone_states.append(state)
 	_tick_animal_zones(ANIMAL_ZONE_TICK_SEC)
 
@@ -514,15 +522,99 @@ func _record_bred_animal(_actor: Node) -> void:
 
 func _activate_boss_zones() -> void:
 	boss_activation_count += 1
-	for zone in animal_zone_states:
+	for i in animal_zone_states.size():
+		var zone: Dictionary = animal_zone_states[i]
 		if not bool(zone.get("boss", false)):
 			continue
+		_clear_wildlife_for_zone(String(zone.get("id", "")))
 		zone["active"] = true
 		zone["activation_count"] = int(zone.get("activation_count", 0)) + 1
 		zone["occupants"] = _boss_zone_occupants(zone)
 		zone["spawned_count"] = (zone["occupants"] as Array).size()
+		zone["alive_occupants"] = []
+		zone["alive_count"] = 0
+		zone["defeated_count"] = 0
 		zone["last_bred_count"] = bred_animal_count
+		_spawn_wildlife_for_zone(zone)
+		animal_zone_states[i] = zone
 	add_kill_feed("Boss animal zones stirred after %d breeding deposits" % bred_animal_count)
+
+func _spawn_wildlife_for_zone(zone: Dictionary) -> void:
+	if not bool(zone.get("active", false)):
+		zone["alive_occupants"] = []
+		zone["alive_count"] = 0
+		zone["wildlife_count"] = 0
+		return
+	var occupants: Array = zone.get("occupants", [])
+	var alive_occupants: Array = []
+	for i in occupants.size():
+		var species_id := String(occupants[i])
+		var encounter = WildlifeEncounterScript.new()
+		add_child(encounter)
+		encounter.setup(self, zone, species_id, _animal_zone_spawn_position(zone, i, occupants.size()), i)
+		wildlife_encounters.append(encounter)
+		register_entity(encounter)
+		alive_occupants.append(species_id)
+	zone["alive_occupants"] = alive_occupants
+	zone["alive_count"] = alive_occupants.size()
+	zone["wildlife_count"] = alive_occupants.size()
+
+func _animal_zone_spawn_position(zone: Dictionary, index: int, count: int) -> Vector2:
+	var center: Vector2 = zone.get("center", Vector2.ZERO)
+	if count <= 1:
+		return center
+	var radius: Vector2 = zone.get("radius", Vector2.ONE)
+	var side_bias := 0.34 if String(zone.get("side", "")) == "blue" else -0.34
+	var angle := TAU * (float(index) / float(count)) + side_bias
+	var ring := 0.36 + float(index % 3) * 0.13
+	return center + Vector2(cos(angle) * radius.x * ring, sin(angle) * radius.y * ring)
+
+func _clear_wildlife_encounters() -> void:
+	for encounter in wildlife_encounters:
+		if encounter != null and is_instance_valid(encounter):
+			unregister_entity(encounter)
+			encounter.queue_free()
+	wildlife_encounters.clear()
+
+func _clear_wildlife_for_zone(target_zone_id: String) -> void:
+	for i in range(wildlife_encounters.size() - 1, -1, -1):
+		var encounter: Node = wildlife_encounters[i]
+		if encounter == null or not is_instance_valid(encounter):
+			wildlife_encounters.remove_at(i)
+			continue
+		if String(encounter.get("zone_id")) != target_zone_id:
+			continue
+		unregister_entity(encounter)
+		wildlife_encounters.remove_at(i)
+		encounter.queue_free()
+
+func on_wildlife_defeated(encounter: Node, source_actor: Node = null) -> void:
+	wildlife_encounters.erase(encounter)
+	unregister_entity(encounter)
+	var zone_index := _animal_zone_index(String(encounter.get("zone_id")))
+	if zone_index >= 0:
+		var zone: Dictionary = animal_zone_states[zone_index]
+		var alive_occupants: Array = zone.get("alive_occupants", []).duplicate()
+		var species_id := String(encounter.get("species_id"))
+		var occupant_index := alive_occupants.find(species_id)
+		if occupant_index >= 0:
+			alive_occupants.remove_at(occupant_index)
+		zone["alive_occupants"] = alive_occupants
+		zone["alive_count"] = alive_occupants.size()
+		zone["wildlife_count"] = alive_occupants.size()
+		zone["defeated_count"] = int(zone.get("defeated_count", 0)) + 1
+		if bool(zone.get("boss", false)) and alive_occupants.is_empty():
+			zone["active"] = false
+		animal_zone_states[zone_index] = zone
+	var source_name: String = source_actor.get_actor_name() if source_actor != null and is_instance_valid(source_actor) and source_actor.has_method("get_actor_name") else "A creature"
+	var wildlife_name: String = encounter.get_actor_name() if encounter.has_method("get_actor_name") else "wildlife"
+	add_kill_feed("%s drove off %s" % [source_name, wildlife_name])
+
+func _animal_zone_index(target_zone_id: String) -> int:
+	for i in animal_zone_states.size():
+		if String(animal_zone_states[i].get("id", "")) == target_zone_id:
+			return i
+	return -1
 
 func _boss_zones_active() -> bool:
 	for zone: Dictionary in animal_zone_states:
@@ -1158,7 +1250,7 @@ func resolve_projectile_hits(projectile: Node) -> void:
 	for entity in entities:
 		if projectile.hit_entities.has(entity):
 			continue
-		if not TargetFilter.is_live_damage_target(projectile, entity, {"require_damage_api": false}):
+		if not TargetFilter.is_live_damage_target(projectile, entity, {"require_damage_api": false, "allow_wildlife": _projectile_allows_wildlife(projectile)}):
 			continue
 		# Hull test (decision #21): capsule bodies are hittable along their length.
 		var hit_info := HitShapeScript.circle_hit(projectile.global_position, projectile.radius, entity)
@@ -1205,6 +1297,10 @@ func get_closest_enemy(source: Node, max_distance: float) -> Node:
 			closest = entity
 			closest_distance = distance
 	return closest
+
+func _projectile_allows_wildlife(projectile: Node) -> bool:
+	var source_actor: Node = projectile.get("source_actor") if projectile != null and projectile.get("source_actor") != null else null
+	return source_actor != null and is_instance_valid(source_actor) and source_actor.has_method("is_scored_actor") and source_actor.is_scored_actor()
 
 func damage_enemies_in_radius(source_team: int, center: Vector2, radius: float, damage: float, source_actor: Node = null, source_ability := "Area") -> void:
 	for entity in entities:
@@ -1850,7 +1946,7 @@ func _animal_zone_color(zone: Dictionary, active: bool, boss: bool, control_team
 	return Color(0.5, 0.68, 0.38) if String(zone.get("side", "")) == "blue" else Color(0.58, 0.62, 0.34)
 
 func _draw_animal_zone_occupant_marks(zone: Dictionary, center: Vector2, radius: Vector2, color: Color) -> void:
-	var occupants: Array = zone.get("occupants", [])
+	var occupants: Array = zone.get("alive_occupants", zone.get("occupants", []))
 	if occupants.is_empty():
 		return
 	var active := bool(zone.get("active", false))

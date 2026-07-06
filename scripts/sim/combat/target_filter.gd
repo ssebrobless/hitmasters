@@ -7,6 +7,8 @@ static func is_live_damage_target(source: Node, target: Node, opts: Dictionary =
 		return false
 	if _is_dead(target):
 		return false
+	if _is_wildlife(target) and not bool(opts.get("allow_wildlife", false)):
+		return false
 	if not bool(opts.get("allow_untargetable", false)) and target.has_method("is_untargetable") and target.is_untargetable():
 		return false
 	if not bool(opts.get("allow_stealthed", false)) and target.has_method("is_stealthed") and target.is_stealthed():
@@ -40,6 +42,9 @@ static func _is_dead(target: Node) -> bool:
 	if _has_property(target, "health") and float(target.get("health")) <= 0.0:
 		return true
 	return false
+
+static func _is_wildlife(target: Node) -> bool:
+	return target.has_method("is_wildlife_encounter") and target.is_wildlife_encounter()
 
 static func _team_matches(source: Node, target: Node, opts: Dictionary, wants_ally: bool) -> bool:
 	if bool(opts.get("ignore_team", false)):
