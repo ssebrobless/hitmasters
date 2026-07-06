@@ -357,13 +357,23 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var cane_hop_state: Dictionary = actor.get_render_motion_state()
 	var cane_hop: bool = bool(cane_hop_state.get("cane_squat_hop_pose", false)) \
 		and float(cane_hop_state.get("cane_squat_hop_intensity", 0.0)) > 0.25 \
+		and not bool(cane_hop_state.get("rooted_pose", false)) \
 		and not bool(cane_hop_state.get("chorus_hop_pose", false)) \
 		and not bool(cane_hop_state.get("bullfrog_heavy_hop_pose", false)) \
-		and not bool(cane_hop_state.get("bullfrog_coil_pose", false))
+		and not bool(cane_hop_state.get("bullfrog_coil_pose", false)) \
+		and not bool(cane_hop_state.get("bullfrog_lunge_pose", false)) \
+		and not bool(cane_hop_state.get("camouflage_eye_cue", false))
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
 	var cane_idle_state: Dictionary = actor.get_render_motion_state()
-	var cane_idle_clear: bool = not bool(cane_idle_state.get("cane_squat_hop_pose", false)) and float(cane_idle_state.get("cane_squat_hop_intensity", 1.0)) <= 0.001
+	var cane_idle_clear: bool = not bool(cane_idle_state.get("cane_squat_hop_pose", false)) \
+		and not bool(cane_idle_state.get("rooted_pose", false)) \
+		and not bool(cane_idle_state.get("chorus_hop_pose", false)) \
+		and not bool(cane_idle_state.get("bullfrog_heavy_hop_pose", false)) \
+		and not bool(cane_idle_state.get("bullfrog_coil_pose", false)) \
+		and not bool(cane_idle_state.get("bullfrog_lunge_pose", false)) \
+		and not bool(cane_idle_state.get("camouflage_eye_cue", false)) \
+		and float(cane_idle_state.get("cane_squat_hop_intensity", 1.0)) <= 0.001
 	actor.add_modifier("Thanatosis", {"move_speed_mult": 0.0}, 1.0)
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
@@ -371,10 +381,13 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var cane_rooted_suppressed: bool = bool(cane_rooted_state.get("rooted_pose", false)) \
 		and not bool(cane_rooted_state.get("cane_squat_hop_pose", false)) \
 		and not bool(cane_rooted_state.get("chorus_hop_pose", false)) \
-		and not bool(cane_rooted_state.get("bullfrog_heavy_hop_pose", false))
+		and not bool(cane_rooted_state.get("bullfrog_heavy_hop_pose", false)) \
+		and not bool(cane_rooted_state.get("bullfrog_coil_pose", false)) \
+		and not bool(cane_rooted_state.get("bullfrog_lunge_pose", false)) \
+		and not bool(cane_rooted_state.get("camouflage_eye_cue", false))
 	actor.remove_modifiers_from_source("Thanatosis")
 	if not cane_hop or not cane_idle_clear or not cane_rooted_suppressed:
-		failures.append("moving cane toad should expose squat-hop without frog overlap, clear when idle, and defer to Thanatosis rooted pose; moving=%s idle=%s rooted=%s state=%s/%s/%s" % [
+		failures.append("moving cane toad should expose low warty squat-hop without rooted, chorus, or bullfrog overlap, clear when idle, and defer to Thanatosis rooted pose; moving=%s idle=%s rooted=%s state=%s/%s/%s" % [
 			str(cane_hop),
 			str(cane_idle_clear),
 			str(cane_rooted_suppressed),
