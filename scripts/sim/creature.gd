@@ -42,6 +42,8 @@ const COUNTER_HIT_MULT := 1.2
 const RESIDUAL_DASH_DECAY_PER_TICK := 0.68
 const RESIDUAL_DASH_STOP_SPEED := 3.0
 const LANDING_TELL_SEC := 0.16
+const TAKEOFF_FLAP_TELL_SEC := 0.24
+const LANDING_FLAP_TELL_SEC := 0.30
 const TOXIC_RECOIL_TELL_SEC := 0.22
 const ESCAPE_CURL_TELL_SEC := 0.24
 const PLUNGE_TELL_SEC := 0.20
@@ -141,6 +143,8 @@ var anim_windup_duration := 0.001
 var render_landing_timer := 0.0
 var render_landing_impact := 0.0
 var render_last_hop_airborne := false
+var render_takeoff_flap_timer := 0.0
+var render_landing_flap_timer := 0.0
 var render_toxic_recoil_timer := 0.0
 var render_escape_curl_timer := 0.0
 var render_plunge_timer := 0.0
@@ -176,9 +180,11 @@ func apply_creature(next_creature_id: String) -> void:
 	_reset_terrain_profile()
 	flight_time_max = _numeric_stat("flight_time_sec", 0.0)
 	flight_time_remaining = flight_time_max
+	flight_grounded_timer = 0.0
 	flight_toggle_was_pressed = false
 	flight_toggle_just_pressed = false
 	flight_toggle_requires_release = false
+	takeoff_distance_px = 0.0
 	state = CreatureStateScript.State.AIRBORNE if has_movement("always_flying") else CreatureStateScript.State.NORMAL
 	actor_name = String(creature_data.get("name", creature_id))
 	modifiers.clear()
@@ -197,6 +203,8 @@ func apply_creature(next_creature_id: String) -> void:
 	render_landing_timer = 0.0
 	render_landing_impact = 0.0
 	render_last_hop_airborne = false
+	render_takeoff_flap_timer = 0.0
+	render_landing_flap_timer = 0.0
 	render_toxic_recoil_timer = 0.0
 	render_escape_curl_timer = 0.0
 	render_plunge_timer = 0.0
@@ -228,6 +236,8 @@ func _process(delta: float) -> void:
 		return
 	render_flash_timer = maxf(render_flash_timer - delta, 0.0)
 	render_shake_timer = maxf(render_shake_timer - delta, 0.0)
+	render_takeoff_flap_timer = maxf(render_takeoff_flap_timer - delta, 0.0)
+	render_landing_flap_timer = maxf(render_landing_flap_timer - delta, 0.0)
 	render_toxic_recoil_timer = maxf(render_toxic_recoil_timer - delta, 0.0)
 	render_escape_curl_timer = maxf(render_escape_curl_timer - delta, 0.0)
 	render_plunge_timer = maxf(render_plunge_timer - delta, 0.0)
@@ -298,6 +308,16 @@ func begin_render_escape_curl(duration := ESCAPE_CURL_TELL_SEC) -> void:
 
 func begin_render_plunge(duration := PLUNGE_TELL_SEC) -> void:
 	render_plunge_timer = maxf(render_plunge_timer, duration)
+	queue_redraw()
+
+func begin_render_takeoff_flap(duration := TAKEOFF_FLAP_TELL_SEC) -> void:
+	render_takeoff_flap_timer = maxf(render_takeoff_flap_timer, duration)
+	queue_redraw()
+
+func begin_render_landing_flap(duration := LANDING_FLAP_TELL_SEC, impact := 0.9) -> void:
+	render_landing_flap_timer = maxf(render_landing_flap_timer, duration)
+	render_landing_timer = maxf(render_landing_timer, LANDING_TELL_SEC)
+	render_landing_impact = maxf(render_landing_impact, impact)
 	queue_redraw()
 
 func begin_stealth(duration: float, _source: String) -> void:
@@ -373,6 +393,7 @@ func take_damage_event(event: Resource) -> void:
 		state = CreatureStateScript.State.NORMAL
 		flight_grounded_timer = FLIGHT_GROUNDED_LOCKOUT_SEC
 		flight_toggle_requires_release = true
+		begin_render_landing_flap(LANDING_FLAP_TELL_SEC, 1.15)
 		emit_vfx_event("spiked", {"target": self, "position": global_position})
 	if event.source_actor != null or String(event.source_ability) != "":
 		if amount >= 50.0:
@@ -573,6 +594,11 @@ func get_render_motion_state() -> Dictionary:
 	var water_walk_active: bool = get_modifier_value("water_walk", 1.0) > 1.5
 	var backward_dash := dash_timer > 0.0 and dash_velocity.length() > 0.0 and dash_velocity.normalized().dot(-last_aim_direction.normalized()) > 0.55
 	var landing_t := clampf(render_landing_timer / LANDING_TELL_SEC, 0.0, 1.0) if LANDING_TELL_SEC > 0.0 else 0.0
+	var takeoff_charge_t := _takeoff_charge_render_t()
+	var takeoff_flap_t := clampf(render_takeoff_flap_timer / TAKEOFF_FLAP_TELL_SEC, 0.0, 1.0) if TAKEOFF_FLAP_TELL_SEC > 0.0 else 0.0
+	var landing_flap_t := clampf(render_landing_flap_timer / LANDING_FLAP_TELL_SEC, 0.0, 1.0) if LANDING_FLAP_TELL_SEC > 0.0 else 0.0
+	var grounded_lockout_t := clampf(flight_grounded_timer / FLIGHT_GROUNDED_LOCKOUT_SEC, 0.0, 1.0) if FLIGHT_GROUNDED_LOCKOUT_SEC > 0.0 and has_movement("flight") and not has_movement("always_flying") else 0.0
+	var bird_transition_pose := has_movement("flight") and not has_movement("always_flying") and maxf(maxf(takeoff_charge_t, takeoff_flap_t), maxf(landing_flap_t, grounded_lockout_t)) > 0.0
 	var toxic_recoil_t := clampf(render_toxic_recoil_timer / TOXIC_RECOIL_TELL_SEC, 0.0, 1.0) if TOXIC_RECOIL_TELL_SEC > 0.0 else 0.0
 	var escape_curl_t := clampf(render_escape_curl_timer / ESCAPE_CURL_TELL_SEC, 0.0, 1.0) if ESCAPE_CURL_TELL_SEC > 0.0 else 0.0
 	var plunge_t := clampf(render_plunge_timer / PLUNGE_TELL_SEC, 0.0, 1.0) if PLUNGE_TELL_SEC > 0.0 else 0.0
@@ -681,6 +707,11 @@ func get_render_motion_state() -> Dictionary:
 		"perched_pose": state == CreatureStateScript.State.PERCHED,
 		"landing_t": landing_t,
 		"landing_impact": render_landing_impact,
+		"takeoff_charge_t": takeoff_charge_t,
+		"takeoff_flap_t": takeoff_flap_t,
+		"landing_flap_t": landing_flap_t,
+		"grounded_lockout_t": grounded_lockout_t,
+		"bird_transition_pose": bird_transition_pose,
 		"toxic_recoil_t": toxic_recoil_t,
 		"escape_curl_t": escape_curl_t,
 		"plunge_t": plunge_t
@@ -704,6 +735,15 @@ func _low_window_render_t() -> float:
 	if low_window_timer <= 0.0:
 		return 0.0
 	return clampf(low_window_timer / LOW_WINDOW_VISUAL_MAX_SEC, 0.0, 1.0)
+
+func _takeoff_charge_render_t() -> float:
+	if state == CreatureStateScript.State.PERCHED or is_airborne() or flight_time_max <= 0.0 or not has_movement("flight"):
+		return 0.0
+	if flight_grounded_timer > 0.0 or input_frame == null:
+		return 0.0
+	if flight_toggle_requires_release or not input_frame.is_pressed(InputFrameScript.BUTTON_FLIGHT_TOGGLE) or input_frame.move.length() <= 0.0:
+		return 0.0
+	return clampf(takeoff_distance_px / maxf(TAKEOFF_DISTANCE_UNITS * SimConstants.UNIT_PX, 1.0), 0.0, 1.0)
 
 func _visual_height_band(height_units: float) -> String:
 	if height_units >= 1.25:
@@ -803,6 +843,7 @@ func _update_flight(delta: float) -> void:
 			state = CreatureStateScript.State.NORMAL
 			takeoff_distance_px = 0.0
 			flight_toggle_requires_release = true
+			begin_render_landing_flap(LANDING_FLAP_TELL_SEC, 0.85)
 			break_stealth()
 			return
 		flight_time_remaining = maxf(flight_time_remaining - delta, 0.0)
@@ -811,6 +852,7 @@ func _update_flight(delta: float) -> void:
 			state = CreatureStateScript.State.NORMAL
 			flight_grounded_timer = FLIGHT_GROUNDED_LOCKOUT_SEC
 			flight_toggle_requires_release = true
+			begin_render_landing_flap(LANDING_FLAP_TELL_SEC, 1.0)
 			break_stealth()
 		return
 
@@ -854,6 +896,7 @@ func _update_takeoff_charge_from_displacement(displacement_px: float) -> void:
 		state = CreatureStateScript.State.AIRBORNE
 		takeoff_distance_px = 0.0
 		flight_toggle_requires_release = true
+		begin_render_takeoff_flap()
 
 func get_aim_direction() -> Vector2:
 	if input_frame != null and input_frame.aim != Vector2.ZERO:
@@ -1043,6 +1086,7 @@ func _respawn() -> void:
 	flight_toggle_was_pressed = false
 	flight_toggle_just_pressed = false
 	flight_toggle_requires_release = false
+	takeoff_distance_px = 0.0
 	wrong_terrain_seconds = 0.0
 	_reset_terrain_profile()
 	steering_velocity = Vector2.ZERO
@@ -1052,6 +1096,8 @@ func _respawn() -> void:
 	render_landing_timer = 0.0
 	render_landing_impact = 0.0
 	render_last_hop_airborne = false
+	render_takeoff_flap_timer = 0.0
+	render_landing_flap_timer = 0.0
 	render_toxic_recoil_timer = 0.0
 	render_escape_curl_timer = 0.0
 	render_plunge_timer = 0.0

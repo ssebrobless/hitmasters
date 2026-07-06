@@ -3,7 +3,9 @@ extends SceneTree
 const ARENA_SCENE := "res://scenes/Arena.tscn"
 const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 const MovementFeelScript := preload("res://scripts/sim/movement_feel.gd")
+const CreatureScript := preload("res://scripts/sim/creature.gd")
 const CreatureStateScript := preload("res://scripts/sim/creature_state.gd")
+const SimConstants := preload("res://scripts/sim/sim_constants.gd")
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -34,6 +36,7 @@ func _run() -> void:
 	_check_water_profile_overlay(arena, failures)
 	_check_wave4_profile_seeds(failures)
 	_check_render_state_flags(arena, failures)
+	_check_bird_transition_cues(arena, failures)
 	_check_visual_height_profiles(arena, failures)
 
 	print("movement_feel failures=%d" % failures.size())
@@ -580,6 +583,42 @@ func _check_visual_height_profiles(arena: Node, failures: Array[String]) -> void
 			str(roster_profiled)
 		])
 
+func _check_bird_transition_cues(arena: Node, failures: Array[String]) -> void:
+	var actor: Node = arena.player
+	actor.apply_creature("owl")
+	actor.global_position = Vector2(320.0, 320.0)
+	actor.velocity = Vector2.ZERO
+	actor.state = CreatureStateScript.State.NORMAL
+	actor.flight_grounded_timer = 0.0
+	actor.flight_toggle_requires_release = false
+	actor.takeoff_distance_px = CreatureScript.TAKEOFF_DISTANCE_UNITS * SimConstants.UNIT_PX * 0.55
+	actor.set_input_frame(_flight_frame(Vector2.RIGHT))
+	var charge_state: Dictionary = actor.get_render_motion_state()
+	var charge_ok: bool = bool(charge_state.get("bird_transition_pose", false)) and float(charge_state.get("takeoff_charge_t", 0.0)) > 0.5
+	actor._update_takeoff_charge_from_displacement(CreatureScript.TAKEOFF_DISTANCE_UNITS * SimConstants.UNIT_PX * 0.55)
+	var takeoff_state: Dictionary = actor.get_render_motion_state()
+	var takeoff_ok: bool = actor.state == CreatureStateScript.State.AIRBORNE \
+		and bool(takeoff_state.get("bird_transition_pose", false)) \
+		and float(takeoff_state.get("takeoff_flap_t", 0.0)) > 0.9
+	actor.render_takeoff_flap_timer = 0.0
+	actor.flight_time_remaining = 0.0
+	actor.set_input_frame(InputFrameScript.new())
+	actor.tick_sim(SimConstants.TICK_DELTA)
+	var landing_state: Dictionary = actor.get_render_motion_state()
+	var landing_ok: bool = actor.state == CreatureStateScript.State.NORMAL \
+		and bool(landing_state.get("bird_transition_pose", false)) \
+		and float(landing_state.get("landing_flap_t", 0.0)) > 0.9 \
+		and float(landing_state.get("grounded_lockout_t", 0.0)) > 0.9
+	if not charge_ok or not takeoff_ok or not landing_ok:
+		failures.append("bird flight transitions should expose charge, lift flap, landing flare, and grounded-lockout cues; charge=%s takeoff=%s landing=%s state=%s/%s/%s" % [
+			str(charge_ok),
+			str(takeoff_ok),
+			str(landing_ok),
+			str(charge_state),
+			str(takeoff_state),
+			str(landing_state)
+		])
+
 func _all_roster_creatures_have_height_profile(arena: Node) -> bool:
 	var actor: Node = arena.player
 	var roster := [
@@ -596,6 +635,11 @@ func _move_frame(direction: Vector2) -> Resource:
 	var frame := InputFrameScript.new()
 	frame.move = direction
 	frame.aim = Vector2.RIGHT * 100.0
+	return frame
+
+func _flight_frame(direction: Vector2) -> Resource:
+	var frame := _move_frame(direction)
+	frame.set_button(InputFrameScript.BUTTON_FLIGHT_TOGGLE, true)
 	return frame
 
 func _aim_frame(direction: Vector2) -> Resource:

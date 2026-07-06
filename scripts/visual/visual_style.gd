@@ -56,6 +56,10 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 	var air_lift_px := maxf(radius * 0.5, height_units * SimConstants.UNIT_PX) if airborne else 0.0
 	var low_window_t := clampf(float(anim.get("low_window_t", 0.0)), 0.0, 1.0)
 	var readable_air_attack := airborne and low_window_t > 0.0
+	var takeoff_charge_t := clampf(float(anim.get("takeoff_charge_t", 0.0)), 0.0, 1.0)
+	var takeoff_flap_t := clampf(float(anim.get("takeoff_flap_t", 0.0)), 0.0, 1.0)
+	var landing_flap_t := clampf(float(anim.get("landing_flap_t", 0.0)), 0.0, 1.0)
+	var grounded_lockout_t := clampf(float(anim.get("grounded_lockout_t", 0.0)), 0.0, 1.0)
 
 	var attack_t := float(anim.get("attack_t", -1.0))
 	var windup_t := float(anim.get("windup_t", -1.0))
@@ -91,12 +95,43 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 
 	var origin: Vector2 = anim.get("origin", Vector2.ZERO)
 	var shake_offset: Vector2 = origin + anim.get("shake_offset", Vector2.ZERO)
+	if takeoff_charge_t > 0.0:
+		var charge_color := _with_alpha(Color(0.74, 0.9, 1.0, 0.16 + takeoff_charge_t * 0.22), alpha)
+		var charge_radius := visual_radius * (0.92 + takeoff_charge_t * 0.38)
+		canvas.draw_set_transform(shake_offset, 0.0, Vector2.ONE)
+		canvas.draw_arc(Vector2.ZERO, charge_radius, -PI * 0.84, -PI * 0.16, 22, charge_color, maxf(1.5, visual_radius * 0.08))
+		canvas.draw_arc(Vector2.ZERO, charge_radius, PI * 0.16, PI * 0.84, 22, charge_color, maxf(1.5, visual_radius * 0.08))
+		for wing_side: float in [-1.0, 1.0]:
+			canvas.draw_line(
+				side * wing_side * visual_radius * (0.72 + takeoff_charge_t * 0.18) - forward * visual_radius * 0.1,
+				side * wing_side * visual_radius * (1.12 + takeoff_charge_t * 0.34) - forward * visual_radius * (0.38 + takeoff_charge_t * 0.18),
+				Color(charge_color.r, charge_color.g, charge_color.b, charge_color.a * 0.7),
+				maxf(1.2, visual_radius * 0.06)
+			)
+	if grounded_lockout_t > 0.0 and not airborne:
+		var lock_color := _with_alpha(Color(1.0, 0.55, 0.25, 0.12 + grounded_lockout_t * 0.18), alpha)
+		var lock_radius := visual_radius * (1.2 + (1.0 - grounded_lockout_t) * 0.12)
+		canvas.draw_set_transform(shake_offset, 0.0, Vector2.ONE)
+		for segment: int in 4:
+			var start_angle := float(segment) * PI * 0.5 + PI * 0.08
+			canvas.draw_arc(Vector2.ZERO, lock_radius, start_angle, start_angle + PI * 0.27, 10, lock_color, maxf(1.6, visual_radius * 0.08))
 	if airborne:
 		var height_ratio := clampf(air_lift_px / maxf(radius, 1.0), 0.0, 2.4)
 		var shadow_alpha := clampf(0.32 - height_ratio * 0.07 + low_window_t * 0.18, 0.12, 0.46)
 		var shadow_radius := visual_radius * clampf(0.82 + height_ratio * 0.08 + low_window_t * 0.18, 0.75, 1.22)
 		canvas.draw_set_transform(shake_offset, 0.0, Vector2.ONE)
 		canvas.draw_circle(Vector2(0.0, visual_radius * 0.55), shadow_radius, _with_alpha(Color(0.0, 0.0, 0.0, shadow_alpha), alpha))
+		if takeoff_flap_t > 0.0:
+			var lift_color := _with_alpha(Color(0.78, 0.9, 1.0, 0.24 * takeoff_flap_t), alpha)
+			var lift_radius := visual_radius * (1.05 + (1.0 - takeoff_flap_t) * 0.42)
+			canvas.draw_arc(Vector2.ZERO, lift_radius, 0.0, TAU, 42, lift_color, maxf(2.0, visual_radius * 0.1))
+			for wing_side: float in [-1.0, 1.0]:
+				canvas.draw_line(
+					side * wing_side * visual_radius * 0.92,
+					side * wing_side * visual_radius * (1.55 + takeoff_flap_t * 0.25) + Vector2(0.0, visual_radius * (0.24 + takeoff_flap_t * 0.2)),
+					Color(lift_color.r, lift_color.g, lift_color.b, lift_color.a * 0.7),
+					maxf(1.4, visual_radius * 0.07)
+				)
 		if readable_air_attack:
 			var cue_color := _with_alpha(Color(1.0, 0.84, 0.34, 0.54 * low_window_t), alpha)
 			var cue_radius := visual_radius * (1.12 + low_window_t * 0.22)
@@ -115,9 +150,10 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 				_with_alpha(Color(0.72, 0.84, 0.95, 0.18 + low_window_t * 0.2), alpha),
 				maxf(1.0, visual_radius * (0.05 + low_window_t * 0.03))
 			)
-	elif landing_t > 0.0 and landing_impact > 0.0:
-		var thump_color := _with_alpha(Color(0.58, 0.64, 0.42, 0.24 * landing_t * landing_impact), alpha)
-		var thump_radius := visual_radius * (1.05 + (1.0 - landing_t) * 0.45 * landing_impact)
+	elif (landing_t > 0.0 and landing_impact > 0.0) or landing_flap_t > 0.0:
+		var thump_strength := maxf(landing_t * landing_impact, landing_flap_t * 0.85)
+		var thump_color := _with_alpha(Color(0.58, 0.64, 0.42, 0.24 * thump_strength), alpha)
+		var thump_radius := visual_radius * (1.05 + (1.0 - landing_t) * 0.45 * maxf(landing_impact, landing_flap_t))
 		canvas.draw_set_transform(shake_offset, 0.0, Vector2.ONE)
 		canvas.draw_arc(Vector2.ZERO, thump_radius, 0.0, TAU, 40, thump_color, maxf(2.0, visual_radius * 0.12))
 		canvas.draw_arc(Vector2.ZERO, thump_radius * 0.72, 0.0, TAU, 32, Color(thump_color.r, thump_color.g, thump_color.b, thump_color.a * 0.6), maxf(1.5, visual_radius * 0.08))
@@ -615,6 +651,10 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var owl_glide_intensity := clampf(float(anim.get("owl_glide_intensity", 0.0)), 0.0, 1.25)
 	var owl_silent := String(anim.get("creature_id", "")) == "owl" and bool(anim.get("owl_silent_flight_pose", false))
 	var low_window_t := clampf(float(anim.get("low_window_t", 0.0)), 0.0, 1.0)
+	var takeoff_charge_t := clampf(float(anim.get("takeoff_charge_t", 0.0)), 0.0, 1.0)
+	var takeoff_flap_t := clampf(float(anim.get("takeoff_flap_t", 0.0)), 0.0, 1.0)
+	var landing_flap_t := clampf(float(anim.get("landing_flap_t", 0.0)), 0.0, 1.0)
+	var grounded_lockout_t := clampf(float(anim.get("grounded_lockout_t", 0.0)), 0.0, 1.0)
 
 	# Tail fan.
 	canvas.draw_colored_polygon(PackedVector2Array([
@@ -627,11 +667,14 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 
 	if airborne:
 		# Extended flapping wings.
-		var flap := sin(Time.get_ticks_msec() * 0.012 * wingbeat + walk_phase * perch_flutter) * (0.12 if owl_glide else 0.35)
+		var flap_amp := (0.12 if owl_glide else 0.35) + takeoff_flap_t * 0.26 + landing_flap_t * 0.16
+		var flap := sin(Time.get_ticks_msec() * 0.012 * wingbeat + walk_phase * perch_flutter) * flap_amp
 		for wing_side: float in [-1.0, 1.0]:
 			var glide_width := 0.52 * owl_glide_intensity if owl_glide else 0.0
 			var glide_forward := -0.18 * owl_glide_intensity if owl_glide else 0.0
-			var wing_tip := side * wing_side * radius * (1.9 + glide_width - plunge_t * 0.45 - low_window_t * 0.32) + forward * radius * (0.1 + glide_forward + flap * wing_side * wing_side + plunge_t * 0.32 + low_window_t * 0.28)
+			var transition_width := takeoff_flap_t * 0.28 + landing_flap_t * 0.34
+			var transition_forward := takeoff_flap_t * -0.18 + landing_flap_t * 0.18
+			var wing_tip := side * wing_side * radius * (1.9 + glide_width + transition_width - plunge_t * 0.45 - low_window_t * 0.32) + forward * radius * (0.1 + glide_forward + transition_forward + flap * wing_side * wing_side + plunge_t * 0.32 + low_window_t * 0.28)
 			canvas.draw_colored_polygon(PackedVector2Array([
 				forward * radius * 0.35 + side * wing_side * radius * 0.3,
 				wing_tip + forward * radius * (0.25 + flap),
@@ -639,6 +682,9 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 				-forward * radius * 0.45 + side * wing_side * radius * 0.3
 			]), Color(dark.r, dark.g, dark.b, 0.72 if owl_silent else 1.0))
 			canvas.draw_line(forward * radius * 0.2 + side * wing_side * radius * 0.4, wing_tip, main.lightened(0.1), 2.0)
+			if takeoff_flap_t > 0.0 or landing_flap_t > 0.0:
+				var transition_color := Color(breast.r, breast.g, breast.b, 0.22 + maxf(takeoff_flap_t, landing_flap_t) * 0.16)
+				canvas.draw_line(forward * radius * 0.02 + side * wing_side * radius * 0.76, wing_tip - forward * radius * 0.22, transition_color, 1.3)
 			if owl_glide:
 				canvas.draw_line(forward * radius * 0.05 + side * wing_side * radius * 0.62, wing_tip - forward * radius * 0.12, Color(breast.r, breast.g, breast.b, 0.28), 1.0)
 		if owl_silent:
@@ -653,11 +699,19 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 		# Folded wings hugging the body.
 		for wing_side: float in [-1.0, 1.0]:
 			var perch_tuck := 0.18 if perched_pose else 0.0
+			var preflight_spread := takeoff_charge_t * 0.5 + landing_flap_t * 0.32
 			canvas.draw_colored_polygon(PackedVector2Array([
 				forward * radius * 0.4 + side * wing_side * radius * 0.35,
-				-forward * radius * (0.9 - perch_tuck) + side * wing_side * radius * (0.55 - perch_tuck),
-				-forward * radius * 0.2 + side * wing_side * radius * (0.7 - perch_tuck)
+				-forward * radius * (0.9 - perch_tuck + preflight_spread * 0.16) + side * wing_side * radius * (0.55 - perch_tuck + preflight_spread * 0.72),
+				-forward * radius * (0.2 + preflight_spread * 0.08) + side * wing_side * radius * (0.7 - perch_tuck + preflight_spread * 0.88)
 			]), dark.lightened(0.06))
+			if grounded_lockout_t > 0.0:
+				canvas.draw_line(
+					side * wing_side * radius * 0.48 - forward * radius * 0.18,
+					side * wing_side * radius * (0.78 + grounded_lockout_t * 0.2) - forward * radius * 0.72,
+					Color(1.0, 0.55, 0.25, 0.18 + grounded_lockout_t * 0.16),
+					maxf(radius * 0.08, 1.3)
+				)
 
 	# Body.
 	var body_points := PackedVector2Array()
