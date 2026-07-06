@@ -519,6 +519,8 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	var tail_lost_pose := is_newt and bool(anim.get("tail_lost_pose", false))
 	var beaver_swim := is_beaver and bool(anim.get("beaver_swim_pose", false))
 	var beaver_swim_intensity := clampf(float(anim.get("beaver_swim_intensity", 0.0)), 0.0, 1.25)
+	var beaver_lumber := is_beaver and bool(anim.get("beaver_lumber_pose", false))
+	var beaver_lumber_intensity := clampf(float(anim.get("beaver_lumber_intensity", 0.0)), 0.0, 1.25)
 	var mink_bound := is_mink and bool(anim.get("mink_bound_pose", false))
 	var mink_bound_intensity := clampf(float(anim.get("mink_bound_intensity", 0.0)), 0.0, 1.25)
 	var mink_swim := is_mink and bool(anim.get("mink_swim_pose", false))
@@ -544,6 +546,10 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	if beaver_swim:
 		body_wiggle += 0.16 * beaver_swim_intensity
 		tail_wave += 0.58 * beaver_swim_intensity
+	if beaver_lumber:
+		stretch = maxf(0.94, stretch - 0.05 * beaver_lumber_intensity)
+		body_wiggle += 0.08 * beaver_lumber_intensity
+		tail_wave += 0.18 * beaver_lumber_intensity
 	if mink_bound:
 		stretch += 0.12 * mink_bound_intensity
 		body_wiggle += 0.22 * mink_bound_intensity
@@ -573,6 +579,7 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	var slick_tint := Color(0.86, 0.58, 0.32, 0.20 + 0.10 * slick_crawl_intensity)
 	var newt_water := Color(0.38, 0.64, 0.78, 0.18 + 0.12 * newt_swim_intensity)
 	var beaver_water := Color(0.42, 0.68, 0.82, 0.20 + 0.12 * beaver_swim_intensity)
+	var beaver_dust := Color(0.42, 0.32, 0.22, 0.16 + 0.08 * beaver_lumber_intensity)
 	var mink_dust := Color(0.72, 0.66, 0.56, 0.18 + 0.08 * mink_bound_intensity)
 	var mink_water := Color(0.38, 0.66, 0.82, 0.20 + 0.12 * mink_swim_intensity)
 	var otter_water := Color(0.36, 0.66, 0.82, 0.22 + 0.12 * otter_motion_intensity)
@@ -589,6 +596,11 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 		var shadow_center := -forward * radius * (0.18 + 0.12 * bound_phase)
 		canvas.draw_arc(shadow_center, radius * (0.74 + 0.1 * mink_bound_intensity), PI * 0.08, PI * 0.92, 14, mink_dust, maxf(radius * 0.07, 1.4))
 		canvas.draw_line(-forward * radius * 0.72, -forward * radius * (1.35 + 0.26 * mink_bound_intensity), Color(mink_dust.r, mink_dust.g, mink_dust.b, mink_dust.a * 0.75), maxf(radius * 0.06, 1.2))
+	if beaver_lumber:
+		var stomp_phase := sin(walk_phase * 0.72)
+		var drag_center := -forward * radius * (0.72 + 0.08 * stomp_phase)
+		canvas.draw_arc(drag_center, radius * (0.82 + 0.08 * beaver_lumber_intensity), PI * 0.08, PI * 0.92, 14, beaver_dust, maxf(radius * 0.08, 1.4))
+		canvas.draw_line(-forward * radius * 0.86, -forward * radius * (1.52 + 0.18 * beaver_lumber_intensity), Color(beaver_dust.r, beaver_dust.g, beaver_dust.b, beaver_dust.a * 0.78), maxf(radius * 0.08, 1.3))
 	if mink_swim:
 		for wake_side: float in [-1.0, 1.0]:
 			var wake_start := -forward * radius * 0.45 + side * wake_side * radius * 0.38
@@ -639,6 +651,8 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 				for wake_side: float in [-1.0, 1.0]:
 					var wake_start := tail_base + tail_direction * radius * 0.65 + side * wake_side * radius * 0.24
 					canvas.draw_line(wake_start, wake_start + tail_direction * radius * (0.8 + 0.28 * beaver_swim_intensity) + side * wake_side * radius * 0.28, beaver_water, maxf(radius * 0.08, 1.5))
+			if beaver_lumber:
+				tail_direction = (-forward).rotated(sin(walk_phase * 0.72) * 0.12 * beaver_lumber_intensity)
 			var paddle_center := tail_base + tail_direction * radius * (1.0 + 0.18 * beaver_swim_intensity)
 			var paddle_points := PackedVector2Array()
 			for i in 12:
@@ -646,6 +660,8 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 				paddle_points.append(paddle_center + tail_direction * cos(paddle_angle) * radius * (0.7 + 0.08 * beaver_swim_intensity) + side * sin(paddle_angle) * radius * (0.42 + 0.08 * beaver_swim_intensity))
 			canvas.draw_colored_polygon(paddle_points, Color(0.16, 0.12, 0.1))
 			canvas.draw_line(paddle_center - side * radius * 0.3, paddle_center + side * radius * 0.3, Color(0.1, 0.08, 0.07), 1.5)
+			if beaver_lumber:
+				canvas.draw_line(paddle_center, paddle_center - forward * radius * (0.38 + 0.08 * beaver_lumber_intensity), Color(beaver_dust.r, beaver_dust.g, beaver_dust.b, beaver_dust.a * 0.8), maxf(radius * 0.06, 1.1))
 		"fin":
 			if tail_lost_pose:
 				canvas.draw_circle(tail_base + tail_direction * radius * 0.25, radius * 0.2, fur_dark.lightened(0.15))
@@ -684,6 +700,9 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			if mink_swim:
 				paw_step += sin(walk_phase * 1.6 + PI * float(paw_index)) * radius * 0.1 * mink_swim_intensity
 				paw_reach += radius * 0.06 * mink_swim_intensity
+			if beaver_lumber:
+				paw_step += sin(walk_phase * 0.72 + PI * float(paw_index)) * radius * 0.05 * beaver_lumber_intensity
+				paw_reach += radius * 0.05 * beaver_lumber_intensity
 			var paw := spine[2].lerp(spine[5], paw_t) + side * paw_side * paw_reach + forward * paw_step
 			canvas.draw_circle(paw, radius * (0.09 if slick_crawl else 0.13), fur_dark)
 			if slick_crawl:
@@ -700,6 +719,8 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 				canvas.draw_circle(paw + side * paw_side * radius * 0.08, maxf(radius * (0.08 + 0.03 * surface_wake_intensity), 1.2), water_tint.lightened(0.2))
 			if beaver_swim:
 				canvas.draw_circle(paw - forward * radius * 0.1, maxf(radius * (0.06 + 0.03 * beaver_swim_intensity), 1.1), beaver_water.lightened(0.2))
+			if beaver_lumber:
+				canvas.draw_arc(paw - forward * radius * 0.1, radius * (0.2 + 0.04 * beaver_lumber_intensity), PI * 0.1, PI * 0.9, 8, beaver_dust, maxf(radius * 0.05, 1.0))
 			if otter_swim:
 				canvas.draw_circle(paw - forward * radius * 0.12, maxf(radius * (0.05 + 0.03 * otter_motion_intensity), 1.0), otter_water.lightened(0.2))
 
