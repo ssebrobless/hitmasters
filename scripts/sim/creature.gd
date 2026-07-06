@@ -14,6 +14,7 @@ const WaterSnakeKitScript := preload("res://scripts/sim/kits/water_snake.gd")
 const AlligatorKitScript := preload("res://scripts/sim/kits/alligator.gd")
 const WolfSpiderKitScript := preload("res://scripts/sim/kits/wolf_spider.gd")
 const FireflyKitScript := preload("res://scripts/sim/kits/firefly.gd")
+const MosquitoSwarmKitScript := preload("res://scripts/sim/kits/mosquito_swarm.gd")
 const FrogKitScript := preload("res://scripts/sim/kits/chorus_frog.gd")
 const NewtKitScript := preload("res://scripts/sim/kits/newt.gd")
 const MinkKitScript := preload("res://scripts/sim/kits/mink.gd")
@@ -852,6 +853,8 @@ func _modified_incoming_damage(event: Resource) -> float:
 			amount *= 1.0 - _passive_percent("Fearless", 0.0)
 		if source_creature_id == "mink" and max_health > source_max_health and source_actor.has_method("get_passive_percent"):
 			amount *= 1.0 + source_actor.get_passive_percent("Fearless", 1, 0.0)
+	if kit != null and kit.has_method("modify_incoming_damage"):
+		amount = kit.modify_incoming_damage(self, event, amount)
 	return amount
 
 func _modifier_value(key: String, fallback: float) -> float:
@@ -917,6 +920,8 @@ func _make_kit() -> RefCounted:
 			return WolfSpiderKitScript.new()
 		"firefly":
 			return FireflyKitScript.new()
+		"mosquito_swarm":
+			return MosquitoSwarmKitScript.new()
 		"chorus_frog":
 			return FrogKitScript.new()
 		"newt":

@@ -19,7 +19,8 @@ const SLICE_CREATURE_IDS := [
 	"water_snake",
 	"alligator",
 	"wolf_spider",
-	"firefly"
+	"firefly",
+	"mosquito_swarm"
 ]
 const FAMILY_LABELS := {
 	"amphibian": "Amphibians",
