@@ -45,6 +45,19 @@ const LANDING_TELL_SEC := 0.16
 const TOXIC_RECOIL_TELL_SEC := 0.22
 const ESCAPE_CURL_TELL_SEC := 0.24
 const PLUNGE_TELL_SEC := 0.20
+const VISUAL_SIZE_PROFILES := {
+	"great_blue_heron": {"model_scale": 1.22, "height_units": 1.45, "flight_height_units": 1.65, "height_class": "tall_wader"},
+	"owl": {"model_scale": 1.06, "height_units": 0.85, "flight_height_units": 1.35, "height_class": "raptor"},
+	"kingfisher": {"model_scale": 0.95, "height_units": 0.65, "flight_height_units": 1.15, "height_class": "small_diver"},
+	"duck": {"model_scale": 1.0, "height_units": 0.45, "flight_height_units": 0.95, "height_class": "low_paddler"},
+	"firefly": {"model_scale": 0.78, "height_units": 0.55, "flight_height_units": 0.9, "height_class": "tiny_hoverer"},
+	"mosquito_swarm": {"model_scale": 1.0, "height_units": 0.65, "flight_height_units": 0.85, "height_class": "swarm"},
+	"alligator": {"model_scale": 1.15, "height_units": 0.35, "height_class": "long_low"},
+	"snapping_turtle": {"model_scale": 1.0, "height_units": 0.28, "height_class": "heavy_low"},
+	"bog_turtle": {"model_scale": 0.82, "height_units": 0.2, "height_class": "tiny_low"},
+	"cane_toad": {"model_scale": 1.05, "height_units": 0.25, "height_class": "squat"},
+	"water_shrew": {"model_scale": 0.85, "height_units": 0.22, "height_class": "tiny_low"}
+}
 
 var arena: Node = null
 var terrain_map: RefCounted = null
@@ -581,9 +594,13 @@ func get_render_motion_state() -> Dictionary:
 	var leech_undulate := creature_id == "leech" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var leech_inchworm := creature_id == "leech" and surface != EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var leech_motion_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if leech_undulate or leech_inchworm else 0.0
+	var visual_size_profile := _visual_size_profile()
 	return {
 		"creature_id": creature_id,
 		"terrain_surface": surface,
+		"model_scale": float(visual_size_profile.get("model_scale", 1.0)),
+		"height_units": _visual_height_units(visual_size_profile),
+		"height_class": String(visual_size_profile.get("height_class", "mid")),
 		"in_water": surface == EnvironmentProfileScript.SURFACE_WATER,
 		"surface_walk": surface_walk,
 		"surface_wake_intensity": wake_intensity,
@@ -639,6 +656,17 @@ func get_render_motion_state() -> Dictionary:
 		"escape_curl_t": escape_curl_t,
 		"plunge_t": plunge_t
 	}
+
+func _visual_size_profile() -> Dictionary:
+	return VISUAL_SIZE_PROFILES.get(creature_id, {})
+
+func _visual_height_units(profile: Dictionary) -> float:
+	var base_height := float(profile.get("height_units", 0.45))
+	if state == CreatureStateScript.State.PERCHED:
+		return maxf(base_height, float(profile.get("perch_height_units", 1.0)))
+	if is_airborne():
+		return maxf(base_height, float(profile.get("flight_height_units", base_height + 0.45)))
+	return base_height
 
 func get_swim_ratio() -> float:
 	if swim_time_max <= 0.0:

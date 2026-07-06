@@ -1,8 +1,10 @@
 extends RefCounted
 
 # Creature rendering: shared body-base archetypes reskinned per creature.
-# Every dimension derives from the roster footprint radius so the visual
-# silhouette stays honest to the hitbox.
+# Combat footprint remains the source of truth; render scale/height metadata
+# can adjust silhouettes for readability without changing collision.
+
+const SimConstants := preload("res://scripts/sim/sim_constants.gd")
 
 static func team_color(team: int) -> Color:
 	return Color(0.25, 0.65, 1.0) if team == 0 else Color(1.0, 0.28, 0.25)
@@ -48,6 +50,10 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		forward = Vector2.RIGHT
 	var outline := _with_alpha(team_color(team), alpha)
 	var skin: Dictionary = SKINS.get(creature_id, {})
+	var model_scale := clampf(float(anim.get("model_scale", 1.0)), 0.72, 1.35)
+	var visual_radius := maxf(radius * model_scale, radius * 0.5)
+	var height_units := maxf(float(anim.get("height_units", 0.45)), 0.0)
+	var air_lift_px := maxf(radius * 0.5, height_units * SimConstants.UNIT_PX) if airborne else 0.0
 
 	var attack_t := float(anim.get("attack_t", -1.0))
 	var windup_t := float(anim.get("windup_t", -1.0))
@@ -56,7 +62,7 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 	var attack_aim: Vector2 = anim.get("attack_aim", forward)
 	if attack_aim == Vector2.ZERO:
 		attack_aim = forward
-	var attack_reach := float(anim.get("attack_reach", radius * 1.6))
+	var attack_reach := float(anim.get("attack_reach", visual_radius * 1.6))
 	var off_balance := bool(anim.get("off_balance_pose", false))
 	var landing_t := clampf(float(anim.get("landing_t", 0.0)), 0.0, 1.0)
 	var landing_impact := clampf(float(anim.get("landing_impact", 0.0)), 0.0, 1.5)
@@ -66,11 +72,11 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 	var lunge_scale := float(skin.get("lunge_scale", 1.0))
 	if attack_t >= 0.0:
 		strike = _strike_curve(attack_t)
-		body_offset = attack_aim.normalized() * maxf(radius * 0.8, 8.0) * strike * lunge_scale
+		body_offset = attack_aim.normalized() * maxf(visual_radius * 0.8, 8.0) * strike * lunge_scale
 	elif windup_t >= 0.0:
-		body_offset = -forward * maxf(radius * 0.4, 6.0) * windup_t * lunge_scale
+		body_offset = -forward * maxf(visual_radius * 0.4, 6.0) * windup_t * lunge_scale
 	elif off_balance:
-		body_offset = -forward * maxf(radius * 0.18, 3.0) + Vector2(-forward.y, forward.x) * maxf(radius * 0.12, 2.0)
+		body_offset = -forward * maxf(visual_radius * 0.18, 3.0) + Vector2(-forward.y, forward.x) * maxf(visual_radius * 0.12, 2.0)
 
 	var rock := 0.0
 	if moving and attack_t < 0.0:
@@ -84,55 +90,67 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 	var origin: Vector2 = anim.get("origin", Vector2.ZERO)
 	var shake_offset: Vector2 = origin + anim.get("shake_offset", Vector2.ZERO)
 	if airborne:
+		var height_ratio := clampf(air_lift_px / maxf(radius, 1.0), 0.0, 2.4)
+		var shadow_alpha := clampf(0.32 - height_ratio * 0.07, 0.12, 0.3)
+		var shadow_radius := visual_radius * clampf(0.82 + height_ratio * 0.08, 0.75, 1.02)
 		canvas.draw_set_transform(shake_offset, 0.0, Vector2.ONE)
-		canvas.draw_circle(Vector2(0.0, radius * 0.55), radius * 0.8, _with_alpha(Color(0.0, 0.0, 0.0, 0.3), alpha))
+		canvas.draw_circle(Vector2(0.0, visual_radius * 0.55), shadow_radius, _with_alpha(Color(0.0, 0.0, 0.0, shadow_alpha), alpha))
+		if height_units >= 0.75:
+			canvas.draw_line(
+				Vector2.ZERO,
+				Vector2(0.0, -air_lift_px + visual_radius * 0.22),
+				_with_alpha(Color(0.72, 0.84, 0.95, 0.18), alpha),
+				maxf(1.0, visual_radius * 0.05)
+			)
 	elif landing_t > 0.0 and landing_impact > 0.0:
 		var thump_color := _with_alpha(Color(0.58, 0.64, 0.42, 0.24 * landing_t * landing_impact), alpha)
-		var thump_radius := radius * (1.05 + (1.0 - landing_t) * 0.45 * landing_impact)
+		var thump_radius := visual_radius * (1.05 + (1.0 - landing_t) * 0.45 * landing_impact)
 		canvas.draw_set_transform(shake_offset, 0.0, Vector2.ONE)
-		canvas.draw_arc(Vector2.ZERO, thump_radius, 0.0, TAU, 40, thump_color, maxf(2.0, radius * 0.12))
-		canvas.draw_arc(Vector2.ZERO, thump_radius * 0.72, 0.0, TAU, 32, Color(thump_color.r, thump_color.g, thump_color.b, thump_color.a * 0.6), maxf(1.5, radius * 0.08))
-	canvas.draw_set_transform(shake_offset + body_offset + movement_bob + (Vector2(0.0, -radius * 0.5) if airborne else Vector2.ZERO), 0.0, Vector2.ONE)
+		canvas.draw_arc(Vector2.ZERO, thump_radius, 0.0, TAU, 40, thump_color, maxf(2.0, visual_radius * 0.12))
+		canvas.draw_arc(Vector2.ZERO, thump_radius * 0.72, 0.0, TAU, 32, Color(thump_color.r, thump_color.g, thump_color.b, thump_color.a * 0.6), maxf(1.5, visual_radius * 0.08))
+	canvas.draw_set_transform(shake_offset + body_offset + movement_bob + (Vector2(0.0, -air_lift_px) if airborne else Vector2.ZERO), 0.0, Vector2.ONE)
 
-	canvas.draw_arc(Vector2.ZERO, radius + 3.0, 0.0, TAU, 40, outline, 2.5)
+	if absf(visual_radius - radius) > 1.0:
+		canvas.draw_arc(Vector2.ZERO, radius + 2.0, 0.0, TAU, 40, Color(outline.r, outline.g, outline.b, outline.a * 0.45), 1.5)
+	canvas.draw_arc(Vector2.ZERO, visual_radius + 3.0, 0.0, TAU, 40, outline, 2.5)
 
 	match String(skin.get("base", "blob")):
 		"frog":
-			_base_frog(canvas, radius, rocked_forward, side, skin, walk_phase, moving, anim)
+			_base_frog(canvas, visual_radius, rocked_forward, side, skin, walk_phase, moving, anim)
 		"turtle":
-			_base_turtle(canvas, radius, rocked_forward, side, skin, walk_phase, moving, windup_t, strike, attack_aim.normalized(), attack_reach, anim)
+			_base_turtle(canvas, visual_radius, rocked_forward, side, skin, walk_phase, moving, windup_t, strike, attack_aim.normalized(), attack_reach, anim)
 		"mustelid":
-			_base_mustelid(canvas, radius, rocked_forward, side, skin, walk_phase, moving, strike, anim)
+			_base_mustelid(canvas, visual_radius, rocked_forward, side, skin, walk_phase, moving, strike, anim)
 		"bird":
-			_base_bird(canvas, radius, rocked_forward, side, skin, walk_phase, moving, airborne, anim)
+			_base_bird(canvas, visual_radius, rocked_forward, side, skin, walk_phase, moving, airborne, anim)
 		"serpent":
-			_base_serpent(canvas, radius, rocked_forward, side, skin, walk_phase, moving, anim)
+			_base_serpent(canvas, visual_radius, rocked_forward, side, skin, walk_phase, moving, anim)
 		"croc":
-			_base_croc(canvas, radius, rocked_forward, side, skin, walk_phase, moving, anim)
+			_base_croc(canvas, visual_radius, rocked_forward, side, skin, walk_phase, moving, anim)
 		"crustacean":
-			_base_crustacean(canvas, radius, rocked_forward, side, skin, walk_phase, moving, strike, anim)
+			_base_crustacean(canvas, visual_radius, rocked_forward, side, skin, walk_phase, moving, strike, anim)
 		"spider":
-			_base_spider(canvas, radius, rocked_forward, side, skin, walk_phase, moving, anim)
+			_base_spider(canvas, visual_radius, rocked_forward, side, skin, walk_phase, moving, anim)
 		"swarm":
-			_base_swarm(canvas, radius, skin, walk_phase, moving, anim)
+			_base_swarm(canvas, visual_radius, skin, walk_phase, moving, anim)
 		"cluster":
-			_base_cluster(canvas, radius, rocked_forward, side, skin, walk_phase, anim)
+			_base_cluster(canvas, visual_radius, rocked_forward, side, skin, walk_phase, anim)
 		"bug":
-			_base_bug(canvas, radius, rocked_forward, side, skin, walk_phase, moving, anim)
+			_base_bug(canvas, visual_radius, rocked_forward, side, skin, walk_phase, moving, anim)
 		_:
-			canvas.draw_circle(Vector2.ZERO, radius + 2.0, _with_alpha(Color(0.05, 0.06, 0.06), alpha))
-			canvas.draw_circle(Vector2.ZERO, radius, _with_alpha(creature_color(creature_id), alpha))
+			canvas.draw_circle(Vector2.ZERO, visual_radius + 2.0, _with_alpha(Color(0.05, 0.06, 0.06), alpha))
+			canvas.draw_circle(Vector2.ZERO, visual_radius, _with_alpha(creature_color(creature_id), alpha))
 
 	if strike > 0.0:
 		match String(skin.get("strike", "")):
 			"tongue":
-				_strike_tongue(canvas, radius, attack_aim.normalized(), attack_reach, strike)
+				_strike_tongue(canvas, visual_radius, attack_aim.normalized(), attack_reach, strike)
 
 	if flash_alpha > 0.0:
 		var flash_mult := clampf(float(anim.get("flash_region_mult", 1.0)), 0.75, 1.35)
 		var flash_color := _region_flash_color(flash_mult)
 		flash_color.a = clampf(flash_alpha, 0.0, 1.0) * 0.85
-		canvas.draw_circle(Vector2.ZERO, radius + 3.0, flash_color)
+		canvas.draw_circle(Vector2.ZERO, visual_radius + 3.0, flash_color)
 	canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 static func _region_flash_color(region_mult: float) -> Color:

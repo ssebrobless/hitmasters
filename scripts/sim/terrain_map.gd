@@ -25,14 +25,13 @@ var wave_minion_offsets: Array[Vector2] = []
 var objective_position := Vector2.ZERO
 var objective_radius := 0.0
 var hut_positions := {}
-var food_spawn_points: Array[Dictionary] = []
+var food_spawn_points: Array = []
+var animal_zones: Array = []
+var environmental_obstacles: Array = []
 
 func configure(next_mode: String) -> void:
 	mode = next_mode
-	if mode == "1v1" or mode == "Hero Lab":
-		_configure_1v1()
-	else:
-		_configure_3v3()
+	_configure_unified_map()
 	_rebuild_perch_anchors()
 
 func get_zone_at(point: Vector2) -> String:
@@ -82,13 +81,117 @@ func get_team_habitat_rect(team: int) -> Rect2:
 	var rects := get_rects(habitat_zone)
 	return rects[0] if not rects.is_empty() else Rect2()
 
-func get_food_spawn_points() -> Array[Dictionary]:
+func get_food_spawn_points() -> Array:
 	return food_spawn_points.duplicate(true)
+
+func get_animal_zones() -> Array:
+	return animal_zones.duplicate(true)
+
+func get_environmental_obstacles() -> Array:
+	return environmental_obstacles.duplicate(true)
 
 func _rebuild_perch_anchors() -> void:
 	perch_anchors.clear()
 	for rect: Rect2 in get_cover_rects():
 		perch_anchors.append(rect.get_center())
+
+func _configure_unified_map() -> void:
+	var unit := SimConstants.UNIT_PX
+	arena_rect = _rect_units(-240.0, -85.0, 480.0, 170.0)
+	var central_shallow_rects: Array = [
+		_rect_units(-22.0, -85.0, 12.0, 37.0),
+		_rect_units(10.0, -85.0, 12.0, 37.0),
+		_rect_units(-22.0, -35.0, 12.0, 83.0),
+		_rect_units(10.0, -35.0, 12.0, 83.0),
+		_rect_units(-22.0, 61.0, 12.0, 24.0),
+		_rect_units(10.0, 61.0, 12.0, 24.0)
+	]
+	var central_water_rects: Array = [
+		_rect_units(-10.0, -85.0, 20.0, 37.0),
+		_rect_units(-10.0, -35.0, 20.0, 83.0),
+		_rect_units(-10.0, 61.0, 20.0, 24.0)
+	]
+	var blue_stream_shallow_rects: Array = [
+		_rect_units(-236.0, 16.0, 36.0, 24.0),
+		_rect_units(-228.0, 21.0, 42.0, 18.0),
+		_rect_units(-199.0, 31.0, 44.0, 19.0),
+		_rect_units(-181.0, 39.0, 74.0, 20.0),
+		_rect_units(-123.0, 50.0, 82.0, 20.0),
+		_rect_units(-59.0, 39.0, 32.0, 26.0),
+		_rect_units(-55.0, 20.0, 28.0, 43.0),
+		_rect_units(-45.0, 13.0, 40.0, 22.0)
+	]
+	var blue_stream_water_rects: Array = [
+		_rect_units(-232.0, 20.0, 24.0, 16.0),
+		_rect_units(-222.0, 27.0, 32.0, 8.0),
+		_rect_units(-194.0, 36.0, 34.0, 9.0),
+		_rect_units(-176.0, 44.0, 66.0, 10.0),
+		_rect_units(-118.0, 55.0, 72.0, 10.0),
+		_rect_units(-54.0, 46.0, 22.0, 14.0),
+		_rect_units(-50.0, 25.0, 18.0, 35.0),
+		_rect_units(-40.0, 18.0, 30.0, 12.0)
+	]
+	var blue_zone_shallow_rects: Array = [
+		_rect_units(-149.0, -67.0, 24.0, 18.0),
+		_rect_units(-105.0, 35.0, 26.0, 20.0),
+		_rect_units(-144.0, -2.0, 24.0, 20.0),
+		_rect_units(-76.0, -55.0, 24.0, 20.0),
+		_rect_units(-62.0, 8.0, 28.0, 20.0)
+	]
+	var blue_zone_water_rects: Array = [
+		_rect_units(-145.0, -63.0, 16.0, 10.0),
+		_rect_units(-101.0, 39.0, 18.0, 12.0),
+		_rect_units(-140.0, 2.0, 16.0, 12.0),
+		_rect_units(-72.0, -51.0, 16.0, 12.0),
+		_rect_units(-57.0, 12.0, 18.0, 12.0)
+	]
+	var shallow_rects: Array = central_shallow_rects.duplicate()
+	shallow_rects.append_array(_with_mirrored_rects(blue_stream_shallow_rects))
+	shallow_rects.append_array(_with_mirrored_rects(blue_zone_shallow_rects))
+	var water_rects: Array = central_water_rects.duplicate()
+	water_rects.append_array(_with_mirrored_rects(blue_stream_water_rects))
+	water_rects.append_array(_with_mirrored_rects(blue_zone_water_rects))
+	animal_zones = _build_animal_zones()
+	environmental_obstacles = _build_environmental_obstacles()
+	var cover_rects: Array = []
+	for obstacle in environmental_obstacles:
+		cover_rects.append(obstacle["rect"])
+	zone_layers = [
+		{"zone": LAND, "rects": [arena_rect]},
+		{"zone": HABITAT_BLUE, "rects": [
+			_rect_units(-240.0, -40.0, 40.0, 80.0)
+		]},
+		{"zone": HABITAT_RED, "rects": [
+			_rect_units(200.0, -40.0, 40.0, 80.0)
+		]},
+		{"zone": SHALLOW, "rects": shallow_rects},
+		{"zone": WATER, "rects": water_rects},
+		{"zone": COVER, "rects": cover_rects}
+	]
+	blue_core_position = Vector2(-223.0 * unit, 0.0)
+	red_core_position = Vector2(223.0 * unit, 0.0)
+	blue_minion_spawn = Vector2(-198.0 * unit, 0.0)
+	red_minion_spawn = Vector2(198.0 * unit, 0.0)
+	team_spawns = {
+		0: Vector2(-218.0 * unit, 10.0 * unit),
+		1: Vector2(218.0 * unit, -10.0 * unit)
+	}
+	bot_spawns = {
+		"Blue Guard": Vector2(-218.0 * unit, -10.0 * unit),
+		"Blue Ward": Vector2(-226.0 * unit, 24.0 * unit),
+		"Red Blade": Vector2(218.0 * unit, -10.0 * unit),
+		"Red Scope": Vector2(226.0 * unit, 24.0 * unit),
+		"Red Chorus": Vector2(218.0 * unit, 10.0 * unit),
+		"Red Rival": Vector2(218.0 * unit, -10.0 * unit)
+	}
+	wave_minion_offsets = [Vector2(0.0, -8.0 * unit), Vector2.ZERO, Vector2(0.0, 8.0 * unit)]
+	objective_position = Vector2.ZERO
+	objective_radius = 9.0 * unit
+	hut_positions = {
+		0: [Vector2(-198.0 * unit, -34.0 * unit), Vector2(-198.0 * unit, 34.0 * unit)],
+		1: [Vector2(198.0 * unit, -34.0 * unit), Vector2(198.0 * unit, 34.0 * unit)]
+	}
+	food_spawn_points = _build_unified_food_spawns()
 
 func _configure_3v3() -> void:
 	var unit := SimConstants.UNIT_PX
@@ -216,6 +319,175 @@ func _configure_1v1() -> void:
 		{"kind": "critter", "position": Vector2(-18.0 * unit, -10.0 * unit)},
 		{"kind": "critter", "position": Vector2(18.0 * unit, 10.0 * unit)}
 	]
+
+func _build_animal_zones() -> Array:
+	var zones: Array = []
+	_append_mirrored_animal_zone(zones, "A", -137.0, -58.0, 38.0, 19.0, [
+		"newt", "great_blue_heron", "water_snake", "water_shrew", "crayfish"
+	])
+	_append_mirrored_animal_zone(zones, "B", -92.0, 45.0, 43.0, 23.0, [
+		"bullfrog", "owl", "beaver", "snapping_turtle", "leeches"
+	])
+	_append_mirrored_animal_zone(zones, "C", -132.0, 8.0, 39.0, 22.0, [
+		"chorus_frog", "alligator", "duck", "fireflies", "mink"
+	])
+	_append_mirrored_animal_zone(zones, "D", -64.0, -45.0, 38.0, 22.0, [
+		"cane_toad", "bog_turtle", "kingfisher", "otter", "mosquitos"
+	])
+	_append_mirrored_animal_zone(zones, "Boss", -48.0, 18.0, 35.0, 28.0, [], true)
+	return zones
+
+func _append_mirrored_animal_zone(zones: Array, group: String, x: float, y: float, rx: float, ry: float, creatures: Array, boss := false) -> void:
+	zones.append(_animal_zone("blue", group, x, y, rx, ry, creatures, boss))
+	zones.append(_animal_zone("red", group, -x, y, rx, ry, creatures, boss))
+
+func _animal_zone(side: String, group: String, x: float, y: float, rx: float, ry: float, creatures: Array, boss: bool) -> Dictionary:
+	var unit := SimConstants.UNIT_PX
+	return {
+		"side": side,
+		"group": group,
+		"center_units": Vector2(x, y),
+		"center": Vector2(x * unit, y * unit),
+		"radius_units": Vector2(rx, ry),
+		"radius": Vector2(rx * unit, ry * unit),
+		"creatures": creatures.duplicate(),
+		"boss": boss,
+		"breed_activation_count": 5 if boss else 0
+	}
+
+func _build_environmental_obstacles() -> Array:
+	var obstacles: Array = []
+	_append_mirrored_obstacle(obstacles, "bush", -232.0, -72.0, 7.0, 6.0)
+	_append_mirrored_obstacle(obstacles, "tree", -184.0, -78.0, 8.0, 8.0)
+	_append_mirrored_obstacle(obstacles, "rock", -150.0, -75.0, 10.0, 6.0)
+	_append_mirrored_obstacle(obstacles, "bush", -78.0, -76.0, 8.0, 6.0)
+	_append_mirrored_obstacle(obstacles, "rock", -34.0, -74.0, 8.0, 7.0)
+	_append_mirrored_obstacle(obstacles, "tree", -160.0, -28.0, 9.0, 9.0)
+	_append_mirrored_obstacle(obstacles, "bush", -112.0, -46.0, 8.0, 6.0)
+	_append_mirrored_obstacle(obstacles, "rock", -96.0, -6.0, 8.0, 9.0)
+	_append_mirrored_obstacle(obstacles, "bush", -70.0, 12.0, 7.0, 6.0)
+	_append_mirrored_obstacle(obstacles, "rock", -30.0, -22.0, 8.0, 7.0)
+	_append_mirrored_obstacle(obstacles, "tree", -174.0, 70.0, 8.0, 8.0)
+	_append_mirrored_obstacle(obstacles, "bush", -146.0, 42.0, 7.0, 7.0)
+	_append_mirrored_obstacle(obstacles, "tree", -116.0, 69.0, 8.0, 8.0)
+	_append_mirrored_obstacle(obstacles, "rock", -58.0, 36.0, 9.0, 7.0)
+	_append_mirrored_obstacle(obstacles, "tree", -34.0, 71.0, 7.0, 7.0)
+	return obstacles
+
+func _append_mirrored_obstacle(obstacles: Array, obstacle_type: String, x: float, y: float, width: float, height: float) -> void:
+	obstacles.append(_obstacle(obstacle_type, "blue", x, y, width, height))
+	obstacles.append(_obstacle(obstacle_type, "red", -x - width, y, width, height))
+
+func _obstacle(obstacle_type: String, side: String, x: float, y: float, width: float, height: float) -> Dictionary:
+	var rect: Rect2 = _rect_units(x, y, width, height)
+	return {
+		"type": obstacle_type,
+		"side": side,
+		"rect_units": Rect2(Vector2(x, y), Vector2(width, height)),
+		"rect": rect,
+		"center": rect.get_center()
+	}
+
+func _build_unified_food_spawns() -> Array:
+	var blue_entries: Array = []
+	blue_entries.append(_plant_entry("berry", -226.0, -62.0))
+	blue_entries.append(_plant_entry("berry", -210.0, -18.0))
+	blue_entries.append(_plant_entry("berry", -188.0, 60.0))
+	blue_entries.append(_plant_entry("berry", -160.0, -72.0))
+	blue_entries.append(_plant_entry("berry", -142.0, 28.0))
+	blue_entries.append(_plant_entry("berry", -118.0, -34.0))
+	blue_entries.append(_plant_entry("berry", -92.0, 70.0))
+	blue_entries.append(_plant_entry("berry", -74.0, 6.0))
+	blue_entries.append(_plant_entry("berry", -46.0, -62.0))
+	blue_entries.append(_plant_entry("berry", -28.0, 34.0))
+	blue_entries.append(_plant_entry("tree", -232.0, 64.0))
+	blue_entries.append(_plant_entry("tree", -214.0, 4.0))
+	blue_entries.append(_plant_entry("tree", -182.0, -54.0))
+	blue_entries.append(_plant_entry("tree", -154.0, 58.0))
+	blue_entries.append(_plant_entry("tree", -136.0, -12.0))
+	blue_entries.append(_plant_entry("tree", -104.0, 24.0))
+	blue_entries.append(_plant_entry("tree", -86.0, -74.0))
+	blue_entries.append(_plant_entry("tree", -62.0, 62.0))
+	blue_entries.append(_plant_entry("tree", -40.0, -8.0))
+	blue_entries.append(_plant_entry("tree", -24.0, 74.0))
+	blue_entries.append(_plant_entry("seed", -222.0, 46.0))
+	blue_entries.append(_plant_entry("seed", -204.0, -70.0))
+	blue_entries.append(_plant_entry("seed", -174.0, 16.0))
+	blue_entries.append(_plant_entry("seed", -150.0, -38.0))
+	blue_entries.append(_plant_entry("seed", -126.0, 72.0))
+	blue_entries.append(_plant_entry("seed", -98.0, -58.0))
+	blue_entries.append(_plant_entry("seed", -76.0, 40.0))
+	blue_entries.append(_plant_entry("seed", -54.0, -24.0))
+	blue_entries.append(_plant_entry("seed", -36.0, 54.0))
+	blue_entries.append(_plant_entry("seed", -18.0, -66.0))
+	blue_entries.append(_plant_entry("flower", -230.0, -4.0))
+	blue_entries.append(_plant_entry("flower", -196.0, 34.0))
+	blue_entries.append(_plant_entry("flower", -166.0, -22.0))
+	blue_entries.append(_plant_entry("flower", -146.0, 76.0))
+	blue_entries.append(_plant_entry("flower", -116.0, 8.0))
+	blue_entries.append(_plant_entry("flower", -90.0, -18.0))
+	blue_entries.append(_plant_entry("flower", -70.0, -66.0))
+	blue_entries.append(_plant_entry("flower", -52.0, 18.0))
+	blue_entries.append(_plant_entry("flower", -34.0, -42.0))
+	blue_entries.append(_plant_entry("flower", -22.0, 6.0))
+	var food_entries: Array = _with_mirrored_food(blue_entries)
+	var blue_critters: Array = [
+		_critter_entry(-132.0, -50.0),
+		_critter_entry(-88.0, 36.0),
+		_critter_entry(-58.0, -44.0),
+		_critter_entry(-42.0, 20.0)
+	]
+	food_entries.append_array(_with_mirrored_food(blue_critters))
+	return food_entries
+
+func _plant_entry(plant_type: String, x: float, y: float) -> Dictionary:
+	var harvest_hits: int = 3 if plant_type == "tree" else 1
+	var food_value: float = 44.0 if plant_type == "tree" else 24.0
+	var heal_fraction: float = 0.16 if plant_type == "tree" else 0.08
+	return {
+		"kind": "plant",
+		"side": "blue",
+		"position": _point_units(x, y),
+		"plant_type": plant_type,
+		"harvest_hits": harvest_hits,
+		"food_value": food_value,
+		"heal_fraction": heal_fraction
+	}
+
+func _critter_entry(x: float, y: float) -> Dictionary:
+	return {
+		"kind": "critter",
+		"side": "blue",
+		"position": _point_units(x, y),
+		"food_value": 18.0,
+		"heal_fraction": 0.06
+	}
+
+func _with_mirrored_food(blue_entries: Array) -> Array:
+	var entries: Array = []
+	for entry in blue_entries:
+		entries.append(entry)
+		var source: Dictionary = entry
+		var mirrored: Dictionary = source.duplicate(true)
+		var position: Vector2 = mirrored["position"]
+		mirrored["position"] = Vector2(-position.x, position.y)
+		mirrored["side"] = "red"
+		entries.append(mirrored)
+	return entries
+
+func _with_mirrored_rects(blue_rects: Array) -> Array:
+	var rects: Array = []
+	for rect: Rect2 in blue_rects:
+		rects.append(rect)
+		rects.append(_mirror_rect_x(rect))
+	return rects
+
+func _mirror_rect_x(rect: Rect2) -> Rect2:
+	return Rect2(Vector2(-rect.position.x - rect.size.x, rect.position.y), rect.size)
+
+func _point_units(x: float, y: float) -> Vector2:
+	var unit := SimConstants.UNIT_PX
+	return Vector2(x * unit, y * unit)
 
 func _rect_units(x: float, y: float, width: float, height: float) -> Rect2:
 	var unit := SimConstants.UNIT_PX

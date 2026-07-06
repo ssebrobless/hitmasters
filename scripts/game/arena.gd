@@ -824,7 +824,7 @@ func _refresh_food_sources() -> void:
 	for entry: Dictionary in spawn_points:
 		var food = FoodSourceScript.new()
 		add_child(food)
-		food.setup(String(entry.get("kind", FoodSourceScript.KIND_PLANT)), entry.get("position", Vector2.ZERO))
+		food.setup_from_entry(entry)
 		food_sources.append(food)
 
 func try_eat_nearby_food(actor: Node) -> bool:

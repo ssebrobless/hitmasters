@@ -32,12 +32,12 @@ class StubArena extends Node2D:
 		return null
 
 func _initialize() -> void:
-	# Terrain declares hut anchors: 2/side in 3v3, 1/side in 1v1.
+	# Terrain declares shared-map hut anchors: 2/side in both 3v3 and 1v1.
 	var terrain := TerrainMapScript.new()
 	terrain.configure("3v3")
 	var huts_3v3: bool = terrain.hut_positions[0].size() == 2 and terrain.hut_positions[1].size() == 2
 	terrain.configure("1v1")
-	var huts_1v1: bool = terrain.hut_positions[0].size() == 1 and terrain.hut_positions[1].size() == 1
+	var huts_1v1: bool = terrain.hut_positions[0].size() == 2 and terrain.hut_positions[1].size() == 2
 
 	var stub := StubArena.new()
 	get_root().add_child(stub)

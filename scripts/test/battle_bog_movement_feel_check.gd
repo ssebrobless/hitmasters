@@ -34,6 +34,7 @@ func _run() -> void:
 	_check_water_profile_overlay(arena, failures)
 	_check_wave4_profile_seeds(failures)
 	_check_render_state_flags(arena, failures)
+	_check_visual_height_profiles(arena, failures)
 
 	print("movement_feel failures=%d" % failures.size())
 	for failure in failures:
@@ -530,6 +531,33 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 			str(beaver_water_state),
 			str(beaver_idle_state),
 			str(beaver_land_state)
+		])
+
+func _check_visual_height_profiles(arena: Node, failures: Array[String]) -> void:
+	var actor: Node = arena.player
+	actor.apply_creature("great_blue_heron")
+	actor.state = CreatureStateScript.State.NORMAL
+	var heron_state: Dictionary = actor.get_render_motion_state()
+	actor.apply_creature("owl")
+	actor.state = CreatureStateScript.State.AIRBORNE
+	var owl_air_state: Dictionary = actor.get_render_motion_state()
+	actor.state = CreatureStateScript.State.NORMAL
+	var owl_ground_state: Dictionary = actor.get_render_motion_state()
+	actor.apply_creature("bog_turtle")
+	var bog_state: Dictionary = actor.get_render_motion_state()
+	actor.apply_creature("firefly")
+	var firefly_state: Dictionary = actor.get_render_motion_state()
+	var tall_heron: bool = float(heron_state.get("model_scale", 1.0)) > 1.15 and float(heron_state.get("height_units", 0.0)) > 1.3 and String(heron_state.get("height_class", "")) == "tall_wader"
+	var owl_lift: bool = float(owl_air_state.get("height_units", 0.0)) > float(owl_ground_state.get("height_units", 0.0)) + 0.25
+	var tiny_low: bool = float(bog_state.get("model_scale", 1.0)) < 0.9 and float(bog_state.get("height_units", 1.0)) < 0.3
+	var tiny_hover: bool = float(firefly_state.get("model_scale", 1.0)) < 0.85 and float(firefly_state.get("height_units", 0.0)) >= 0.9
+	if not tall_heron or not owl_lift or not tiny_low or not tiny_hover:
+		failures.append("visual height profiles should distinguish tall, airborne, low, and tiny hover creatures; heron=%s owl=%s/%s bog=%s firefly=%s" % [
+			str(heron_state),
+			str(owl_air_state),
+			str(owl_ground_state),
+			str(bog_state),
+			str(firefly_state)
 		])
 
 func _move_frame(direction: Vector2) -> Resource:
