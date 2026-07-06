@@ -547,21 +547,30 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
 	var turtle_water_state: Dictionary = actor.get_render_motion_state()
-	var turtle_swim: bool = bool(turtle_water_state.get("turtle_swim_pose", false)) and float(turtle_water_state.get("turtle_swim_intensity", 0.0)) > 0.25
+	var turtle_swim: bool = bool(turtle_water_state.get("turtle_swim_pose", false)) \
+		and not bool(turtle_water_state.get("turtle_plod_pose", false)) \
+		and float(turtle_water_state.get("turtle_swim_intensity", 0.0)) > 0.25 \
+		and float(turtle_water_state.get("turtle_plod_intensity", 1.0)) <= 0.001
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
 	var turtle_idle_state: Dictionary = actor.get_render_motion_state()
-	var turtle_idle_clear: bool = not bool(turtle_idle_state.get("turtle_swim_pose", false)) and float(turtle_idle_state.get("turtle_swim_intensity", 1.0)) <= 0.001
+	var turtle_idle_clear: bool = not bool(turtle_idle_state.get("turtle_swim_pose", false)) \
+		and not bool(turtle_idle_state.get("turtle_plod_pose", false)) \
+		and float(turtle_idle_state.get("turtle_swim_intensity", 1.0)) <= 0.001 \
+		and float(turtle_idle_state.get("turtle_plod_intensity", 1.0)) <= 0.001
 	actor.current_environment_profile = {"surface": "land"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
 	var turtle_land_state: Dictionary = actor.get_render_motion_state()
-	var turtle_land_clear: bool = not bool(turtle_land_state.get("turtle_swim_pose", false))
-	if not turtle_swim or not turtle_idle_clear or not turtle_land_clear:
-		failures.append("moving snapping turtle should expose paddle swim render pose only in water; water=%s idle=%s land=%s state=%s/%s/%s" % [
+	var turtle_plod: bool = bool(turtle_land_state.get("turtle_plod_pose", false)) \
+		and not bool(turtle_land_state.get("turtle_swim_pose", false)) \
+		and float(turtle_land_state.get("turtle_plod_intensity", 0.0)) > 0.25 \
+		and float(turtle_land_state.get("turtle_swim_intensity", 1.0)) <= 0.001
+	if not turtle_swim or not turtle_idle_clear or not turtle_plod:
+		failures.append("moving snapping turtle should expose water paddle swim and land plod render poses, then clear when idle; water=%s idle=%s land=%s state=%s/%s/%s" % [
 			str(turtle_swim),
 			str(turtle_idle_clear),
-			str(turtle_land_clear),
+			str(turtle_plod),
 			str(turtle_water_state),
 			str(turtle_idle_state),
 			str(turtle_land_state)

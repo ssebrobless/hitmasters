@@ -391,13 +391,16 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 	var turtle_stride := float(anim.get("turtle_stride", 1.0))
 	var turtle_swim := bool(anim.get("turtle_swim_pose", false))
 	var turtle_swim_intensity := clampf(float(anim.get("turtle_swim_intensity", 0.0)), 0.0, 1.25)
+	var turtle_plod := String(anim.get("creature_id", "")) == "snapping_turtle" and bool(anim.get("turtle_plod_pose", false))
+	var turtle_plod_intensity := clampf(float(anim.get("turtle_plod_intensity", 0.0)), 0.0, 1.25)
 	var bog_creep := String(anim.get("creature_id", "")) == "bog_turtle" and bool(anim.get("bog_turtle_creep_pose", false))
 	var bog_creep_intensity := clampf(float(anim.get("bog_turtle_creep_intensity", 0.0)), 0.0, 1.25)
 	var bog_paddle := String(anim.get("creature_id", "")) == "bog_turtle" and bool(anim.get("bog_turtle_paddle_pose", false))
 	var bog_paddle_intensity := clampf(float(anim.get("bog_turtle_paddle_intensity", 0.0)), 0.0, 1.25)
 	var swim_intensity := maxf(turtle_swim_intensity, bog_paddle_intensity * 0.82)
-	var shell_stability := float(anim.get("shell_stability", 0.0)) + turtle_swim_intensity * 0.1 + bog_creep_intensity * 0.12 + bog_paddle_intensity * 0.08
+	var shell_stability := float(anim.get("shell_stability", 0.0)) + turtle_swim_intensity * 0.1 + turtle_plod_intensity * 0.1 + bog_creep_intensity * 0.12 + bog_paddle_intensity * 0.08
 	var turtle_water := Color(0.42, 0.68, 0.82, 0.22 + 0.1 * swim_intensity)
+	var turtle_scuff := Color(0.34, 0.29, 0.18, 0.16 + 0.08 * turtle_plod_intensity)
 	var bog_scuff := Color(0.48, 0.37, 0.24, 0.16 + 0.1 * bog_creep_intensity)
 	var bog_water := Color(0.38, 0.62, 0.76, 0.16 + 0.1 * bog_paddle_intensity)
 
@@ -412,11 +415,17 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 		for scuff_side: float in [-1.0, 1.0]:
 			var scuff_center := -forward * radius * 0.55 + side * scuff_side * radius * 0.48
 			canvas.draw_arc(scuff_center, radius * (0.18 + 0.04 * bog_creep_intensity), PI * 0.1, PI * 0.9, 8, bog_scuff, 1.0)
+	if turtle_plod:
+		for scuff_side: float in [-1.0, 1.0]:
+			var scuff_center := -forward * radius * 0.46 + side * scuff_side * radius * 0.62
+			canvas.draw_arc(scuff_center, radius * (0.24 + 0.05 * turtle_plod_intensity), PI * 0.08, PI * 0.92, 10, turtle_scuff, maxf(radius * 0.055, 1.0))
 	canvas.draw_line(tail_direction * radius * 0.9, tail_direction * radius * 1.45, skin_dark, maxf(radius * 0.16, 3.0))
 
 	for leg_index in 4:
 		var angle := [0.96, -0.96, 2.18, -2.18][leg_index] as float
 		var step := (sin(walk_phase + (PI if leg_index % 2 == 0 else 0.0)) * radius * 0.12 * turtle_stride) if moving else 0.0
+		if turtle_plod:
+			step *= 0.72
 		if bog_creep:
 			step *= 0.55
 		var leg_side := 1.0 if angle > 0.0 else -1.0
@@ -429,6 +438,8 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 			canvas.draw_line(leg_center + claw_direction.rotated((float(claw) - 1.0) * 0.35) * radius * 0.18, leg_center + claw_direction.rotated((float(claw) - 1.0) * 0.35) * radius * 0.34, Color(0.85, 0.82, 0.7), 1.5)
 		if turtle_swim:
 			canvas.draw_circle(leg_center - forward * radius * 0.08, maxf(radius * (0.07 + 0.02 * turtle_swim_intensity), 1.2), turtle_water.lightened(0.18))
+		if turtle_plod:
+			canvas.draw_line(leg_center - forward * radius * 0.05, leg_center - forward * radius * (0.32 + 0.08 * turtle_plod_intensity), turtle_scuff, maxf(radius * 0.04, 1.0))
 		if bog_paddle:
 			canvas.draw_circle(leg_center - forward * radius * 0.08, maxf(radius * (0.055 + 0.02 * bog_paddle_intensity), 1.0), bog_water.lightened(0.2))
 		if bog_creep:
@@ -482,6 +493,8 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 		canvas.draw_arc(-forward * radius * 0.1, radius * (0.9 + swim_intensity * 0.04), PI * 0.9, PI * 2.1, 18, Color(shell_wake_color.r, shell_wake_color.g, shell_wake_color.b, shell_wake_color.a * 0.75), maxf(radius * 0.06, 1.2))
 	if bog_creep:
 		canvas.draw_arc(-forward * radius * 0.08, radius * (0.76 + bog_creep_intensity * 0.03), PI * 0.08, PI * 0.92, 12, bog_scuff, maxf(radius * 0.06, 1.0))
+	if turtle_plod:
+		canvas.draw_arc(-forward * radius * 0.12, radius * (0.9 + turtle_plod_intensity * 0.04), PI * 0.08, PI * 0.92, 14, turtle_scuff, maxf(radius * 0.06, 1.1))
 	var inner_points := PackedVector2Array()
 	for i in 18:
 		var shell_angle := TAU * float(i) / 18.0

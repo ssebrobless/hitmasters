@@ -659,7 +659,8 @@ func get_render_motion_state() -> Dictionary:
 	var water_snake_mud_slither := water_snake_land_slither and (surface == EnvironmentProfileScript.SURFACE_MUD or surface == EnvironmentProfileScript.SURFACE_COVER)
 	var water_slither_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if water_snake_swim or water_snake_land_slither else 0.0
 	var turtle_swim := creature_id == "snapping_turtle" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
-	var turtle_swim_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if turtle_swim else 0.0
+	var turtle_plod := creature_id == "snapping_turtle" and surface != EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
+	var turtle_motion_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if turtle_swim or turtle_plod else 0.0
 	var bog_turtle_creep := creature_id == "bog_turtle" and surface != EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var bog_turtle_paddle := creature_id == "bog_turtle" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var bog_turtle_motion_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if bog_turtle_creep or bog_turtle_paddle else 0.0
@@ -734,7 +735,9 @@ func get_render_motion_state() -> Dictionary:
 		"water_snake_land_slither_intensity": water_slither_intensity if water_snake_land_slither else 0.0,
 		"water_snake_mud_slither": water_snake_mud_slither,
 		"turtle_swim_pose": turtle_swim,
-		"turtle_swim_intensity": turtle_swim_intensity,
+		"turtle_swim_intensity": turtle_motion_intensity if turtle_swim else 0.0,
+		"turtle_plod_pose": turtle_plod,
+		"turtle_plod_intensity": turtle_motion_intensity if turtle_plod else 0.0,
 		"bog_turtle_creep_pose": bog_turtle_creep,
 		"bog_turtle_creep_intensity": bog_turtle_motion_intensity if bog_turtle_creep else 0.0,
 		"bog_turtle_paddle_pose": bog_turtle_paddle,
