@@ -457,10 +457,15 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 			canvas.draw_arc(scuff_center, radius * (0.18 + 0.04 * bog_creep_intensity), PI * 0.1, PI * 0.9, 8, bog_scuff, 1.0)
 			var toe_center := -forward * radius * 0.16 + side * scuff_side * radius * 0.34
 			canvas.draw_line(toe_center, toe_center - forward * radius * (0.16 + 0.06 * bog_creep_intensity), Color(bog_scuff.r, bog_scuff.g, bog_scuff.b, bog_scuff.a * 0.82), 1.0)
+			canvas.draw_line(toe_center, toe_center + side * scuff_side * radius * (0.1 + 0.05 * bog_creep_intensity), Color(bog_scuff.r, bog_scuff.g, bog_scuff.b, bog_scuff.a * 0.72), 1.0)
 	if bog_paddle:
 		for bubble_side: float in [-1.0, 1.0]:
 			var bubble_center := forward * radius * 0.46 + side * bubble_side * radius * 0.26
 			canvas.draw_circle(bubble_center, maxf(radius * (0.045 + 0.015 * bog_paddle_intensity), 1.0), bog_water.lightened(0.22))
+		var tiny_paddle := Color(bog_water.r, bog_water.g, bog_water.b, 0.18 + 0.08 * bog_paddle_intensity)
+		for paddle_side: float in [-1.0, 1.0]:
+			var paddle_center := -forward * radius * 0.08 + side * paddle_side * radius * 0.36
+			canvas.draw_arc(paddle_center, radius * (0.15 + 0.04 * bog_paddle_intensity), PI * 0.05, PI * 0.9, 8, tiny_paddle, maxf(radius * 0.035, 1.0))
 	if turtle_plod:
 		for scuff_side: float in [-1.0, 1.0]:
 			var scuff_center := -forward * radius * 0.46 + side * scuff_side * radius * 0.62

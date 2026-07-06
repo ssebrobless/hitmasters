@@ -755,6 +755,15 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(bog_creep_state.get("bog_turtle_paddle_pose", false)) \
 		and not bool(bog_creep_state.get("turtle_plod_pose", false)) \
 		and not bool(bog_creep_state.get("turtle_swim_pose", false)) \
+		and not bool(bog_creep_state.get("duck_waddle_pose", false)) \
+		and not bool(bog_creep_state.get("beaver_lumber_pose", false)) \
+		and not bool(bog_creep_state.get("mink_bound_pose", false)) \
+		and not bool(bog_creep_state.get("otter_land_slide_pose", false)) \
+		and not bool(bog_creep_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(bog_creep_state.get("shrew_land_skitter_pose", false)) \
+		and not bool(bog_creep_state.get("leech_inchworm_pose", false)) \
+		and not bool(bog_creep_state.get("slick_crawl_pose", false)) \
+		and not bool(bog_creep_state.get("water_snake_land_slither_pose", false)) \
 		and float(bog_creep_state.get("bog_turtle_creep_intensity", 0.0)) > 0.25
 	actor.current_environment_profile = {"surface": "water"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
@@ -764,6 +773,14 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(bog_paddle_state.get("bog_turtle_creep_pose", false)) \
 		and not bool(bog_paddle_state.get("turtle_plod_pose", false)) \
 		and not bool(bog_paddle_state.get("turtle_swim_pose", false)) \
+		and not bool(bog_paddle_state.get("duck_paddle_pose", false)) \
+		and not bool(bog_paddle_state.get("beaver_swim_pose", false)) \
+		and not bool(bog_paddle_state.get("mink_swim_pose", false)) \
+		and not bool(bog_paddle_state.get("otter_swim_pose", false)) \
+		and not bool(bog_paddle_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and not bool(bog_paddle_state.get("newt_swim_pose", false)) \
+		and not bool(bog_paddle_state.get("leech_undulate_pose", false)) \
+		and not bool(bog_paddle_state.get("water_slither_pose", false)) \
 		and float(bog_paddle_state.get("bog_turtle_paddle_intensity", 0.0)) > 0.25
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
@@ -772,10 +789,27 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(bog_idle_state.get("bog_turtle_paddle_pose", false)) \
 		and not bool(bog_idle_state.get("turtle_plod_pose", false)) \
 		and not bool(bog_idle_state.get("turtle_swim_pose", false)) \
+		and not bool(bog_idle_state.get("duck_paddle_pose", false)) \
+		and not bool(bog_idle_state.get("duck_waddle_pose", false)) \
+		and not bool(bog_idle_state.get("beaver_swim_pose", false)) \
+		and not bool(bog_idle_state.get("beaver_lumber_pose", false)) \
+		and not bool(bog_idle_state.get("mink_swim_pose", false)) \
+		and not bool(bog_idle_state.get("mink_bound_pose", false)) \
+		and not bool(bog_idle_state.get("otter_swim_pose", false)) \
+		and not bool(bog_idle_state.get("otter_land_slide_pose", false)) \
+		and not bool(bog_idle_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(bog_idle_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and not bool(bog_idle_state.get("shrew_land_skitter_pose", false)) \
+		and not bool(bog_idle_state.get("newt_swim_pose", false)) \
+		and not bool(bog_idle_state.get("leech_inchworm_pose", false)) \
+		and not bool(bog_idle_state.get("leech_undulate_pose", false)) \
+		and not bool(bog_idle_state.get("slick_crawl_pose", false)) \
+		and not bool(bog_idle_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(bog_idle_state.get("water_slither_pose", false)) \
 		and float(bog_idle_state.get("bog_turtle_creep_intensity", 1.0)) <= 0.001 \
 		and float(bog_idle_state.get("bog_turtle_paddle_intensity", 1.0)) <= 0.001
 	if not bog_creep or not bog_paddle or not bog_idle_clear:
-		failures.append("moving bog turtle should expose tiny creep/paddle without snapping turtle poses, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
+		failures.append("moving bog turtle should expose tiny orange-patch creep/paddle without snapping turtle, swimmer, crawler, or mammal overlap, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
 			str(bog_creep),
 			str(bog_paddle),
 			str(bog_idle_clear),
