@@ -495,6 +495,53 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 			str(newt_water_state),
 			str(newt_idle_state)
 		])
+	actor.apply_creature("water_snake")
+	actor.current_environment_profile = {"surface": "land"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var snake_land_state: Dictionary = actor.get_render_motion_state()
+	var snake_land: bool = bool(snake_land_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(snake_land_state.get("water_slither_pose", false)) \
+		and not bool(snake_land_state.get("water_snake_mud_slither", false)) \
+		and float(snake_land_state.get("water_snake_land_slither_intensity", 0.0)) > 0.25 \
+		and float(snake_land_state.get("water_slither_intensity", 1.0)) <= 0.001
+	actor.current_environment_profile = {"surface": "mud"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var snake_mud_state: Dictionary = actor.get_render_motion_state()
+	var snake_mud: bool = bool(snake_mud_state.get("water_snake_land_slither_pose", false)) \
+		and bool(snake_mud_state.get("water_snake_mud_slither", false)) \
+		and not bool(snake_mud_state.get("water_slither_pose", false)) \
+		and float(snake_mud_state.get("water_snake_land_slither_intensity", 0.0)) > 0.25 \
+		and float(snake_mud_state.get("water_slither_intensity", 1.0)) <= 0.001
+	actor.current_environment_profile = {"surface": "water"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var snake_water_state: Dictionary = actor.get_render_motion_state()
+	var snake_water: bool = bool(snake_water_state.get("water_slither_pose", false)) \
+		and not bool(snake_water_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(snake_water_state.get("water_snake_mud_slither", false)) \
+		and float(snake_water_state.get("water_slither_intensity", 0.0)) > 0.25 \
+		and float(snake_water_state.get("water_snake_land_slither_intensity", 1.0)) <= 0.001
+	actor.velocity = Vector2.ZERO
+	actor.set_input_frame(InputFrameScript.new())
+	var snake_idle_state: Dictionary = actor.get_render_motion_state()
+	var snake_idle_clear: bool = not bool(snake_idle_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(snake_idle_state.get("water_slither_pose", false)) \
+		and not bool(snake_idle_state.get("water_snake_mud_slither", false)) \
+		and float(snake_idle_state.get("water_snake_land_slither_intensity", 1.0)) <= 0.001 \
+		and float(snake_idle_state.get("water_slither_intensity", 1.0)) <= 0.001
+	if not snake_land or not snake_mud or not snake_water or not snake_idle_clear:
+		failures.append("moving water snake should expose dry belly slither, muddy scuff, and water wake as mutually exclusive render poses, then clear when idle; land=%s mud=%s water=%s idle=%s state=%s/%s/%s/%s" % [
+			str(snake_land),
+			str(snake_mud),
+			str(snake_water),
+			str(snake_idle_clear),
+			str(snake_land_state),
+			str(snake_mud_state),
+			str(snake_water_state),
+			str(snake_idle_state)
+		])
 	actor.apply_creature("snapping_turtle")
 	actor.current_environment_profile = {"surface": "water"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()

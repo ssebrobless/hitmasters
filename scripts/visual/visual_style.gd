@@ -957,10 +957,15 @@ static func _base_serpent(canvas: CanvasItem, radius: float, forward: Vector2, s
 	var slither_amp := float(anim.get("slither_amp", 1.0))
 	var water_slither := String(anim.get("creature_id", "")) == "water_snake" and bool(anim.get("water_slither_pose", false))
 	var water_slither_intensity := clampf(float(anim.get("water_slither_intensity", 0.0)), 0.0, 1.25)
+	var land_slither := String(anim.get("creature_id", "")) == "water_snake" and bool(anim.get("water_snake_land_slither_pose", false))
+	var land_slither_intensity := clampf(float(anim.get("water_snake_land_slither_intensity", 0.0)), 0.0, 1.25)
+	var mud_slither := land_slither and bool(anim.get("water_snake_mud_slither", false))
 	var coil_pose := String(anim.get("creature_id", "")) == "water_snake" and bool(anim.get("water_snake_coil_pose", false))
 	var slither := slither_amp if moving else 0.3 * slither_amp
 	if water_slither:
 		slither += 0.42 * water_slither_intensity
+	if land_slither:
+		slither += 0.22 * land_slither_intensity
 	if coil_pose:
 		slither += 0.65
 	var points: Array[Vector2] = []
@@ -977,6 +982,19 @@ static func _base_serpent(canvas: CanvasItem, radius: float, forward: Vector2, s
 			var wake_center := points[wake_index] + side * wake_side * radius * (0.28 + 0.08 * water_slither_intensity)
 			canvas.draw_arc(wake_center, radius * (0.28 + t * 0.18 + water_slither_intensity * 0.05), -0.45, 0.85, 12, water_color, 1.1 + water_slither_intensity * 0.6)
 		canvas.draw_line(points[0] - forward * radius * 0.2, points[segments - 1] - forward * radius * 0.35, Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.45), maxf(radius * 0.05, 1.0))
+	if land_slither:
+		var scuff_color := Color(0.34, 0.25, 0.17, 0.18 + 0.10 * land_slither_intensity)
+		if mud_slither:
+			scuff_color = Color(0.22, 0.16, 0.11, 0.26 + 0.12 * land_slither_intensity)
+		canvas.draw_line(points[0] - forward * radius * 0.1, points[segments - 1] - forward * radius * 0.2, Color(scuff_color.r, scuff_color.g, scuff_color.b, scuff_color.a * 0.45), maxf(radius * 0.045, 1.0))
+		for scuff_index in range(1, segments - 1, 2):
+			var t := float(scuff_index) / float(segments - 1)
+			var contact := points[scuff_index]
+			var scuff_side := 1.0 if scuff_index % 4 == 1 else -1.0
+			var scuff_center := contact - forward * radius * 0.08 + side * scuff_side * radius * 0.18
+			canvas.draw_arc(scuff_center, radius * (0.14 + t * 0.08 + land_slither_intensity * 0.03), PI * 0.1, PI * 0.9, 8, scuff_color, maxf(radius * 0.04, 1.0))
+			if mud_slither:
+				canvas.draw_line(contact - forward * radius * 0.1, contact - forward * radius * (0.34 + 0.12 * land_slither_intensity) + side * scuff_side * radius * 0.1, Color(scuff_color.r, scuff_color.g, scuff_color.b, scuff_color.a * 0.8), maxf(radius * 0.04, 1.0))
 	for i in range(segments - 1, -1, -1):
 		var t := float(i) / float(segments - 1)
 		var seg_radius := radius * lerpf(0.42, 0.12, t)

@@ -655,7 +655,9 @@ func get_render_motion_state() -> Dictionary:
 	var newt_tail_lost := creature_id == "newt" and kit != null and float(kit.get("tail_lost_timer")) > 0.0
 	var newt_motion_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if newt_crawling or newt_swimming else 0.0
 	var water_snake_swim := creature_id == "water_snake" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
-	var water_slither_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if water_snake_swim else 0.0
+	var water_snake_land_slither := creature_id == "water_snake" and surface != EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
+	var water_snake_mud_slither := water_snake_land_slither and (surface == EnvironmentProfileScript.SURFACE_MUD or surface == EnvironmentProfileScript.SURFACE_COVER)
+	var water_slither_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if water_snake_swim or water_snake_land_slither else 0.0
 	var turtle_swim := creature_id == "snapping_turtle" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var turtle_swim_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if turtle_swim else 0.0
 	var bog_turtle_creep := creature_id == "bog_turtle" and surface != EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
@@ -722,7 +724,10 @@ func get_render_motion_state() -> Dictionary:
 		"newt_swim_intensity": newt_motion_intensity if newt_swimming else 0.0,
 		"tail_lost_pose": newt_tail_lost,
 		"water_slither_pose": water_snake_swim,
-		"water_slither_intensity": water_slither_intensity,
+		"water_slither_intensity": water_slither_intensity if water_snake_swim else 0.0,
+		"water_snake_land_slither_pose": water_snake_land_slither,
+		"water_snake_land_slither_intensity": water_slither_intensity if water_snake_land_slither else 0.0,
+		"water_snake_mud_slither": water_snake_mud_slither,
 		"turtle_swim_pose": turtle_swim,
 		"turtle_swim_intensity": turtle_swim_intensity,
 		"bog_turtle_creep_pose": bog_turtle_creep,
