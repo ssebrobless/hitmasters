@@ -1467,7 +1467,14 @@ static func _base_swarm(canvas: CanvasItem, radius: float, forward: Vector2, sid
 			var stream_start := -forward * radius * 0.18 + side * stream_side * radius * 0.44
 			var stream_end := stream_start - forward * radius * (0.82 + 0.24 * swarm_intensity) + side * stream_side * radius * 0.18
 			canvas.draw_line(stream_start, stream_end, Color(swarm_main.r, swarm_main.g, swarm_main.b, 0.16 + 0.08 * swarm_intensity), maxf(radius * 0.045, 1.0))
+		for eddy_side: float in [-1.0, 0.0, 1.0]:
+			var eddy_center := -forward * radius * (0.05 + 0.18 * absf(eddy_side)) + side * eddy_side * radius * 0.34
+			canvas.draw_arc(eddy_center, radius * (0.28 + 0.07 * swarm_intensity), -0.4, TAU * 0.68, 14, Color(swarm_dark.r, swarm_dark.g, swarm_dark.b, 0.16 + 0.06 * swarm_intensity), maxf(radius * 0.04, 1.0))
 	canvas.draw_circle(Vector2.ZERO, cloud_radius, Color(swarm_dark.r, swarm_dark.g, swarm_dark.b, 0.22 + blood_ratio * 0.06))
+	if swarm_pose:
+		for lobe_side: float in [-1.0, 1.0]:
+			var lobe_center := side * lobe_side * radius * (0.32 + 0.08 * swarm_intensity) - forward * radius * 0.05
+			canvas.draw_circle(lobe_center, cloud_radius * 0.58, Color(swarm_dark.r, swarm_dark.g, swarm_dark.b, 0.14 + 0.04 * swarm_intensity + blood_ratio * 0.04))
 	var time_now := Time.get_ticks_msec() * 0.001
 	for i in 12:
 		var orbit_angle := time_now * (1.2 + float(i % 4) * 0.35) + float(i) * TAU / 12.0

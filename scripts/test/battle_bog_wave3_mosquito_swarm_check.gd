@@ -115,14 +115,19 @@ func _check_swarm_render_state(arena: Node, failures: Array[String]) -> void:
 	actor.set_input_frame(q)
 	actor.tick_sim(0.05)
 	var trail_state: Dictionary = actor.get_render_motion_state()
-	var trail_read: bool = bool(trail_state.get("mosquito_trail_pose", false))
+	var trail_read: bool = bool(trail_state.get("mosquito_trail_pose", false)) \
+		and bool(trail_state.get("mosquito_swarm_pose", false)) \
+		and float(trail_state.get("mosquito_swarm_intensity", 0.0)) > 0.25 \
+		and not bool(trail_state.get("firefly_hover_pose", false))
 	var blood_read: bool = float(trail_state.get("mosquito_blood_ratio", 0.0)) > 0.7
 	actor.kit.trail_timer = 0.0
 	actor.secondary_resource = 0.0
 	var clear_state: Dictionary = actor.get_render_motion_state()
-	var clear_read: bool = not bool(clear_state.get("mosquito_trail_pose", false)) and float(clear_state.get("mosquito_blood_ratio", 1.0)) <= 0.001
+	var clear_read: bool = not bool(clear_state.get("mosquito_trail_pose", false)) \
+		and not bool(clear_state.get("firefly_hover_pose", false)) \
+		and float(clear_state.get("mosquito_blood_ratio", 1.0)) <= 0.001
 	if not trail_read or not blood_read or not clear_read:
-		failures.append("Mosquito Swarm should expose breeding-trail and blood-engorged render state; trail=%s blood=%s clear=%s state=%s/%s" % [
+		failures.append("Mosquito Swarm should expose moving swarm-cloud trail and blood-engorged render state without firefly overlap; trail=%s blood=%s clear=%s state=%s/%s" % [
 			str(trail_read),
 			str(blood_read),
 			str(clear_read),
