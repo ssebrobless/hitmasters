@@ -42,6 +42,12 @@ func _run() -> void:
 func _check_grounded_spear(arena: Node, failures: Array[String]) -> void:
 	var actor: Node = arena.player
 	var target: Node = arena.bots[0]
+	target.apply_creature("cane_toad")
+	target.state = CreatureStateScript.State.NORMAL
+	target.dash_timer = 0.0
+	target.dash_velocity = Vector2.ZERO
+	target.pass_obstacles_timer = 0.0
+	target.break_stealth()
 	actor.global_position = Vector2.ZERO
 	target.global_position = Vector2(30.0, 0.0)
 	target.health = target.max_health

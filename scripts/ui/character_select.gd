@@ -18,7 +18,8 @@ const SLICE_CREATURE_IDS := [
 	"kingfisher",
 	"water_snake",
 	"alligator",
-	"wolf_spider"
+	"wolf_spider",
+	"firefly"
 ]
 const FAMILY_LABELS := {
 	"amphibian": "Amphibians",

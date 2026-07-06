@@ -33,7 +33,7 @@ const CreatureInfoPanelScript := preload("res://scripts/ui/creature_info_panel.g
 const StockManagerScript := preload("res://scripts/game/stock_manager.gd")
 const FoodSourceScript := preload("res://scripts/game/food_source.gd")
 
-const PLAYABLE_CREATURE_POOL := ["snapping_turtle", "chorus_frog", "mink", "beaver", "owl", "duck", "bullfrog", "cane_toad", "crayfish", "water_shrew", "newt", "great_blue_heron", "kingfisher", "water_snake", "alligator", "wolf_spider"]
+const PLAYABLE_CREATURE_POOL := ["snapping_turtle", "chorus_frog", "mink", "beaver", "owl", "duck", "bullfrog", "cane_toad", "crayfish", "water_shrew", "newt", "great_blue_heron", "kingfisher", "water_snake", "alligator", "wolf_spider", "firefly"]
 const SQUAD_COMMAND_FARM := "farm"
 const SQUAD_COMMAND_FOLLOW := "follow"
 const SQUAD_COMMAND_AGGRO := "aggro"

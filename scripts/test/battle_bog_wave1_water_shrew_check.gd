@@ -3,6 +3,7 @@ extends SceneTree
 const ARENA_SCENE := "res://scenes/Arena.tscn"
 const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 const SimConstants := preload("res://scripts/sim/sim_constants.gd")
+const CreatureStateScript := preload("res://scripts/sim/creature_state.gd")
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -40,6 +41,7 @@ func _run() -> void:
 func _check_bite_stack_cap(arena: Node, failures: Array[String]) -> void:
 	var actor: Node = arena.player
 	var target: Node = arena.bots[0]
+	_normalize_grounded_target(target)
 	actor.global_position = Vector2.ZERO
 	target.global_position = Vector2(16.0, 0.0)
 	target.health = target.max_health
@@ -105,7 +107,7 @@ func _check_water_walk(arena: Node, failures: Array[String]) -> void:
 func _check_proenkephalin_split_lock(arena: Node, failures: Array[String]) -> void:
 	var actor: Node = arena.player
 	var target: Node = arena.bots[0]
-	target.apply_creature("cane_toad")
+	_normalize_grounded_target(target)
 	actor.global_position = Vector2.ZERO
 	target.global_position = Vector2(16.0, 0.0)
 	actor.health = actor.max_health
@@ -174,3 +176,13 @@ func _modifier_count(target: Node, source: String) -> int:
 		if String(modifier.get("source", "")) == source:
 			count += 1
 	return count
+
+func _normalize_grounded_target(target: Node) -> void:
+	target.apply_creature("cane_toad")
+	target.state = CreatureStateScript.State.NORMAL
+	target.dash_timer = 0.0
+	target.dash_velocity = Vector2.ZERO
+	target.pass_obstacles_timer = 0.0
+	target.velocity = Vector2.ZERO
+	target.break_stealth()
+	target.release_latch("test_reset")

@@ -5,6 +5,7 @@ const TurtleHook := preload("res://scripts/ai/bot_kit_hooks/snapping_turtle_bot.
 const WaterSnakeHook := preload("res://scripts/ai/bot_kit_hooks/water_snake_bot.gd")
 const AlligatorHook := preload("res://scripts/ai/bot_kit_hooks/alligator_bot.gd")
 const WolfSpiderHook := preload("res://scripts/ai/bot_kit_hooks/wolf_spider_bot.gd")
+const FireflyHook := preload("res://scripts/ai/bot_kit_hooks/firefly_bot.gd")
 const FrogHook := preload("res://scripts/ai/bot_kit_hooks/chorus_frog_bot.gd")
 const NewtHook := preload("res://scripts/ai/bot_kit_hooks/newt_bot.gd")
 const MinkHook := preload("res://scripts/ai/bot_kit_hooks/mink_bot.gd")
@@ -353,6 +354,8 @@ func _hook(actor: Node) -> RefCounted:
 			hook = AlligatorHook.new()
 		"wolf_spider":
 			hook = WolfSpiderHook.new()
+		"firefly":
+			hook = FireflyHook.new()
 		"chorus_frog":
 			hook = FrogHook.new()
 		"newt":
@@ -396,6 +399,8 @@ func _preferred_range(actor: Node) -> float:
 			return 24.0
 		"wolf_spider":
 			return 26.0
+		"firefly":
+			return 88.0
 		"mink":
 			return 18.0
 		"bullfrog":
