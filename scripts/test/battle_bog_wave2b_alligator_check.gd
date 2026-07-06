@@ -68,14 +68,16 @@ func _check_bite_latch_release_and_whiff(arena: Node, failures: Array[String]) -
 	actor.set_input_frame(frame)
 	actor.kit.tick(actor, 0.016)
 	var whiff_gap: bool = actor.primary_timer > 1.7 and actor.latch_victim == null
-	if not latched or not damaged or not bite_gap or not dragged or not released or not whiff_gap:
-		failures.append("Alligator bite should capsule-latch, damage, drag, release on primary up, and whiff into 1.8s punish; latched=%s damaged=%s bite_gap=%s dragged=%s released=%s whiff_gap=%s timer=%.2f" % [
+	var whiff_pose: bool = bool(actor.get_render_motion_state().get("off_balance_pose", false))
+	if not latched or not damaged or not bite_gap or not dragged or not released or not whiff_gap or not whiff_pose:
+		failures.append("Alligator bite should capsule-latch, damage, drag, release on primary up, and whiff into readable 1.8s punish; latched=%s damaged=%s bite_gap=%s dragged=%s released=%s whiff_gap=%s whiff_pose=%s timer=%.2f" % [
 			str(latched),
 			str(damaged),
 			str(bite_gap),
 			str(dragged),
 			str(released),
 			str(whiff_gap),
+			str(whiff_pose),
 			actor.primary_timer
 		])
 

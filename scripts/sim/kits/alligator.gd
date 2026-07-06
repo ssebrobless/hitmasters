@@ -15,6 +15,7 @@ const DEATH_ROLL_TURN_RAD_PER_SEC := TAU * 1.4
 const AMBUSH_STEALTH_SEC := 9999.0
 const AMBUSH_SLOW_MULT := 0.70
 const DEVOUR_HEAL_RATIO := 0.50
+const WHIFF_RECOVERY_SOURCE := "Whiff Recovery"
 
 var death_roll_timer := 0.0
 var ambush_active := false
@@ -68,6 +69,9 @@ func _bite(actor: Node) -> void:
 			Latch.start(actor, hit, BITE_LATCH_SEC, "Bite")
 			break
 	actor.primary_timer = float(actor.stats.get("attack_interval_sec", 1.8)) / actor.get_modifier_value("attack_speed_mult", 1.0)
+	if hits.is_empty():
+		actor.remove_modifiers_from_source(WHIFF_RECOVERY_SOURCE)
+		actor.add_modifier(WHIFF_RECOVERY_SOURCE, {}, actor.primary_timer)
 
 func _try_death_roll(actor: Node) -> void:
 	if actor.latch_victim == null or not is_instance_valid(actor.latch_victim):

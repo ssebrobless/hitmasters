@@ -497,6 +497,7 @@ func get_render_motion_state() -> Dictionary:
 		"display_stance": _has_modifier_source("Meral Display"),
 		"escape_dash": creature_id == "crayfish" and backward_dash,
 		"ambush_pose": _has_modifier_source("Ambush"),
+		"off_balance_pose": _has_modifier_source("Whiff Recovery"),
 		"perched_pose": state == CreatureStateScript.State.PERCHED
 	}
 

@@ -57,6 +57,7 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 	if attack_aim == Vector2.ZERO:
 		attack_aim = forward
 	var attack_reach := float(anim.get("attack_reach", radius * 1.6))
+	var off_balance := bool(anim.get("off_balance_pose", false))
 
 	var body_offset := Vector2.ZERO
 	var strike := 0.0
@@ -66,10 +67,14 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		body_offset = attack_aim.normalized() * maxf(radius * 0.8, 8.0) * strike * lunge_scale
 	elif windup_t >= 0.0:
 		body_offset = -forward * maxf(radius * 0.4, 6.0) * windup_t * lunge_scale
+	elif off_balance:
+		body_offset = -forward * maxf(radius * 0.18, 3.0) + Vector2(-forward.y, forward.x) * maxf(radius * 0.12, 2.0)
 
 	var rock := 0.0
 	if moving and attack_t < 0.0:
 		rock = sin(walk_phase) * 0.1
+	if off_balance and attack_t < 0.0 and windup_t < 0.0:
+		rock += 0.16
 	var rocked_forward := forward.rotated(rock)
 	var side := Vector2(-rocked_forward.y, rocked_forward.x)
 	var movement_bob := Vector2(0.0, -float(anim.get("movement_bob", 0.0))) if moving and attack_t < 0.0 else Vector2.ZERO
