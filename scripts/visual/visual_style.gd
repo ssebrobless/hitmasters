@@ -431,6 +431,8 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var perched_pose := bool(anim.get("perched_pose", false))
 	var plunge_t := clampf(float(anim.get("plunge_t", 0.0)), 0.0, 1.0)
 	var plunge_pose := String(anim.get("creature_id", "")) == "kingfisher" and plunge_t > 0.0
+	var wading_pose := String(anim.get("creature_id", "")) == "great_blue_heron" and bool(anim.get("wading_pose", false))
+	var wading_stride := clampf(float(anim.get("wading_stride", 0.0)), 0.0, 1.25)
 
 	# Tail fan.
 	canvas.draw_colored_polygon(PackedVector2Array([
@@ -476,16 +478,31 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 			canvas.draw_line(forward * radius * bar + side * radius * 0.4, forward * radius * (bar - 0.12), dark.lightened(0.05), 1.5)
 
 	# Legs when grounded.
-	if not airborne and (moving or perched_pose):
+	if not airborne and (moving or perched_pose or wading_pose):
 		for leg_side: float in [-1.0, 1.0]:
 			var leg_step := 0.0 if perched_pose else sin(walk_phase * 1.6 + (PI if leg_side > 0.0 else 0.0)) * radius * 0.12 * bird_stride
-			canvas.draw_line(side * leg_side * radius * 0.2, side * leg_side * radius * 0.24 + forward * leg_step - forward * radius * 0.05, beak.darkened(0.2), 1.5)
+			if wading_pose:
+				var wade_step := sin(walk_phase * 0.78 + (PI if leg_side > 0.0 else 0.0)) * radius * (0.28 + 0.16 * wading_stride)
+				var hip := side * leg_side * radius * 0.18 - forward * radius * 0.05
+				var knee := side * leg_side * radius * 0.26 + forward * wade_step
+				var foot := side * leg_side * radius * 0.34 + forward * (wade_step + radius * 0.28)
+				var water_color := Color(0.52, 0.78, 0.9, 0.28 + 0.12 * wading_stride)
+				canvas.draw_arc(foot, radius * (0.22 + 0.08 * wading_stride), -0.2, TAU * 0.72, 16, water_color, 1.2 + wading_stride)
+				canvas.draw_line(hip, knee, beak.darkened(0.22), 1.6)
+				canvas.draw_line(knee, foot, beak.darkened(0.18), 1.6)
+			else:
+				canvas.draw_line(side * leg_side * radius * 0.2, side * leg_side * radius * 0.24 + forward * leg_step - forward * radius * 0.05, beak.darkened(0.2), 1.5)
 
 	# Head (long neck for heron), beak, eyes.
 	var head_scale := float(skin.get("head_scale", 1.0))
-	var head_center := forward * radius * (0.75 + neck * 0.55)
+	var head_center := forward * radius * (0.75 + neck * (0.44 if wading_pose else 0.55)) + side * sin(walk_phase * 0.42) * radius * 0.06 * wading_stride
 	if neck > 0.0:
-		canvas.draw_line(forward * radius * 0.5, head_center, main, maxf(radius * 0.2, 2.5))
+		if wading_pose:
+			var neck_mid := forward * radius * 0.72 - side * radius * 0.1
+			canvas.draw_line(forward * radius * 0.42, neck_mid, main, maxf(radius * 0.18, 2.2))
+			canvas.draw_line(neck_mid, head_center, main, maxf(radius * 0.16, 2.0))
+		else:
+			canvas.draw_line(forward * radius * 0.5, head_center, main, maxf(radius * 0.2, 2.5))
 	canvas.draw_circle(head_center, radius * 0.3 * head_scale, head_color)
 	if bool(skin.get("facial_disc", false)):
 		canvas.draw_circle(head_center, radius * 0.26 * head_scale, breast)

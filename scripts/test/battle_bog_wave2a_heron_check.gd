@@ -126,10 +126,19 @@ func _check_wading(arena: Node, failures: Array[String]) -> void:
 	actor.swim_time_remaining = 0.0
 	actor._update_terrain(0.1)
 	var safe_water: bool = actor.get_current_zone() == TerrainMapScript.WATER and not bool(actor.current_environment_profile.get("wrong_terrain_now", true))
-	if not safe_water:
-		failures.append("Wading heron should treat deep water as safe while grounded; zone=%s profile=%s" % [
+	var render_state: Dictionary = actor.get_render_motion_state()
+	var wading_read: bool = bool(render_state.get("wading_pose", false)) and bool(render_state.get("in_water", false))
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	var stride_state: Dictionary = actor.get_render_motion_state()
+	var stride_read: bool = float(stride_state.get("wading_stride", 0.0)) > 0.25
+	if not safe_water or not wading_read or not stride_read:
+		failures.append("Wading heron should treat deep water as safe while grounded and expose leg/ripple render state; zone=%s profile=%s wading=%s stride=%s state=%s/%s" % [
 			actor.get_current_zone(),
-			str(actor.current_environment_profile)
+			str(actor.current_environment_profile),
+			str(wading_read),
+			str(stride_read),
+			str(render_state),
+			str(stride_state)
 		])
 
 func _check_bot_hook(arena: Node, failures: Array[String]) -> void:
