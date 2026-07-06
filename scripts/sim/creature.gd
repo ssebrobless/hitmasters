@@ -545,6 +545,9 @@ func get_render_motion_state() -> Dictionary:
 	var alligator_high_walk := creature_id == "alligator" and moving and surface != EnvironmentProfileScript.SURFACE_WATER and not _has_modifier_source("Ambush")
 	var heron_wading := creature_id == "great_blue_heron" and surface == EnvironmentProfileScript.SURFACE_WATER and not is_airborne() and state != CreatureStateScript.State.PERCHED
 	var wading_stride := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if heron_wading and moving else 0.0
+	var newt_crawling := creature_id == "newt" and moving and not is_airborne() and state != CreatureStateScript.State.PERCHED
+	var newt_tail_lost := creature_id == "newt" and kit != null and float(kit.get("tail_lost_timer")) > 0.0
+	var newt_crawl_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if newt_crawling else 0.0
 	return {
 		"creature_id": creature_id,
 		"terrain_surface": surface,
@@ -553,6 +556,9 @@ func get_render_motion_state() -> Dictionary:
 		"surface_wake_intensity": wake_intensity,
 		"wading_pose": heron_wading,
 		"wading_stride": wading_stride,
+		"slick_crawl_pose": newt_crawling,
+		"slick_crawl_intensity": newt_crawl_intensity,
+		"tail_lost_pose": newt_tail_lost,
 		"water_walk_active": water_walk_active,
 		"rooted_pose": _has_modifier_source("Thanatosis"),
 		"display_stance": _has_modifier_source("Meral Display"),

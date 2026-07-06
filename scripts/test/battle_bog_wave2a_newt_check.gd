@@ -30,6 +30,7 @@ func _run() -> void:
 	_check_unken_reflex(arena, failures)
 	_check_toxic_secretion(arena, failures)
 	_check_rib_exudation(arena, failures)
+	_check_slick_crawl_render(arena, failures)
 	_check_caudal_autotomy(arena, failures)
 	_check_bot_hook(arena, failures)
 
@@ -109,6 +110,23 @@ func _check_rib_exudation(arena: Node, failures: Array[String]) -> void:
 			actor.kit.rib_timer
 		])
 
+func _check_slick_crawl_render(arena: Node, failures: Array[String]) -> void:
+	var actor: Node = arena.player
+	actor.modifiers.clear()
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	var render_state: Dictionary = actor.get_render_motion_state()
+	var crawl_read: bool = bool(render_state.get("slick_crawl_pose", false)) and float(render_state.get("slick_crawl_intensity", 0.0)) > 0.25
+	actor.velocity = Vector2.ZERO
+	var idle_state: Dictionary = actor.get_render_motion_state()
+	var idle_clear: bool = not bool(idle_state.get("slick_crawl_pose", false)) and float(idle_state.get("slick_crawl_intensity", 1.0)) <= 0.001
+	if not crawl_read or not idle_clear:
+		failures.append("Newt movement should expose a low slick-crawl render pose only while moving; crawl=%s idle=%s state=%s/%s" % [
+			str(crawl_read),
+			str(idle_clear),
+			str(render_state),
+			str(idle_state)
+		])
+
 func _check_caudal_autotomy(arena: Node, failures: Array[String]) -> void:
 	var actor: Node = arena.player
 	var target: Node = arena.bots[0]
@@ -118,6 +136,8 @@ func _check_caudal_autotomy(arena: Node, failures: Array[String]) -> void:
 	actor.health = 5.0
 	actor.take_damage_event(_event(500.0, DamageEventScript.DELIVERY_MELEE, target, "Fatal Bite"))
 	var survived: bool = actor.is_alive() and actor.health >= actor.max_health * 0.10 and actor.kit.tail_lost_timer > 9.0 and actor.get_modifier_value("move_speed_mult", 1.0) > 1.1
+	var tail_state: Dictionary = actor.get_render_motion_state()
+	var tail_read: bool = bool(tail_state.get("tail_lost_pose", false))
 	target.health = target.max_health
 	actor.primary_timer = 0.0
 	var frame := InputFrameScript.new()
@@ -126,14 +146,16 @@ func _check_caudal_autotomy(arena: Node, failures: Array[String]) -> void:
 	actor.set_input_frame(frame)
 	actor.kit.tick(actor, 0.016)
 	var attack_disabled: bool = target.health == target.max_health
-	if not survived or not attack_disabled:
-		failures.append("Caudal Autotomy should prevent death, speed up, and disable attacks; survived=%s disabled=%s health=%.2f tail=%.2f speed=%.2f target=%.2f" % [
+	if not survived or not tail_read or not attack_disabled:
+		failures.append("Caudal Autotomy should prevent death, speed up, expose tail-loss pose, and disable attacks; survived=%s tail_read=%s disabled=%s health=%.2f tail=%.2f speed=%.2f target=%.2f state=%s" % [
 			str(survived),
+			str(tail_read),
 			str(attack_disabled),
 			actor.health,
 			actor.kit.tail_lost_timer,
 			actor.get_modifier_value("move_speed_mult", 1.0),
-			target.health
+			target.health,
+			str(tail_state)
 		])
 
 func _check_bot_hook(arena: Node, failures: Array[String]) -> void:

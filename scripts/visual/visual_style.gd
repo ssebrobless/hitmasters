@@ -317,13 +317,21 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	var body_wiggle := float(anim.get("body_wiggle", 1.0))
 	var tail_wave := float(anim.get("tail_wave", 1.0))
 	var is_water_shrew := String(anim.get("creature_id", "")) == "water_shrew"
+	var is_newt := String(anim.get("creature_id", "")) == "newt"
 	var surface_walk := bool(anim.get("surface_walk", false))
 	var surface_wake_intensity := clampf(float(anim.get("surface_wake_intensity", 0.0)), 0.0, 1.25)
+	var slick_crawl := is_newt and bool(anim.get("slick_crawl_pose", false))
+	var slick_crawl_intensity := clampf(float(anim.get("slick_crawl_intensity", 0.0)), 0.0, 1.25)
+	var tail_lost_pose := is_newt and bool(anim.get("tail_lost_pose", false))
 	if surface_walk:
 		body_wiggle += 0.42 * surface_wake_intensity
 		tail_wave += 0.25 * surface_wake_intensity
+	if slick_crawl:
+		body_wiggle += 0.35 * slick_crawl_intensity
+		tail_wave += 0.32 * slick_crawl_intensity
 	var submerged_shrew := is_water_shrew and bool(anim.get("in_water", false)) and not surface_walk
 	var water_tint := Color(0.2, 0.6, 0.85, 0.32 + 0.14 * surface_wake_intensity)
+	var slick_tint := Color(0.86, 0.58, 0.32, 0.20 + 0.10 * slick_crawl_intensity)
 
 	if surface_walk:
 		for wake_side: float in [-1.0, 1.0]:
@@ -356,11 +364,15 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			canvas.draw_colored_polygon(paddle_points, Color(0.16, 0.12, 0.1))
 			canvas.draw_line(paddle_center - side * radius * 0.3, paddle_center + side * radius * 0.3, Color(0.1, 0.08, 0.07), 1.5)
 		"fin":
-			canvas.draw_colored_polygon(PackedVector2Array([
-				tail_base + side * radius * 0.16,
-				tail_base + tail_direction * radius * 1.3,
-				tail_base - side * radius * 0.16
-			]), fur_dark.lightened(0.08))
+			if tail_lost_pose:
+				canvas.draw_circle(tail_base + tail_direction * radius * 0.25, radius * 0.2, fur_dark.lightened(0.15))
+				canvas.draw_circle(tail_base + tail_direction * radius * 0.38, radius * 0.08, Color(0.95, 0.38, 0.24, 0.85))
+			else:
+				canvas.draw_colored_polygon(PackedVector2Array([
+					tail_base + side * radius * 0.16,
+					tail_base + tail_direction * radius * 1.3,
+					tail_base - side * radius * 0.16
+				]), fur_dark.lightened(0.08))
 		"thick":
 			for i in 4:
 				var t := float(i) / 3.0
@@ -375,10 +387,19 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			var paw_t := [0.22, 0.36, 0.72, 0.86][paw_index] as float
 			var paw_side := 1.0 if paw_index % 2 == 0 else -1.0
 			var paw_step := sin(walk_phase * 1.4 + PI * float(paw_index)) * radius * 0.14
-			var paw := spine[2].lerp(spine[5], paw_t) + side * paw_side * radius * 0.5 * bulk + forward * paw_step
-			canvas.draw_circle(paw, radius * 0.13, fur_dark)
+			var paw_reach := radius * (0.66 if slick_crawl else 0.5) * bulk
+			var paw := spine[2].lerp(spine[5], paw_t) + side * paw_side * paw_reach + forward * paw_step
+			canvas.draw_circle(paw, radius * (0.09 if slick_crawl else 0.13), fur_dark)
+			if slick_crawl:
+				canvas.draw_line(paw, paw + side * paw_side * radius * 0.2 + forward * radius * 0.05, fur_dark.lightened(0.1), 1.0)
 			if surface_walk:
 				canvas.draw_circle(paw + side * paw_side * radius * 0.08, maxf(radius * (0.08 + 0.03 * surface_wake_intensity), 1.2), water_tint.lightened(0.2))
+
+	if slick_crawl:
+		for trail_index in 4:
+			var t := float(trail_index) / 3.0
+			var trail_center := -forward * radius * (0.2 + t * 1.1) + side * sin(walk_phase * 1.1 + t * 2.0) * radius * 0.16
+			canvas.draw_arc(trail_center, radius * (0.2 + t * 0.08), -0.3, TAU * 0.65, 12, slick_tint, 1.0)
 
 	for i in 7:
 		canvas.draw_circle(spine[i], segment_radii[i] + 2.0, fur_dark)
