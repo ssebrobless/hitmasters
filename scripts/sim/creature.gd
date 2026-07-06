@@ -558,6 +558,8 @@ func get_render_motion_state() -> Dictionary:
 	var firefly_flash := creature_id == "firefly" and kit != null and float(kit.get("flash_timer")) > 0.0
 	var mosquito_trail := creature_id == "mosquito_swarm" and kit != null and float(kit.get("trail_timer")) > 0.0
 	var mosquito_blood_ratio := clampf(secondary_resource / maxf(secondary_resource_max, 1.0), 0.0, 1.0) if creature_id == "mosquito_swarm" else 0.0
+	var duck_paddle := creature_id == "duck" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
+	var duck_paddle_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if duck_paddle else 0.0
 	return {
 		"creature_id": creature_id,
 		"terrain_surface": surface,
@@ -579,6 +581,8 @@ func get_render_motion_state() -> Dictionary:
 		"firefly_flash_pose": firefly_flash,
 		"mosquito_trail_pose": mosquito_trail,
 		"mosquito_blood_ratio": mosquito_blood_ratio,
+		"duck_paddle_pose": duck_paddle,
+		"duck_paddle_intensity": duck_paddle_intensity,
 		"water_walk_active": water_walk_active,
 		"rooted_pose": _has_modifier_source("Thanatosis"),
 		"display_stance": _has_modifier_source("Meral Display"),

@@ -454,6 +454,8 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var plunge_pose := String(anim.get("creature_id", "")) == "kingfisher" and plunge_t > 0.0
 	var wading_pose := String(anim.get("creature_id", "")) == "great_blue_heron" and bool(anim.get("wading_pose", false))
 	var wading_stride := clampf(float(anim.get("wading_stride", 0.0)), 0.0, 1.25)
+	var duck_paddle := String(anim.get("creature_id", "")) == "duck" and bool(anim.get("duck_paddle_pose", false))
+	var duck_paddle_intensity := clampf(float(anim.get("duck_paddle_intensity", 0.0)), 0.0, 1.25)
 
 	# Tail fan.
 	canvas.draw_colored_polygon(PackedVector2Array([
@@ -491,6 +493,12 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 	for i in 14:
 		var body_angle := TAU * float(i) / 14.0
 		body_points.append(forward * cos(body_angle) * radius * 0.8 + side * sin(body_angle) * radius * (0.62 + waddle_sway * 0.04))
+	if duck_paddle:
+		var water_color := Color(0.48, 0.74, 0.86, 0.22 + duck_paddle_intensity * 0.08)
+		for wake_side: float in [-1.0, 1.0]:
+			var wake_center := -forward * radius * 0.2 + side * wake_side * radius * 0.56
+			canvas.draw_arc(wake_center, radius * (0.38 + duck_paddle_intensity * 0.12), -0.35, 0.92, 14, water_color, 1.2 + duck_paddle_intensity * 0.6)
+		canvas.draw_line(-forward * radius * 0.8, -forward * radius * (1.45 + duck_paddle_intensity * 0.16), Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.75), maxf(radius * 0.08, 1.3))
 	canvas.draw_colored_polygon(body_points, main)
 	canvas.draw_circle(forward * radius * 0.3, radius * 0.34, breast)
 	if bool(skin.get("barred", false)):
@@ -499,7 +507,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 			canvas.draw_line(forward * radius * bar + side * radius * 0.4, forward * radius * (bar - 0.12), dark.lightened(0.05), 1.5)
 
 	# Legs when grounded.
-	if not airborne and (moving or perched_pose or wading_pose):
+	if not airborne and (moving or perched_pose or wading_pose or duck_paddle):
 		for leg_side: float in [-1.0, 1.0]:
 			var leg_step := 0.0 if perched_pose else sin(walk_phase * 1.6 + (PI if leg_side > 0.0 else 0.0)) * radius * 0.12 * bird_stride
 			if wading_pose:
@@ -511,6 +519,17 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 				canvas.draw_arc(foot, radius * (0.22 + 0.08 * wading_stride), -0.2, TAU * 0.72, 16, water_color, 1.2 + wading_stride)
 				canvas.draw_line(hip, knee, beak.darkened(0.22), 1.6)
 				canvas.draw_line(knee, foot, beak.darkened(0.18), 1.6)
+			elif duck_paddle:
+				var paddle_step := sin(walk_phase * 1.8 + (PI if leg_side > 0.0 else 0.0)) * radius * (0.16 + 0.08 * duck_paddle_intensity)
+				var hip := -forward * radius * 0.12 + side * leg_side * radius * 0.18
+				var foot := -forward * radius * 0.48 + side * leg_side * radius * 0.42 + forward * paddle_step
+				canvas.draw_line(hip, foot, beak.darkened(0.25), 1.4)
+				canvas.draw_colored_polygon(PackedVector2Array([
+					foot + forward * radius * 0.08,
+					foot - forward * radius * 0.12 + side * leg_side * radius * 0.18,
+					foot - forward * radius * 0.18,
+					foot - forward * radius * 0.12 - side * leg_side * radius * 0.08
+				]), beak.darkened(0.05))
 			else:
 				canvas.draw_line(side * leg_side * radius * 0.2, side * leg_side * radius * 0.24 + forward * leg_step - forward * radius * 0.05, beak.darkened(0.2), 1.5)
 

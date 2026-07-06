@@ -325,6 +325,28 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.state = CreatureStateScript.State.PERCHED
 	if not bool(actor.get_render_motion_state().get("perched_pose", false)):
 		failures.append("perched birds should expose perched render pose")
+	actor.apply_creature("duck")
+	actor.current_environment_profile = {"surface": "water"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	var duck_water_state: Dictionary = actor.get_render_motion_state()
+	var duck_paddle: bool = bool(duck_water_state.get("duck_paddle_pose", false)) and float(duck_water_state.get("duck_paddle_intensity", 0.0)) > 0.25
+	actor.velocity = Vector2.ZERO
+	actor.set_input_frame(InputFrameScript.new())
+	var duck_idle_state: Dictionary = actor.get_render_motion_state()
+	var duck_idle_clear: bool = not bool(duck_idle_state.get("duck_paddle_pose", false)) and float(duck_idle_state.get("duck_paddle_intensity", 1.0)) <= 0.001
+	actor.current_environment_profile = {"surface": "land"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	var duck_land_state: Dictionary = actor.get_render_motion_state()
+	var duck_land_clear: bool = not bool(duck_land_state.get("duck_paddle_pose", false))
+	if not duck_paddle or not duck_idle_clear or not duck_land_clear:
+		failures.append("moving duck should expose paddling render pose only in water; water=%s idle=%s land=%s state=%s/%s/%s" % [
+			str(duck_paddle),
+			str(duck_idle_clear),
+			str(duck_land_clear),
+			str(duck_water_state),
+			str(duck_idle_state),
+			str(duck_land_state)
+		])
 
 func _move_frame(direction: Vector2) -> Resource:
 	var frame := InputFrameScript.new()
