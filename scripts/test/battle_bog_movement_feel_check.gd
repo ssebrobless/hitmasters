@@ -325,6 +325,20 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.state = CreatureStateScript.State.PERCHED
 	if not bool(actor.get_render_motion_state().get("perched_pose", false)):
 		failures.append("perched birds should expose perched render pose")
+	actor.state = CreatureStateScript.State.AIRBORNE
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	var owl_glide_state: Dictionary = actor.get_render_motion_state()
+	var owl_glide: bool = bool(owl_glide_state.get("owl_glide_pose", false)) and float(owl_glide_state.get("owl_glide_intensity", 0.0)) > 0.25
+	actor.begin_stealth(2.0, "Silent Flight")
+	var owl_silent_state: Dictionary = actor.get_render_motion_state()
+	var owl_silent: bool = bool(owl_silent_state.get("owl_silent_flight_pose", false))
+	if not owl_glide or not owl_silent:
+		failures.append("airborne owl should expose quiet glide and Silent Flight render states; glide=%s silent=%s state=%s/%s" % [
+			str(owl_glide),
+			str(owl_silent),
+			str(owl_glide_state),
+			str(owl_silent_state)
+		])
 	actor.apply_creature("duck")
 	actor.current_environment_profile = {"surface": "water"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
