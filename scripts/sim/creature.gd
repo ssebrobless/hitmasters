@@ -211,6 +211,11 @@ func take_damage(amount: float, _source_team: int = -1, _source_actor: Node = nu
 	event.setup(amount, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, _source_actor, "")
 	take_damage_event(event)
 
+func take_area_damage(amount: float, source_ability := "", source_actor: Node = null) -> void:
+	var event := DamageEventScript.new()
+	event.setup(amount, DamageEventScript.DELIVERY_AREA, DamageEventScript.PLANE_GROUND, source_actor, source_ability)
+	take_damage_event(event)
+
 func begin_stealth(duration: float, _source: String) -> void:
 	stealth_timer = duration
 
@@ -505,7 +510,7 @@ func _update_terrain(delta: float) -> void:
 	if not is_airborne() and _is_wrong_terrain():
 		wrong_terrain_seconds += delta
 		var rate := WRONG_TERRAIN_LATE_DPS if wrong_terrain_seconds > WRONG_TERRAIN_GRACE_SEC else WRONG_TERRAIN_EARLY_DPS
-		take_damage(max_health * rate * delta)
+		take_area_damage(max_health * rate * delta)
 	elif bool(current_environment_profile.get("restores_swim", true)):
 		wrong_terrain_seconds = 0.0
 		if swim_time_max > 0.0:
@@ -813,9 +818,7 @@ func _tick_hunger(delta: float) -> void:
 		return
 	hunger = maxf(hunger - (HUNGER_MAX / HUNGER_FULL_TO_EMPTY_SEC) * delta, 0.0)
 	if hunger <= 0.0 and alive:
-		var event := DamageEventScript.new()
-		event.setup(max_health * 10.0, DamageEventScript.DELIVERY_RANGED, DamageEventScript.PLANE_GROUND, null, "Starvation")
-		take_damage_event(event)
+		take_area_damage(max_health * 10.0, "Starvation")
 
 func _try_auto_eat() -> void:
 	if arena != null and arena.has_method("try_eat_nearby_food"):

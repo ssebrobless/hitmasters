@@ -20,6 +20,15 @@ class AreaProbe:
 		last_delivery = int(event.delivery)
 		health = maxf(health - float(event.amount), 0.0)
 
+class DeliveryProbeKit:
+	extends RefCounted
+	var deliveries: Array[int] = []
+	var abilities: Array[String] = []
+
+	func on_damage_taken(_actor: Node, event: Resource, _amount: float, _before_health: float) -> void:
+		deliveries.append(int(event.delivery))
+		abilities.append(String(event.source_ability))
+
 func _initialize() -> void:
 	_run.call_deferred()
 
@@ -39,6 +48,7 @@ func _run() -> void:
 
 	var failures: Array[String] = []
 	_check_area_delivery(arena, failures)
+	_check_environment_delivery(arena, failures)
 	print("area_delivery failures=%d" % failures.size())
 	for failure in failures:
 		push_error(failure)
@@ -71,6 +81,30 @@ func _check_area_delivery(arena: Node, failures: Array[String]) -> void:
 			owl.state,
 			str(not no_melee_retaliation),
 			toad.health
+		])
+
+func _check_environment_delivery(arena: Node, failures: Array[String]) -> void:
+	var water_point := Vector2.ZERO
+	var terrain_victim := _creature(arena, "bullfrog", 1, water_point)
+	var terrain_probe := DeliveryProbeKit.new()
+	terrain_victim.kit = terrain_probe
+	terrain_victim._update_terrain(1.0)
+	var terrain_area: bool = terrain_probe.deliveries.has(DamageEventScript.DELIVERY_AREA)
+
+	var hungry := _creature(arena, "chorus_frog", 1, Vector2(5000.0, 5200.0))
+	var hunger_probe := DeliveryProbeKit.new()
+	hungry.kit = hunger_probe
+	hungry.hunger = 0.01
+	hungry.hunger_satiated = false
+	hungry._tick_hunger(1.0)
+	var starvation_area: bool = hunger_probe.deliveries.has(DamageEventScript.DELIVERY_AREA) and hunger_probe.abilities.has("Starvation")
+	if not terrain_area or not starvation_area:
+		failures.append("environment damage should use DELIVERY_AREA for wrong-terrain and starvation; terrain=%s deliveries=%s starvation=%s deliveries=%s abilities=%s" % [
+			str(terrain_area),
+			str(terrain_probe.deliveries),
+			str(starvation_area),
+			str(hunger_probe.deliveries),
+			str(hunger_probe.abilities)
 		])
 
 func _creature(arena: Node, creature_id: String, team: int, position: Vector2) -> Node:
