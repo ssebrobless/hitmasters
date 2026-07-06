@@ -3,6 +3,7 @@ extends SceneTree
 const SimConstants := preload("res://scripts/sim/sim_constants.gd")
 const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
 const EnvironmentProfileScript := preload("res://scripts/sim/environment_profile.gd")
+const MinionScript := preload("res://scripts/game/minion.gd")
 
 func _initialize() -> void:
 	var terrain := TerrainMapScript.new()
@@ -48,7 +49,9 @@ func _initialize() -> void:
 		and deep_land_dragged \
 		and String(habitat_profile["danger"]) == EnvironmentProfileScript.DANGER_SAFE
 	var animal_zones_ok: bool = _animal_zones_ok(terrain.get_animal_zones())
+	var zones_clear_huts_ok: bool = _animal_zones_clear_hut_patrols(terrain)
 	var food_resources_ok: bool = _food_resources_ok(terrain.get_food_spawn_points())
+	var obstacles_ok: bool = _environmental_obstacles_ok(terrain.get_environmental_obstacles())
 
 	terrain.configure("1v1")
 	var duel_units := terrain.arena_rect.size / unit
@@ -60,8 +63,8 @@ func _initialize() -> void:
 		and duel_units == Vector2(480.0, 170.0) \
 		and duel_origin_units == Vector2(-240.0, -85.0)
 	var bridges_ok: bool = upper_bridge_zone == TerrainMapScript.LAND and lower_bridge_zone == TerrainMapScript.LAND
-	var passed: bool = shared_bounds_ok and habitats_ok and core_positions_ok and cores_in_habitat and center_zone == TerrainMapScript.WATER and shallow_zone == TerrainMapScript.SHALLOW and bridges_ok and profiles_ok and anchors_ok and animal_zones_ok and food_resources_ok and duel_anchor_count == terrain.get_cover_rects().size()
-	print("terrain_3v3_units=%sx%s terrain_1v1_units=%sx%s habitats=%s cores=%s center=%s shallow=%s bridges=%s profiles_ok=%s anchors_ok=%s zones=%s food=%s duel_anchor_count=%d" % [
+	var passed: bool = shared_bounds_ok and habitats_ok and core_positions_ok and cores_in_habitat and center_zone == TerrainMapScript.WATER and shallow_zone == TerrainMapScript.SHALLOW and bridges_ok and profiles_ok and anchors_ok and animal_zones_ok and zones_clear_huts_ok and food_resources_ok and obstacles_ok and duel_anchor_count == terrain.get_cover_rects().size()
+	print("terrain_3v3_units=%sx%s terrain_1v1_units=%sx%s habitats=%s cores=%s center=%s shallow=%s bridges=%s profiles_ok=%s anchors_ok=%s zones=%s zone_hut_clear=%s food=%s obstacles=%s duel_anchor_count=%d" % [
 		str(arena_units.x),
 		str(arena_units.y),
 		str(duel_units.x),
@@ -74,7 +77,9 @@ func _initialize() -> void:
 		str(profiles_ok),
 		str(anchors_ok),
 		str(animal_zones_ok),
+		str(zones_clear_huts_ok),
 		str(food_resources_ok),
+		str(obstacles_ok),
 		duel_anchor_count
 	])
 	quit(0 if passed else 1)
@@ -82,22 +87,54 @@ func _initialize() -> void:
 func _animal_zones_ok(zones: Array) -> bool:
 	if zones.size() != 10:
 		return false
-	var blue_boss_ok := false
-	var red_boss_ok := false
-	for zone in zones:
-		if String(zone.get("group", "")) != "Boss":
-			continue
-		var center_units: Vector2 = zone.get("center_units", Vector2.ZERO)
-		var activation_count := int(zone.get("breed_activation_count", 0))
-		if String(zone.get("side", "")) == "blue":
-			blue_boss_ok = center_units == Vector2(-48.0, 18.0) and activation_count == 5
-		elif String(zone.get("side", "")) == "red":
-			red_boss_ok = center_units == Vector2(48.0, 18.0) and activation_count == 5
-	return blue_boss_ok and red_boss_ok
+	var expected := {
+		"A": {"center": Vector2(-137.0, -58.0), "radius": Vector2(38.0, 19.0), "creatures": ["newt", "great_blue_heron", "water_snake", "water_shrew", "crayfish"], "boss": false},
+		"B": {"center": Vector2(-92.0, 45.0), "radius": Vector2(43.0, 23.0), "creatures": ["bullfrog", "owl", "beaver", "snapping_turtle", "leeches"], "boss": false},
+		"C": {"center": Vector2(-132.0, 8.0), "radius": Vector2(39.0, 22.0), "creatures": ["chorus_frog", "alligator", "duck", "fireflies", "mink"], "boss": false},
+		"D": {"center": Vector2(-64.0, -45.0), "radius": Vector2(38.0, 22.0), "creatures": ["cane_toad", "bog_turtle", "kingfisher", "otter", "mosquitos"], "boss": false},
+		"Boss": {"center": Vector2(-48.0, 18.0), "radius": Vector2(35.0, 28.0), "creatures": [], "boss": true}
+	}
+	for group: String in expected.keys():
+		var blue_zone := _zone_by_side_group(zones, "blue", group)
+		var red_zone := _zone_by_side_group(zones, "red", group)
+		if blue_zone.is_empty() or red_zone.is_empty():
+			return false
+		var spec: Dictionary = expected[group]
+		var center: Vector2 = spec["center"]
+		var radius: Vector2 = spec["radius"]
+		if blue_zone.get("center_units", Vector2.ZERO) != center or red_zone.get("center_units", Vector2.ZERO) != Vector2(-center.x, center.y):
+			return false
+		if blue_zone.get("radius_units", Vector2.ZERO) != radius or red_zone.get("radius_units", Vector2.ZERO) != radius:
+			return false
+		if bool(blue_zone.get("boss", false)) != bool(spec["boss"]) or bool(red_zone.get("boss", false)) != bool(spec["boss"]):
+			return false
+		if bool(spec["boss"]) and (int(blue_zone.get("breed_activation_count", 0)) != 5 or int(red_zone.get("breed_activation_count", 0)) != 5):
+			return false
+		if not _arrays_equal(blue_zone.get("creatures", []), spec["creatures"]) or not _arrays_equal(red_zone.get("creatures", []), spec["creatures"]):
+			return false
+	return true
+
+func _animal_zones_clear_hut_patrols(terrain: RefCounted) -> bool:
+	var unit := SimConstants.UNIT_PX
+	var patrol_units := MinionScript.DEFENDER_PATROL_RADIUS / unit
+	var hut_centers: Array[Vector2] = []
+	for team in [0, 1]:
+		for hut_position: Vector2 in terrain.hut_positions[team]:
+			hut_centers.append(hut_position / unit)
+	for zone: Dictionary in terrain.get_animal_zones():
+		var center: Vector2 = zone.get("center_units", Vector2.ZERO)
+		var radius: Vector2 = zone.get("radius_units", Vector2.ZERO)
+		for hut_center: Vector2 in hut_centers:
+			var expanded := Vector2(radius.x + patrol_units, radius.y + patrol_units)
+			var normalized := Vector2((hut_center.x - center.x) / expanded.x, (hut_center.y - center.y) / expanded.y)
+			if normalized.length() <= 1.0:
+				return false
+	return true
 
 func _food_resources_ok(food_entries: Array) -> bool:
 	var counts := {}
 	var critter_count := 0
+	var blue_plants: Array[Dictionary] = []
 	for entry in food_entries:
 		if String(entry.get("kind", "")) != "plant":
 			if String(entry.get("kind", "")) == "critter":
@@ -109,12 +146,79 @@ func _food_resources_ok(food_entries: Array) -> bool:
 			return false
 		var count_key := "%s:%s" % [side, plant_type]
 		counts[count_key] = int(counts.get(count_key, 0)) + 1
+		if side == "blue":
+			blue_plants.append(entry)
 		var expected_hits := 3 if plant_type == "tree" else 1
 		if int(entry.get("harvest_hits", 0)) != expected_hits:
+			return false
+		var expected_food_value := 44.0 if plant_type == "tree" else 24.0
+		if absf(float(entry.get("food_value", 0.0)) - expected_food_value) > 0.001:
 			return false
 	for side in ["blue", "red"]:
 		for plant_type in ["berry", "tree", "seed", "flower"]:
 			var count_key := "%s:%s" % [side, plant_type]
 			if int(counts.get(count_key, 0)) != 10:
 				return false
-	return critter_count >= 2
+	for blue_entry: Dictionary in blue_plants:
+		if not _has_mirrored_food_entry(food_entries, blue_entry):
+			return false
+	return critter_count >= 8
+
+func _environmental_obstacles_ok(obstacles: Array) -> bool:
+	if obstacles.size() < 20:
+		return false
+	var type_counts := {}
+	var blue_obstacles: Array[Dictionary] = []
+	for obstacle: Dictionary in obstacles:
+		var side := String(obstacle.get("side", ""))
+		var obstacle_type := String(obstacle.get("type", ""))
+		if not ["blue", "red"].has(side) or not ["tree", "rock", "bush"].has(obstacle_type):
+			return false
+		type_counts[obstacle_type] = int(type_counts.get(obstacle_type, 0)) + 1
+		if side == "blue":
+			blue_obstacles.append(obstacle)
+	for obstacle_type in ["tree", "rock", "bush"]:
+		if int(type_counts.get(obstacle_type, 0)) <= 0:
+			return false
+	for blue_obstacle: Dictionary in blue_obstacles:
+		if not _has_mirrored_obstacle(obstacles, blue_obstacle):
+			return false
+	return true
+
+func _zone_by_side_group(zones: Array, side: String, group: String) -> Dictionary:
+	for zone: Dictionary in zones:
+		if String(zone.get("side", "")) == side and String(zone.get("group", "")) == group:
+			return zone
+	return {}
+
+func _arrays_equal(actual_value: Variant, expected_value: Variant) -> bool:
+	var actual: Array = actual_value as Array
+	var expected: Array = expected_value as Array
+	if actual.size() != expected.size():
+		return false
+	for i in expected.size():
+		if actual[i] != expected[i]:
+			return false
+	return true
+
+func _has_mirrored_food_entry(food_entries: Array, blue_entry: Dictionary) -> bool:
+	var position: Vector2 = blue_entry.get("position", Vector2.ZERO)
+	var mirrored_position := Vector2(-position.x, position.y)
+	for entry: Dictionary in food_entries:
+		if String(entry.get("side", "")) != "red" or String(entry.get("kind", "")) != String(blue_entry.get("kind", "")):
+			continue
+		if String(entry.get("plant_type", "")) != String(blue_entry.get("plant_type", "")):
+			continue
+		if entry.get("position", Vector2.ZERO) == mirrored_position:
+			return true
+	return false
+
+func _has_mirrored_obstacle(obstacles: Array, blue_obstacle: Dictionary) -> bool:
+	var rect: Rect2 = blue_obstacle.get("rect_units", Rect2())
+	var mirrored_rect := Rect2(Vector2(-rect.position.x - rect.size.x, rect.position.y), rect.size)
+	for obstacle: Dictionary in obstacles:
+		if String(obstacle.get("side", "")) != "red" or String(obstacle.get("type", "")) != String(blue_obstacle.get("type", "")):
+			continue
+		if obstacle.get("rect_units", Rect2()) == mirrored_rect:
+			return true
+	return false
