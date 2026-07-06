@@ -1185,6 +1185,9 @@ static func _base_serpent(canvas: CanvasItem, radius: float, forward: Vector2, s
 			var wake_side := 1.0 if wake_index % 4 == 1 else -1.0
 			var wake_center := points[wake_index] + side * wake_side * radius * (0.28 + 0.08 * water_slither_intensity)
 			canvas.draw_arc(wake_center, radius * (0.28 + t * 0.18 + water_slither_intensity * 0.05), -0.45, 0.85, 12, water_color, 1.1 + water_slither_intensity * 0.6)
+			var s_ripple_start := points[wake_index] - forward * radius * 0.14
+			var s_ripple_end := points[min(wake_index + 1, segments - 1)] - forward * radius * (0.28 + 0.08 * water_slither_intensity)
+			canvas.draw_line(s_ripple_start, s_ripple_end, Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.72), maxf(radius * 0.04, 1.0))
 		canvas.draw_line(points[0] - forward * radius * 0.2, points[segments - 1] - forward * radius * 0.35, Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.45), maxf(radius * 0.05, 1.0))
 	if land_slither:
 		var scuff_color := Color(0.34, 0.25, 0.17, 0.18 + 0.10 * land_slither_intensity)
@@ -1197,6 +1200,8 @@ static func _base_serpent(canvas: CanvasItem, radius: float, forward: Vector2, s
 			var scuff_side := 1.0 if scuff_index % 4 == 1 else -1.0
 			var scuff_center := contact - forward * radius * 0.08 + side * scuff_side * radius * 0.18
 			canvas.draw_arc(scuff_center, radius * (0.14 + t * 0.08 + land_slither_intensity * 0.03), PI * 0.1, PI * 0.9, 8, scuff_color, maxf(radius * 0.04, 1.0))
+			var belly_dash_color := Color(scuff_color.r, scuff_color.g, scuff_color.b, scuff_color.a * (0.68 if mud_slither else 0.54))
+			canvas.draw_line(contact - forward * radius * 0.08, contact + forward * radius * (0.14 + 0.04 * land_slither_intensity), belly_dash_color, maxf(radius * 0.035, 1.0))
 			if mud_slither:
 				canvas.draw_line(contact - forward * radius * 0.1, contact - forward * radius * (0.34 + 0.12 * land_slither_intensity) + side * scuff_side * radius * 0.1, Color(scuff_color.r, scuff_color.g, scuff_color.b, scuff_color.a * 0.8), maxf(radius * 0.04, 1.0))
 	for i in range(segments - 1, -1, -1):
