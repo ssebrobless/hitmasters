@@ -99,13 +99,13 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		"crustacean":
 			_base_crustacean(canvas, radius, rocked_forward, side, skin, walk_phase, moving, strike, anim)
 		"spider":
-			_base_spider(canvas, radius, rocked_forward, side, skin, walk_phase, moving)
+			_base_spider(canvas, radius, rocked_forward, side, skin, walk_phase, moving, anim)
 		"swarm":
-			_base_swarm(canvas, radius, skin)
+			_base_swarm(canvas, radius, skin, walk_phase, moving, anim)
 		"cluster":
 			_base_cluster(canvas, radius, rocked_forward, side, skin)
 		"bug":
-			_base_bug(canvas, radius, rocked_forward, side, skin)
+			_base_bug(canvas, radius, rocked_forward, side, skin, walk_phase, moving, anim)
 		_:
 			canvas.draw_circle(Vector2.ZERO, radius + 2.0, _with_alpha(Color(0.05, 0.06, 0.06), alpha))
 			canvas.draw_circle(Vector2.ZERO, radius, _with_alpha(creature_color(creature_id), alpha))
@@ -587,26 +587,28 @@ static func _base_crustacean(canvas: CanvasItem, radius: float, forward: Vector2
 	canvas.draw_circle(forward * radius * 0.5 + side * radius * 0.14, maxf(radius * 0.06, 1.2), Color(0.08, 0.05, 0.04))
 	canvas.draw_circle(forward * radius * 0.5 - side * radius * 0.14, maxf(radius * 0.06, 1.2), Color(0.08, 0.05, 0.04))
 
-static func _base_spider(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool) -> void:
+static func _base_spider(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, anim: Dictionary = {}) -> void:
 	var main: Color = skin.get("main", Color(0.3, 0.22, 0.12))
 	var dark: Color = skin.get("dark", main.darkened(0.35))
 	var accent: Color = skin.get("accent", main.lightened(0.3))
+	var scuttle_stride := float(anim.get("scuttle_stride", 1.0))
+	var low_slung := float(anim.get("low_slung", 0.0))
 
 	# Eight legs, two joints each, alternating gait.
 	for leg_index in 8:
 		var leg_side := 1.0 if leg_index % 2 == 0 else -1.0
 		var pair := leg_index / 2
 		var base_angle := lerpf(0.45, 2.2, float(pair) / 3.0) * leg_side
-		var step := sin(walk_phase * 2.0 + float(pair) * PI * 0.5 + (PI if leg_side > 0.0 else 0.0)) * 0.18 if moving else 0.0
-		var knee := forward.rotated(base_angle + step) * radius * 0.85
-		var foot := forward.rotated(base_angle + step * 1.4) * radius * 1.35
+		var step := sin(walk_phase * 2.0 + float(pair) * PI * 0.5 + (PI if leg_side > 0.0 else 0.0)) * 0.18 * scuttle_stride if moving else 0.0
+		var knee := forward.rotated(base_angle + step) * radius * (0.78 + scuttle_stride * 0.07)
+		var foot := forward.rotated(base_angle + step * 1.4) * radius * (1.22 + scuttle_stride * 0.13)
 		canvas.draw_line(Vector2.ZERO, knee, dark, maxf(radius * 0.09, 1.5))
 		canvas.draw_line(knee, foot, dark, maxf(radius * 0.06, 1.2))
 
 	# Abdomen + cephalothorax with dorsal stripe.
-	canvas.draw_circle(-forward * radius * 0.45, radius * 0.52, dark)
-	canvas.draw_circle(-forward * radius * 0.45, radius * 0.45, main)
-	canvas.draw_circle(forward * radius * 0.25, radius * 0.4, main)
+	canvas.draw_circle(-forward * radius * 0.45, radius * (0.52 - low_slung * 0.08), dark)
+	canvas.draw_circle(-forward * radius * 0.45, radius * (0.45 - low_slung * 0.07), main)
+	canvas.draw_circle(forward * radius * 0.25, radius * (0.4 - low_slung * 0.05), main)
 	canvas.draw_line(-forward * radius * 0.85, forward * radius * 0.55, accent, maxf(radius * 0.12, 2.0))
 
 	# Eye cluster: wolf spiders have two big forward eyes.
@@ -615,14 +617,17 @@ static func _base_spider(canvas: CanvasItem, radius: float, forward: Vector2, si
 	canvas.draw_circle(forward * radius * 0.58 + side * radius * 0.22, maxf(radius * 0.04, 1.0), Color(0.05, 0.04, 0.03))
 	canvas.draw_circle(forward * radius * 0.58 - side * radius * 0.22, maxf(radius * 0.04, 1.0), Color(0.05, 0.04, 0.03))
 
-static func _base_swarm(canvas: CanvasItem, radius: float, skin: Dictionary) -> void:
+static func _base_swarm(canvas: CanvasItem, radius: float, skin: Dictionary, walk_phase: float, moving: bool, anim: Dictionary = {}) -> void:
 	var main: Color = skin.get("main", Color(0.4, 0.4, 0.42))
 	var dark: Color = skin.get("dark", Color(0.2, 0.2, 0.22))
-	canvas.draw_circle(Vector2.ZERO, radius, Color(dark.r, dark.g, dark.b, 0.25))
+	var radius_mult := float(anim.get("swarm_radius_mult", 1.0))
+	var jitter := float(anim.get("swarm_jitter", 0.0)) * (1.0 if moving else 0.45)
+	canvas.draw_circle(Vector2.ZERO, radius * radius_mult, Color(dark.r, dark.g, dark.b, 0.22))
 	var time_now := Time.get_ticks_msec() * 0.001
 	for i in 12:
 		var orbit_angle := time_now * (1.2 + float(i % 4) * 0.35) + float(i) * TAU / 12.0
-		var orbit_radius := radius * (0.3 + 0.6 * float((i * 7) % 10) / 10.0)
+		var pulse := sin(walk_phase * 1.7 + float(i) * 2.31) * jitter
+		var orbit_radius := radius * radius_mult * (0.3 + 0.6 * float((i * 7) % 10) / 10.0 + pulse * 0.12)
 		var dot := Vector2(cos(orbit_angle), sin(orbit_angle)) * orbit_radius
 		canvas.draw_circle(dot, maxf(radius * 0.09, 1.6), dark)
 		canvas.draw_line(dot + Vector2(-2.0, -1.0), dot + Vector2(2.0, -1.0), Color(main.r, main.g, main.b, 0.6), 1.0)
@@ -647,17 +652,21 @@ static func _base_cluster(canvas: CanvasItem, radius: float, forward: Vector2, s
 		])
 		canvas.draw_colored_polygon(points, dark if i % 3 == 0 else main)
 
-static func _base_bug(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary) -> void:
+static func _base_bug(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, anim: Dictionary = {}) -> void:
 	var main: Color = skin.get("main", Color(0.22, 0.16, 0.1))
 	var dark: Color = skin.get("dark", main.darkened(0.35))
 	var glow: Color = skin.get("glow", Color(0.95, 0.9, 0.4))
-	var pulse := sin(Time.get_ticks_msec() * 0.006) * 0.5 + 0.5
+	var breathe := float(anim.get("glow_breathe", 0.0))
+	var pulse := sin(Time.get_ticks_msec() * 0.006 + walk_phase * 0.4) * 0.5 + 0.5
+	var wingbeat := float(anim.get("wingbeat_mult", 1.0))
+	var glow_scale := 1.0 + breathe * pulse
 	# Bioluminescent glow halo.
-	canvas.draw_circle(-forward * radius * 0.4, radius * (1.6 + pulse * 0.5), Color(glow.r, glow.g, glow.b, 0.1 + pulse * 0.08))
-	canvas.draw_circle(-forward * radius * 0.4, radius * 0.55, Color(glow.r, glow.g, glow.b, 0.55 + pulse * 0.35))
+	canvas.draw_circle(-forward * radius * 0.4, radius * (1.55 + pulse * 0.5) * glow_scale, Color(glow.r, glow.g, glow.b, 0.1 + pulse * 0.08))
+	canvas.draw_circle(-forward * radius * 0.4, radius * 0.55 * glow_scale, Color(glow.r, glow.g, glow.b, 0.55 + pulse * 0.35))
 	# Wings blurred mid-beat.
 	for wing_side: float in [-1.0, 1.0]:
-		canvas.draw_circle(side * wing_side * radius * 0.5 + forward * radius * 0.1, radius * 0.4, Color(0.8, 0.85, 0.9, 0.25))
+		var wing_flare := sin(walk_phase * wingbeat + wing_side) * radius * 0.08 if moving else 0.0
+		canvas.draw_circle(side * wing_side * (radius * 0.5 + wing_flare) + forward * radius * 0.1, radius * 0.4, Color(0.8, 0.85, 0.9, 0.25))
 	# Body + head.
 	canvas.draw_circle(Vector2.ZERO, radius * 0.42, dark)
 	canvas.draw_circle(forward * radius * 0.42, radius * 0.28, main)

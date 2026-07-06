@@ -12,7 +12,12 @@ const DEFAULT_PROFILE := {
 	"ground_contact": 0.6,
 	"landing_squash": 0.0,
 	"scuttle_stride": 1.0,
-	"tail_curl": 0.0
+	"tail_curl": 0.0,
+	"low_slung": 0.0,
+	"swarm_radius_mult": 1.0,
+	"swarm_jitter": 0.0,
+	"glow_breathe": 0.0,
+	"wingbeat_mult": 1.0
 }
 
 const PROFILES := {
@@ -89,7 +94,9 @@ const PROFILES := {
 		"turn_rate_deg": 1350.0,
 		"gait": "scuttle",
 		"gait_rate_mult": 1.8,
-		"bob_px": 0.25
+		"bob_px": 0.25,
+		"scuttle_stride": 1.45,
+		"low_slung": 0.22
 	},
 	"firefly": {
 		"accel_time": 0.16,
@@ -98,7 +105,9 @@ const PROFILES := {
 		"terrain_lerp_rate": 4.0,
 		"gait": "hover",
 		"gait_rate_mult": 0.5,
-		"bob_px": 1.8
+		"bob_px": 1.8,
+		"glow_breathe": 0.32,
+		"wingbeat_mult": 0.72
 	},
 	"mosquito_swarm": {
 		"accel_time": 0.055,
@@ -107,7 +116,9 @@ const PROFILES := {
 		"terrain_lerp_rate": 7.0,
 		"gait": "swarm_jitter",
 		"gait_rate_mult": 2.4,
-		"bob_px": 0.7
+		"bob_px": 0.7,
+		"swarm_radius_mult": 1.18,
+		"swarm_jitter": 0.46
 	}
 }
 
@@ -144,7 +155,12 @@ static func render_anim(profile: Dictionary, walk_phase: float) -> Dictionary:
 		"ground_contact": float(profile.get("ground_contact", 0.6)),
 		"landing_squash": float(profile.get("landing_squash", 0.0)),
 		"scuttle_stride": float(profile.get("scuttle_stride", 1.0)),
-		"tail_curl": float(profile.get("tail_curl", 0.0))
+		"tail_curl": float(profile.get("tail_curl", 0.0)),
+		"low_slung": float(profile.get("low_slung", 0.0)),
+		"swarm_radius_mult": float(profile.get("swarm_radius_mult", 1.0)),
+		"swarm_jitter": float(profile.get("swarm_jitter", 0.0)),
+		"glow_breathe": float(profile.get("glow_breathe", 0.0)),
+		"wingbeat_mult": float(profile.get("wingbeat_mult", 1.0))
 	}
 
 static func _turn_limited_direction(current_velocity: Vector2, desired_direction: Vector2, delta: float, turn_rate_deg: float) -> Vector2:

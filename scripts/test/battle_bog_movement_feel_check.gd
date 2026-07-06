@@ -95,6 +95,18 @@ func _check_render_profile_keys(arena: Node, failures: Array[String]) -> void:
 	crayfish.apply_creature("crayfish")
 	if not float(crayfish.movement_profile.get("scuttle_stride", 0.0)) > 1.0:
 		failures.append("crayfish should expose a wider scuttle stride")
+	var spider: Node = arena.bots[2]
+	spider.apply_creature("wolf_spider")
+	if not float(spider.movement_profile.get("low_slung", 0.0)) > 0.0:
+		failures.append("wolf spider should expose low scuttle posture metadata")
+	var firefly: Node = arena.player
+	firefly.apply_creature("firefly")
+	if not float(firefly.movement_profile.get("glow_breathe", 0.0)) > 0.0:
+		failures.append("firefly should expose glow breathing metadata")
+	var mosquito: Node = arena.bots[0]
+	mosquito.apply_creature("mosquito_swarm")
+	if not float(mosquito.movement_profile.get("swarm_jitter", 0.0)) > 0.0:
+		failures.append("mosquito swarm should expose swarm jitter metadata")
 
 func _move_frame(direction: Vector2) -> Resource:
 	var frame := InputFrameScript.new()
