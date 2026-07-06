@@ -3,6 +3,7 @@ extends SceneTree
 const ARENA_SCENE := "res://scenes/Arena.tscn"
 const InputFrameScript := preload("res://scripts/sim/input_frame.gd")
 const MovementFeelScript := preload("res://scripts/sim/movement_feel.gd")
+const CreatureStateScript := preload("res://scripts/sim/creature_state.gd")
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -28,6 +29,7 @@ func _run() -> void:
 	_check_dash_bypass(arena, failures)
 	_check_render_profile_keys(arena, failures)
 	_check_water_profile_overlay(arena, failures)
+	_check_render_state_flags(arena, failures)
 
 	print("movement_feel failures=%d" % failures.size())
 	for failure in failures:
@@ -185,6 +187,33 @@ func _check_water_profile_overlay(arena: Node, failures: Array[String]) -> void:
 	turtle.current_environment_profile = {"surface": "water"}
 	if not float(turtle._active_movement_profile().get("turn_rate_deg", 0.0)) > float(land_profile.get("turn_rate_deg", 0.0)):
 		failures.append("creature active profile should use water movement overlay")
+
+func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
+	var actor: Node = arena.player
+	actor.apply_creature("cane_toad")
+	actor.add_modifier("Thanatosis", {"move_speed_mult": 0.0}, 1.0)
+	if not bool(actor.get_render_motion_state().get("rooted_pose", false)):
+		failures.append("Thanatosis should expose rooted render pose")
+	actor.apply_creature("crayfish")
+	actor.add_modifier("Meral Display", {"forward_back_only": 2.0}, 1.0)
+	var stance_state: Dictionary = actor.get_render_motion_state()
+	actor.modifiers.clear()
+	actor.last_aim_direction = Vector2.RIGHT
+	actor.dash_velocity = Vector2.LEFT * 220.0
+	actor.dash_timer = 0.2
+	var escape_state: Dictionary = actor.get_render_motion_state()
+	actor.dash_timer = 0.0
+	actor.dash_velocity = Vector2.ZERO
+	if not bool(stance_state.get("display_stance", false)) or not bool(escape_state.get("escape_dash", false)):
+		failures.append("crayfish should expose display and escape render states; stance=%s escape=%s" % [str(stance_state), str(escape_state)])
+	actor.apply_creature("alligator")
+	actor.add_modifier("Ambush", {"move_speed_mult": 0.7}, 1.0)
+	if not bool(actor.get_render_motion_state().get("ambush_pose", false)):
+		failures.append("Ambush should expose low ambush render pose")
+	actor.apply_creature("owl")
+	actor.state = CreatureStateScript.State.PERCHED
+	if not bool(actor.get_render_motion_state().get("perched_pose", false)):
+		failures.append("perched birds should expose perched render pose")
 
 func _move_frame(direction: Vector2) -> Resource:
 	var frame := InputFrameScript.new()

@@ -135,12 +135,17 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var dark: Color = skin.get("dark", main.darkened(0.4))
 	var belly: Color = skin.get("belly", main.lightened(0.25))
 	var eye_color: Color = skin.get("eye", Color(0.8, 0.7, 0.3))
+	var rooted_pose := bool(anim.get("rooted_pose", false))
 
-	var raw_hop := sin(walk_phase * 1.2) * 0.5 + 0.5 if moving else 0.0
+	var raw_hop := sin(walk_phase * 1.2) * 0.5 + 0.5 if moving and not rooted_pose else 0.0
 	var ground_contact := clampf(float(anim.get("ground_contact", 0.6)), 0.1, 0.95)
 	var hop := maxf(0.0, (raw_hop - ground_contact) / maxf(1.0 - ground_contact, 0.001)) if moving else 0.0
 	var leg_extend := 0.55 + hop * 0.55 * float(anim.get("hop_leg_scale", 1.0))
+	if rooted_pose:
+		leg_extend = 0.38
 	var landing_squash := (1.0 - hop) * float(anim.get("landing_squash", 0.0)) if moving else 0.0
+	if rooted_pose:
+		landing_squash = maxf(landing_squash, 0.22)
 
 	for leg_side: float in [-1.0, 1.0]:
 		var hip := -forward * radius * 0.45 + side * leg_side * radius * 0.62
@@ -383,6 +388,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var wingbeat := float(anim.get("wingbeat_mult", 1.0))
 	var perch_flutter := float(anim.get("perch_flutter", 1.0))
 	var waddle_sway := float(anim.get("waddle_sway", 0.0))
+	var perched_pose := bool(anim.get("perched_pose", false))
 
 	# Tail fan.
 	canvas.draw_colored_polygon(PackedVector2Array([
@@ -408,10 +414,11 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 	else:
 		# Folded wings hugging the body.
 		for wing_side: float in [-1.0, 1.0]:
+			var perch_tuck := 0.18 if perched_pose else 0.0
 			canvas.draw_colored_polygon(PackedVector2Array([
 				forward * radius * 0.4 + side * wing_side * radius * 0.35,
-				-forward * radius * 0.9 + side * wing_side * radius * 0.55,
-				-forward * radius * 0.2 + side * wing_side * radius * 0.7
+				-forward * radius * (0.9 - perch_tuck) + side * wing_side * radius * (0.55 - perch_tuck),
+				-forward * radius * 0.2 + side * wing_side * radius * (0.7 - perch_tuck)
 			]), dark.lightened(0.06))
 
 	# Body.
@@ -427,9 +434,9 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 			canvas.draw_line(forward * radius * bar + side * radius * 0.4, forward * radius * (bar - 0.12), dark.lightened(0.05), 1.5)
 
 	# Legs when grounded.
-	if not airborne and moving:
+	if not airborne and (moving or perched_pose):
 		for leg_side: float in [-1.0, 1.0]:
-			var leg_step := sin(walk_phase * 1.6 + (PI if leg_side > 0.0 else 0.0)) * radius * 0.12 * bird_stride
+			var leg_step := 0.0 if perched_pose else sin(walk_phase * 1.6 + (PI if leg_side > 0.0 else 0.0)) * radius * 0.12 * bird_stride
 			canvas.draw_line(side * leg_side * radius * 0.2, side * leg_side * radius * 0.24 + forward * leg_step - forward * radius * 0.05, beak.darkened(0.2), 1.5)
 
 	# Head (long neck for heron), beak, eyes.
@@ -502,6 +509,10 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var dark: Color = skin.get("dark", main.darkened(0.35))
 	var tail_sway := float(anim.get("tail_sway", 1.0))
 	var crawl_weight := float(anim.get("crawl_weight", 0.0))
+	var ambush_pose := bool(anim.get("ambush_pose", false))
+	if ambush_pose:
+		crawl_weight = maxf(crawl_weight, 0.72)
+		tail_sway *= 0.35
 
 	# Keeled tail, swaying.
 	var tail_direction := (-forward).rotated((sin(walk_phase * 0.9) * 0.25 * tail_sway) if moving else 0.08)
@@ -550,12 +561,19 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 	canvas.draw_circle(forward * radius * 0.78 - side * radius * 0.22, radius * 0.1, dark)
 	canvas.draw_circle(forward * radius * 0.78 + side * radius * 0.22, maxf(radius * 0.05, 1.2), Color(0.85, 0.75, 0.3))
 	canvas.draw_circle(forward * radius * 0.78 - side * radius * 0.22, maxf(radius * 0.05, 1.2), Color(0.85, 0.75, 0.3))
+	if ambush_pose:
+		canvas.draw_line(-forward * radius * 0.75 - side * radius * 0.5, forward * radius * 1.05 - side * radius * 0.38, Color(0.08, 0.16, 0.08, 0.65), 2.0)
+		canvas.draw_line(-forward * radius * 0.75 + side * radius * 0.5, forward * radius * 1.05 + side * radius * 0.38, Color(0.08, 0.16, 0.08, 0.65), 2.0)
 
 static func _base_crustacean(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, strike := 0.0, anim: Dictionary = {}) -> void:
 	var main: Color = skin.get("main", Color(0.5, 0.2, 0.1))
 	var dark: Color = skin.get("dark", main.darkened(0.35))
 	var scuttle_stride := float(anim.get("scuttle_stride", 1.0))
-	var tail_curl := float(anim.get("tail_curl", 0.0)) if moving else 0.0
+	var display_stance := bool(anim.get("display_stance", false))
+	var escape_dash := bool(anim.get("escape_dash", false))
+	var tail_curl := float(anim.get("tail_curl", 0.0)) if moving or escape_dash else 0.0
+	if escape_dash:
+		tail_curl = maxf(tail_curl, 0.95)
 
 	# Fan tail.
 	canvas.draw_colored_polygon(PackedVector2Array([
@@ -582,10 +600,11 @@ static func _base_crustacean(canvas: CanvasItem, radius: float, forward: Vector2
 	canvas.draw_line(forward * radius * 0.5, forward * radius * 0.0, dark, 1.5)
 
 	# Big claws, opening on strike.
-	var claw_open := 0.25 + strike * 0.6
+	var claw_open := 0.25 + strike * 0.6 + (0.32 if display_stance else 0.0)
 	for claw_side: float in [-1.0, 1.0]:
 		var arm_base := forward * radius * 0.4 + side * claw_side * radius * 0.35
-		var claw_center := forward * radius * (0.85 + strike * 0.3) + side * claw_side * radius * 0.55
+		var stance_spread := 0.22 if display_stance else 0.0
+		var claw_center := forward * radius * (0.85 + strike * 0.3) + side * claw_side * radius * (0.55 + stance_spread)
 		canvas.draw_line(arm_base, claw_center, main, maxf(radius * 0.14, 2.0))
 		canvas.draw_circle(claw_center, radius * 0.24, dark)
 		canvas.draw_circle(claw_center, radius * 0.19, main)

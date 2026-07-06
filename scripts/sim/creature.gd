@@ -476,12 +476,18 @@ func get_render_motion_state() -> Dictionary:
 	var surface := String(current_environment_profile.get("surface", ""))
 	var moving: bool = velocity.length() > 4.0 or (input_frame != null and input_frame.move.length() > 0.05)
 	var water_walk_active: bool = get_modifier_value("water_walk", 1.0) > 1.5
+	var backward_dash := dash_timer > 0.0 and dash_velocity.length() > 0.0 and dash_velocity.normalized().dot(-last_aim_direction.normalized()) > 0.55
 	return {
 		"creature_id": creature_id,
 		"terrain_surface": surface,
 		"in_water": surface == EnvironmentProfileScript.SURFACE_WATER,
 		"surface_walk": creature_id == "water_shrew" and water_walk_active and moving and surface == EnvironmentProfileScript.SURFACE_WATER,
-		"water_walk_active": water_walk_active
+		"water_walk_active": water_walk_active,
+		"rooted_pose": _has_modifier_source("Thanatosis"),
+		"display_stance": _has_modifier_source("Meral Display"),
+		"escape_dash": creature_id == "crayfish" and backward_dash,
+		"ambush_pose": _has_modifier_source("Ambush"),
+		"perched_pose": state == CreatureStateScript.State.PERCHED
 	}
 
 func get_swim_ratio() -> float:
@@ -653,6 +659,12 @@ func remove_modifiers_from_source(source: String) -> void:
 	for i in range(modifiers.size() - 1, -1, -1):
 		if String(modifiers[i].get("source", "")) == source:
 			modifiers.remove_at(i)
+
+func _has_modifier_source(source: String) -> bool:
+	for modifier in modifiers:
+		if String(modifier.get("source", "")) == source:
+			return true
+	return false
 
 func cleanse_negative_modifiers() -> void:
 	for i in range(modifiers.size() - 1, -1, -1):
