@@ -34,6 +34,7 @@ const CreatureInfoPanelScript := preload("res://scripts/ui/creature_info_panel.g
 const StockManagerScript := preload("res://scripts/game/stock_manager.gd")
 const FoodSourceScript := preload("res://scripts/game/food_source.gd")
 const WildlifeEncounterScript := preload("res://scripts/game/wildlife_encounter.gd")
+const BreedingActorScript := preload("res://scripts/game/breeding_actor.gd")
 
 const PLAYABLE_CREATURE_POOL := ["snapping_turtle", "chorus_frog", "mink", "beaver", "owl", "duck", "bullfrog", "cane_toad", "crayfish", "water_shrew", "newt", "great_blue_heron", "kingfisher", "water_snake", "alligator", "wolf_spider", "firefly", "mosquito_swarm"]
 const SQUAD_COMMAND_FARM := "farm"
@@ -94,6 +95,7 @@ var huts: Array[Node] = []
 var food_sources: Array[Node] = []
 var animal_zone_states: Array[Dictionary] = []
 var wildlife_encounters: Array[Node] = []
+var breeding_actors: Array[Node] = []
 var bred_animal_count := 0
 var boss_activation_count := 0
 var animal_zone_tick_timer := 0.0
@@ -359,6 +361,7 @@ func _build_ui() -> void:
 
 func _spawn_match() -> void:
 	_seed_match_rng()
+	_clear_breeding_actors()
 	stock_manager.reset()
 	_reset_breeding_buffs()
 	day_index = 1
@@ -580,7 +583,94 @@ func _boss_zone_occupants(zone: Dictionary) -> Array:
 func _tick_breeding(delta: float) -> void:
 	var completed_cues: Array = stock_manager.tick_breeding_cues(delta)
 	for cue: Dictionary in completed_cues:
+		_clear_breeding_actor_for_cue(String(cue.get("id", "")))
 		_complete_breeding_cue(cue)
+
+func _spawn_breeding_actor_for_cue(cue: Dictionary) -> void:
+	var cue_id := String(cue.get("id", ""))
+	if cue_id.is_empty() or _breeding_actor_for_cue(cue_id) != null:
+		return
+	var actor = BreedingActorScript.new()
+	add_child(actor)
+	actor.setup(self, cue, _breeding_cue_position(cue))
+	breeding_actors.append(actor)
+	register_entity(actor)
+
+func _breeding_actor_for_cue(cue_id: String) -> Node:
+	for actor in breeding_actors:
+		if actor != null and is_instance_valid(actor) and String(actor.get("cue_id")) == cue_id:
+			return actor
+	return null
+
+func _clear_breeding_actor_for_cue(cue_id: String) -> void:
+	for i in range(breeding_actors.size() - 1, -1, -1):
+		var actor: Node = breeding_actors[i]
+		if actor == null or not is_instance_valid(actor):
+			breeding_actors.remove_at(i)
+			continue
+		if String(actor.get("cue_id")) != cue_id:
+			continue
+		unregister_entity(actor)
+		breeding_actors.remove_at(i)
+		actor.queue_free()
+
+func _clear_breeding_actors() -> void:
+	for actor in breeding_actors:
+		if actor != null and is_instance_valid(actor):
+			unregister_entity(actor)
+			actor.queue_free()
+	breeding_actors.clear()
+
+func on_breeding_actor_defeated(actor: Node, source_actor: Node = null) -> void:
+	if actor == null:
+		return
+	var cue_id := String(actor.get("cue_id"))
+	var cue: Dictionary = stock_manager.remove_breeding_cue(cue_id)
+	breeding_actors.erase(actor)
+	unregister_entity(actor)
+	var attacker_name: String = source_actor.get_actor_name() if source_actor != null and is_instance_valid(source_actor) and source_actor.has_method("get_actor_name") else "Raiders"
+	var defender_team := _team_name(int(actor.get("team")))
+	var creature_id := String(cue.get("creature_id", actor.get("creature_id")))
+	add_kill_feed("%s denied %s %s breeding" % [attacker_name, defender_team, creature_id.replace("_", " ")])
+
+func is_breeding_actor_targetable(actor: Node) -> bool:
+	return actor != null and is_instance_valid(actor) and can_damage_core(int(actor.get("team")))
+
+func can_damage_breeding_actor(actor: Node, source_actor: Node) -> bool:
+	if actor == null or source_actor == null or not is_instance_valid(actor) or not is_instance_valid(source_actor):
+		return false
+	if not ("team" in actor) or not ("team" in source_actor):
+		return false
+	var defending_team := int(actor.get("team"))
+	if int(source_actor.get("team")) == defending_team:
+		return false
+	if not can_damage_core(defending_team):
+		return false
+	var habitat: Rect2 = terrain_map.get_team_habitat_rect(defending_team)
+	return habitat.size.x > 0.0 and habitat.size.y > 0.0 and habitat.has_point(source_actor.global_position)
+
+func show_breeding_actor_shielded(actor: Node, _source_actor: Node = null) -> void:
+	if actor == null or not is_instance_valid(actor) or hut_defend_hint_timer > 0.0:
+		return
+	hut_defend_hint_timer = 0.8
+	var text := "BREEDING SHIELDED" if not can_damage_core(int(actor.get("team"))) else "ENTER HABITAT TO RAID"
+	telegraphs.append({
+		"type": "float_text",
+		"position": actor.global_position + Vector2(-30.0, -36.0),
+		"text": text,
+		"color": Color(0.85, 0.9, 1.0, 0.92),
+		"size": 12,
+		"duration": 0.9,
+		"remaining": 0.9
+	})
+
+func _breeding_cue_position(cue: Dictionary) -> Vector2:
+	var team := int(cue.get("team", BLUE))
+	var habitat: Rect2 = terrain_map.get_team_habitat_rect(team)
+	if habitat.size.x <= 0.0 or habitat.size.y <= 0.0:
+		return get_team_spawn(team)
+	var slot_index := int(cue.get("slot_index", 0))
+	return habitat.get_center() + Vector2(0.0, (float(slot_index) - 1.0) * 32.0)
 
 func _complete_breeding_cue(cue: Dictionary) -> void:
 	var team := int(cue.get("team", -1))
@@ -1365,6 +1455,9 @@ func on_hut_destroyed(hut: Node) -> void:
 	var team_name := _team_name(hut.team)
 	add_kill_feed("%s mud hut destroyed — %s habitat exposed!" % [team_name, team_name])
 	add_circle_telegraph(cores[hut.team].global_position, 90.0, Color(1.0, 0.6, 0.2, 0.8), 1.0, 5.0, true)
+	for actor in breeding_actors:
+		if actor != null and is_instance_valid(actor) and int(actor.get("team")) == int(hut.team):
+			actor.queue_redraw()
 
 func register_dam(dam: Node) -> void:
 	if not dams.has(dam):
@@ -2220,8 +2313,7 @@ func _draw_breeding_cues() -> void:
 		var habitat: Rect2 = terrain_map.get_team_habitat_rect(team)
 		if habitat.size.x <= 0.0 or habitat.size.y <= 0.0:
 			continue
-		var slot_index := int(cue.get("slot_index", 0))
-		var center := habitat.get_center() + Vector2(0.0, (float(slot_index) - 1.0) * 32.0)
+		var center := _breeding_cue_position(cue)
 		var duration := maxf(float(cue.get("duration", StockManagerScript.BREEDING_DURATION_SEC)), 0.01)
 		var remaining := clampf(float(cue.get("remaining", 0.0)), 0.0, duration)
 		var progress := 1.0 - remaining / duration
@@ -2451,6 +2543,7 @@ func _try_manual_habitat_deposit(actor: Node) -> bool:
 			habitat_deposit_prompt_state = "duplicate"
 			add_kill_feed("U: %s is already breeding" % actor.get_actor_name())
 			return false
+		_spawn_breeding_actor_for_cue(cue)
 	if actor.has_method("reset_hunger_after_deposit") and actor.has_method("is_satiated") and actor.is_satiated():
 		actor.reset_hunger_after_deposit()
 	habitat_deposit_prompt_state = "accepted"

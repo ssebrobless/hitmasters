@@ -10,12 +10,14 @@ var slots: Dictionary = {}
 var actor_keys: Dictionary = {}
 var habitat_visits: Array[Dictionary] = []
 var breeding_cues: Array[Dictionary] = []
+var breeding_cue_sequence := 0
 
 func reset() -> void:
 	slots.clear()
 	actor_keys.clear()
 	habitat_visits.clear()
 	breeding_cues.clear()
+	breeding_cue_sequence = 0
 
 func register_slot(team: int, slot_index: int, creature_id: String, actor: Node, max_stocks := MAX_STOCKS) -> void:
 	var key := _slot_key(team, slot_index)
@@ -142,6 +144,7 @@ func record_habitat_visit(actor: Node) -> Dictionary:
 		}
 	var cue := {
 		"accepted": true,
+		"id": _next_breeding_cue_id(team, slot_index, creature_id),
 		"team": team,
 		"slot_index": slot_index,
 		"creature_id": creature_id,
@@ -153,6 +156,17 @@ func record_habitat_visit(actor: Node) -> Dictionary:
 	habitat_visits.append(cue.duplicate())
 	breeding_cues.append(cue)
 	return cue.duplicate(true)
+
+func remove_breeding_cue(cue_id: String) -> Dictionary:
+	if cue_id.is_empty():
+		return {}
+	for i in range(breeding_cues.size() - 1, -1, -1):
+		if String(breeding_cues[i].get("id", "")) != cue_id:
+			continue
+		var cue := breeding_cues[i].duplicate(true)
+		breeding_cues.remove_at(i)
+		return cue
+	return {}
 
 func tick_breeding_cues(delta: float) -> Array[Dictionary]:
 	var completed: Array[Dictionary] = []
@@ -193,6 +207,10 @@ func _family_for_actor(actor: Node) -> String:
 		var data: Dictionary = data_value
 		return String(data.get("family", ""))
 	return ""
+
+func _next_breeding_cue_id(team: int, slot_index: int, creature_id: String) -> String:
+	breeding_cue_sequence += 1
+	return "%d:%d:%s:%d" % [team, slot_index, creature_id, breeding_cue_sequence]
 
 func _actor_key(actor: Node) -> String:
 	return str(actor.get_instance_id())
