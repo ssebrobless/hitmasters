@@ -107,6 +107,14 @@ func _check_render_profile_keys(arena: Node, failures: Array[String]) -> void:
 	mosquito.apply_creature("mosquito_swarm")
 	if not float(mosquito.movement_profile.get("swarm_jitter", 0.0)) > 0.0:
 		failures.append("mosquito swarm should expose swarm jitter metadata")
+	var snake: Node = arena.bots[1]
+	snake.apply_creature("water_snake")
+	if not float(snake.movement_profile.get("slither_amp", 0.0)) > 1.0:
+		failures.append("water snake should expose amplified slither metadata")
+	var gator: Node = arena.bots[2]
+	gator.apply_creature("alligator")
+	if not float(gator.movement_profile.get("crawl_weight", 0.0)) > 0.0:
+		failures.append("alligator should expose heavy crawl metadata")
 
 func _move_frame(direction: Vector2) -> Resource:
 	var frame := InputFrameScript.new()

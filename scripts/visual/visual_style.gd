@@ -93,9 +93,9 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		"bird":
 			_base_bird(canvas, radius, rocked_forward, side, skin, walk_phase, moving, airborne)
 		"serpent":
-			_base_serpent(canvas, radius, rocked_forward, side, skin, walk_phase, moving)
+			_base_serpent(canvas, radius, rocked_forward, side, skin, walk_phase, moving, anim)
 		"croc":
-			_base_croc(canvas, radius, rocked_forward, side, skin, walk_phase, moving)
+			_base_croc(canvas, radius, rocked_forward, side, skin, walk_phase, moving, anim)
 		"crustacean":
 			_base_crustacean(canvas, radius, rocked_forward, side, skin, walk_phase, moving, strike, anim)
 		"spider":
@@ -458,11 +458,12 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 		canvas.draw_circle(head_center + side * eye_offset + forward * radius * 0.08, maxf(eye_size * 0.45, 1.0), Color(0.06, 0.05, 0.04))
 		canvas.draw_circle(head_center - side * eye_offset + forward * radius * 0.08, maxf(eye_size * 0.45, 1.0), Color(0.06, 0.05, 0.04))
 
-static func _base_serpent(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool) -> void:
+static func _base_serpent(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, anim: Dictionary = {}) -> void:
 	var main: Color = skin.get("main", Color(0.36, 0.26, 0.15))
 	var dark: Color = skin.get("dark", main.darkened(0.35))
 	var segments := 9
-	var slither := 1.0 if moving else 0.3
+	var slither_amp := float(anim.get("slither_amp", 1.0))
+	var slither := slither_amp if moving else 0.3 * slither_amp
 	var points: Array[Vector2] = []
 	for i in segments:
 		var t := float(i) / float(segments - 1)
@@ -488,12 +489,14 @@ static func _base_serpent(canvas: CanvasItem, radius: float, forward: Vector2, s
 		canvas.draw_line(tongue_tip, tongue_tip + forward.rotated(0.5) * radius * 0.15, Color(0.85, 0.2, 0.25), 1.5)
 		canvas.draw_line(tongue_tip, tongue_tip + forward.rotated(-0.5) * radius * 0.15, Color(0.85, 0.2, 0.25), 1.5)
 
-static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool) -> void:
+static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, anim: Dictionary = {}) -> void:
 	var main: Color = skin.get("main", Color(0.2, 0.26, 0.17))
 	var dark: Color = skin.get("dark", main.darkened(0.35))
+	var tail_sway := float(anim.get("tail_sway", 1.0))
+	var crawl_weight := float(anim.get("crawl_weight", 0.0))
 
 	# Keeled tail, swaying.
-	var tail_direction := (-forward).rotated(sin(walk_phase * 0.9) * 0.25 if moving else 0.08)
+	var tail_direction := (-forward).rotated((sin(walk_phase * 0.9) * 0.25 * tail_sway) if moving else 0.08)
 	for i in 5:
 		var t := float(i) / 4.0
 		var tail_point := -forward * radius * 0.7 + tail_direction * radius * (0.3 + t * 1.5)
@@ -504,15 +507,15 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 	# Stubby legs.
 	for leg_index in 4:
 		var angle := [1.1, -1.1, 2.2, -2.2][leg_index] as float
-		var step := (sin(walk_phase + (PI if leg_index % 2 == 0 else 0.0)) * radius * 0.1) if moving else 0.0
-		var leg_center := forward.rotated(angle) * radius * 0.78 + forward * step
-		canvas.draw_circle(leg_center, radius * 0.2, dark)
+		var step := (sin(walk_phase + (PI if leg_index % 2 == 0 else 0.0)) * radius * 0.1 * (1.0 - crawl_weight * 0.35)) if moving else 0.0
+		var leg_center := forward.rotated(angle) * radius * (0.78 + crawl_weight * 0.08) + forward * step
+		canvas.draw_circle(leg_center, radius * (0.2 + crawl_weight * 0.03), dark)
 
 	# Body: broad armored oval.
 	var body_points := PackedVector2Array()
 	for i in 16:
 		var body_angle := TAU * float(i) / 16.0
-		body_points.append(forward * cos(body_angle) * radius * 0.95 + side * sin(body_angle) * radius * 0.6)
+		body_points.append(forward * cos(body_angle) * radius * (0.95 + crawl_weight * 0.05) + side * sin(body_angle) * radius * (0.6 - crawl_weight * 0.06))
 	canvas.draw_colored_polygon(body_points, dark)
 	var inner := PackedVector2Array()
 	for point in body_points:

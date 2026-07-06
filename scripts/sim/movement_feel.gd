@@ -17,7 +17,10 @@ const DEFAULT_PROFILE := {
 	"swarm_radius_mult": 1.0,
 	"swarm_jitter": 0.0,
 	"glow_breathe": 0.0,
-	"wingbeat_mult": 1.0
+	"wingbeat_mult": 1.0,
+	"slither_amp": 1.0,
+	"tail_sway": 1.0,
+	"crawl_weight": 0.0
 }
 
 const PROFILES := {
@@ -78,7 +81,9 @@ const PROFILES := {
 		"terrain_lerp_rate": 6.0,
 		"gait": "low_crawl",
 		"gait_rate_mult": 0.65,
-		"bob_px": 0.3
+		"bob_px": 0.3,
+		"tail_sway": 1.35,
+		"crawl_weight": 0.32
 	},
 	"water_snake": {
 		"accel_time": 0.10,
@@ -86,7 +91,8 @@ const PROFILES := {
 		"turn_rate_deg": 320.0,
 		"gait": "slither",
 		"gait_rate_mult": 1.25,
-		"bob_px": 0.0
+		"bob_px": 0.0,
+		"slither_amp": 1.35
 	},
 	"wolf_spider": {
 		"accel_time": 0.055,
@@ -160,7 +166,10 @@ static func render_anim(profile: Dictionary, walk_phase: float) -> Dictionary:
 		"swarm_radius_mult": float(profile.get("swarm_radius_mult", 1.0)),
 		"swarm_jitter": float(profile.get("swarm_jitter", 0.0)),
 		"glow_breathe": float(profile.get("glow_breathe", 0.0)),
-		"wingbeat_mult": float(profile.get("wingbeat_mult", 1.0))
+		"wingbeat_mult": float(profile.get("wingbeat_mult", 1.0)),
+		"slither_amp": float(profile.get("slither_amp", 1.0)),
+		"tail_sway": float(profile.get("tail_sway", 1.0)),
+		"crawl_weight": float(profile.get("crawl_weight", 0.0))
 	}
 
 static func _turn_limited_direction(current_velocity: Vector2, desired_direction: Vector2, delta: float, turn_rate_deg: float) -> Vector2:
