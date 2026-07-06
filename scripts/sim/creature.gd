@@ -425,6 +425,18 @@ func get_speed_px() -> float:
 		return _speed_px_for_flight()
 	return terrain_speed_px if terrain_speed_px > 0.0 else _terrain_target_speed_px(get_current_zone())
 
+func get_render_motion_state() -> Dictionary:
+	var surface := String(current_environment_profile.get("surface", ""))
+	var moving: bool = velocity.length() > 4.0 or (input_frame != null and input_frame.move.length() > 0.05)
+	var water_walk_active: bool = get_modifier_value("water_walk", 1.0) > 1.5
+	return {
+		"creature_id": creature_id,
+		"terrain_surface": surface,
+		"in_water": surface == EnvironmentProfileScript.SURFACE_WATER,
+		"surface_walk": creature_id == "water_shrew" and water_walk_active and moving and surface == EnvironmentProfileScript.SURFACE_WATER,
+		"water_walk_active": water_walk_active
+	}
+
 func get_swim_ratio() -> float:
 	if swim_time_max <= 0.0:
 		return 1.0
@@ -1064,6 +1076,7 @@ func _draw() -> void:
 		"windup_t": 1.0 - anim_windup_timer / anim_windup_duration if anim_windup_timer > 0.0 else -1.0,
 		"shake_offset": shake_offset
 	})
+	anim.merge(get_render_motion_state(), true)
 	var draw_alpha := 0.4 if is_stealthed() else 1.0
 	if wrong_terrain_seconds > 0.0:
 		_draw_wrong_terrain_warning()

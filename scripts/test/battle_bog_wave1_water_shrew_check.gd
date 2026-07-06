@@ -87,16 +87,21 @@ func _check_water_walk(arena: Node, failures: Array[String]) -> void:
 		and actor.get_modifier_value("water_walk", 1.0) > 1.5 \
 		and not bool(actor.current_environment_profile.get("wrong_terrain_now", true)) \
 		and actor.swim_time_remaining >= after_start_swim - 0.001
+	var active_render: Dictionary = actor.get_render_motion_state()
+	var active_surface_skim: bool = bool(active_render.get("surface_walk", false)) and bool(active_render.get("in_water", false))
 
 	var idle_frame := InputFrameScript.new()
 	idle_frame.aim = actor.global_position + Vector2.RIGHT * 100.0
 	actor.set_input_frame(idle_frame)
 	actor.tick_sim(0.05)
 	var idle_dropped: bool = actor.kit.water_walk_timer <= 0.0 and actor.get_modifier_value("water_walk", 1.0) == 1.0
-	if not active_safe or not idle_dropped:
-		failures.append("Water Walk should make water safe while moving and drop on idle; active=%s dropped=%s timer=%.2f water_walk=%.1f swim %.2f/%.2f profile=%s" % [
+	var idle_surface_skim: bool = bool(actor.get_render_motion_state().get("surface_walk", false))
+	if not active_safe or not active_surface_skim or not idle_dropped or idle_surface_skim:
+		failures.append("Water Walk should make water safe while moving, render as surface skim, and drop on idle; active=%s skim=%s dropped=%s idle_skim=%s timer=%.2f water_walk=%.1f swim %.2f/%.2f profile=%s" % [
 			str(active_safe),
+			str(active_surface_skim),
 			str(idle_dropped),
+			str(idle_surface_skim),
 			actor.kit.water_walk_timer,
 			actor.get_modifier_value("water_walk", 1.0),
 			after_start_swim,

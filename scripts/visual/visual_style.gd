@@ -89,7 +89,7 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		"turtle":
 			_base_turtle(canvas, radius, rocked_forward, side, skin, walk_phase, moving, windup_t, strike, attack_aim.normalized(), attack_reach)
 		"mustelid":
-			_base_mustelid(canvas, radius, rocked_forward, side, skin, walk_phase, moving, strike)
+			_base_mustelid(canvas, radius, rocked_forward, side, skin, walk_phase, moving, strike, anim)
 		"bird":
 			_base_bird(canvas, radius, rocked_forward, side, skin, walk_phase, moving, airborne)
 		"serpent":
@@ -266,13 +266,22 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 		canvas.draw_line(forward * radius * cross - side * radius * 0.55, forward * radius * cross + side * radius * 0.55, shell_rim.darkened(0.06), 1.5)
 	canvas.draw_line(forward * radius * -0.7, forward * radius * 0.72, shell_color.lightened(0.18), 1.5)
 
-static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, strike := 0.0) -> void:
+static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, strike := 0.0, anim: Dictionary = {}) -> void:
 	var fur: Color = skin.get("main", Color(0.24, 0.14, 0.09))
 	var fur_dark: Color = skin.get("dark", fur.darkened(0.3))
 	var belly: Color = skin.get("belly", fur.lightened(0.3))
 	var bulk := float(skin.get("bulk", 1.0))
 	var snout := float(skin.get("snout", 1.0))
 	var stretch := 1.0 + strike * 0.5
+	var is_water_shrew := String(anim.get("creature_id", "")) == "water_shrew"
+	var surface_walk := bool(anim.get("surface_walk", false))
+	var submerged_shrew := is_water_shrew and bool(anim.get("in_water", false)) and not surface_walk
+	var water_tint := Color(0.2, 0.6, 0.85, 0.38)
+
+	if surface_walk:
+		for wake_side: float in [-1.0, 1.0]:
+			var wake_center := -forward * radius * 0.2 + side * wake_side * radius * 0.55
+			canvas.draw_arc(wake_center, radius * 0.46, -0.5, 0.9, 10, water_tint, 1.5)
 
 	var spine: Array[Vector2] = []
 	var segment_radii: Array[float] = []
@@ -317,16 +326,28 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			var paw_t := [0.22, 0.36, 0.72, 0.86][paw_index] as float
 			var paw_side := 1.0 if paw_index % 2 == 0 else -1.0
 			var paw_step := sin(walk_phase * 1.4 + PI * float(paw_index)) * radius * 0.14
-			canvas.draw_circle(spine[2].lerp(spine[5], paw_t) + side * paw_side * radius * 0.5 * bulk + forward * paw_step, radius * 0.13, fur_dark)
+			var paw := spine[2].lerp(spine[5], paw_t) + side * paw_side * radius * 0.5 * bulk + forward * paw_step
+			canvas.draw_circle(paw, radius * 0.13, fur_dark)
+			if surface_walk:
+				canvas.draw_circle(paw + side * paw_side * radius * 0.08, maxf(radius * 0.08, 1.2), water_tint.lightened(0.2))
 
 	for i in 7:
 		canvas.draw_circle(spine[i], segment_radii[i] + 2.0, fur_dark)
 	for i in 7:
-		canvas.draw_circle(spine[i], segment_radii[i], fur)
+		canvas.draw_circle(spine[i], segment_radii[i], fur.darkened(0.28) if submerged_shrew else fur)
 	if bool(skin.get("spots", false)):
 		var accent: Color = skin.get("accent", Color(0.9, 0.5, 0.15))
 		for i in 6:
 			canvas.draw_circle(spine[i] + side * (radius * 0.18 if i % 2 == 0 else radius * -0.18), maxf(radius * 0.08, 1.5), accent)
+	if surface_walk:
+		for bubble_index in 4:
+			var t := float(bubble_index) / 3.0
+			var bubble := -forward * radius * (0.5 + t * 0.8) + side * sin(walk_phase + t * 3.1) * radius * 0.28
+			canvas.draw_circle(bubble, maxf(radius * (0.05 + t * 0.03), 1.0), water_tint.lightened(0.25))
+	elif submerged_shrew:
+		for bubble_index in 3:
+			var bubble := forward * radius * (0.15 + float(bubble_index) * 0.18) + side * radius * (0.34 + float(bubble_index) * 0.12)
+			canvas.draw_circle(bubble, maxf(radius * 0.06, 1.0), water_tint.lightened(0.35))
 
 	var head: Vector2 = spine[6]
 	if not bool(skin.get("smooth", false)):
