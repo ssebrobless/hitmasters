@@ -16,6 +16,7 @@ class FakeBody:
 	var body_capsule_half_len_px := 0.0
 	var velocity := Vector2.ZERO
 	var last_aim_direction := Vector2.RIGHT
+	var creature_data: Dictionary = {}
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -25,6 +26,7 @@ func _run() -> void:
 	_check_circle_parity(failures)
 	_check_capsule_geometry(failures)
 	_check_axis_rules(failures)
+	_check_authored_regions(failures)
 	_check_roster_parse(failures)
 	print("hurtbox_check failures=%d" % failures.size())
 	for failure in failures:
@@ -110,6 +112,31 @@ func _check_axis_rules(failures: Array[String]) -> void:
 		failures.append("axis: idle body should orient the capsule along last aim")
 	body.queue_free()
 
+func _check_authored_regions(failures: Array[String]) -> void:
+	var snake := _make_body(Vector2.ZERO, 6.4, 13.6)
+	snake.creature_data = {
+		"hurtbox_regions": [
+			{"name": "head", "offset_units": [1.25, 0.0], "radius_units": 0.45, "mult": 1.35, "open_when": "always"}
+		]
+	}
+	var head: Dictionary = HurtboxScript.region_at(snake, Vector2(20.0, 0.0))
+	if String(head.get("region", "")) != "head" or absf(float(head.get("region_mult", 0.0)) - 1.35) > 0.001:
+		failures.append("authored regions: snake head expected 1.35 got %s" % str(head))
+	var hull: Dictionary = HurtboxScript.region_at(snake, Vector2(-20.0, 0.0))
+	if String(hull.get("region", "")) != "hull" or absf(float(hull.get("region_mult", 0.0)) - 1.0) > 0.001:
+		failures.append("authored regions: snake tail should fall back to hull got %s" % str(hull))
+	var turtle := _make_body(Vector2.ZERO, 25.6)
+	turtle.creature_data = {
+		"hurtbox_regions": [
+			{"name": "shell_rear", "offset_units": [-0.75, 0.0], "radius_units": 0.55, "mult": 0.75, "open_when": "always"}
+		]
+	}
+	var shell: Dictionary = HurtboxScript.region_at(turtle, Vector2(-12.0, 0.0))
+	if String(shell.get("region", "")) != "shell_rear" or absf(float(shell.get("region_mult", 0.0)) - 0.75) > 0.001:
+		failures.append("authored regions: turtle rear shell expected 0.75 got %s" % str(shell))
+	snake.queue_free()
+	turtle.queue_free()
+
 func _check_roster_parse(failures: Array[String]) -> void:
 	var catalog := get_root().get_node_or_null("CreatureCatalog")
 	if catalog == null:
@@ -130,3 +157,11 @@ func _check_roster_parse(failures: Array[String]) -> void:
 			failures.append("roster parse: %s half_len expected %.2f got %.2f" % [expectation.id, expectation.half_len, half_len_px])
 		if String(footprint.get("shape", "")) != "capsule":
 			failures.append("roster parse: %s footprint shape should be capsule" % expectation.id)
+	var snake_data: Dictionary = catalog.get_creature("water_snake")
+	var snake_regions: Array = snake_data.get("hurtbox_regions", [])
+	if snake_regions.is_empty() or String((snake_regions[0] as Dictionary).get("name", "")) != "head":
+		failures.append("roster parse: water_snake should define a head hurtbox region")
+	var turtle_data: Dictionary = catalog.get_creature("snapping_turtle")
+	var turtle_regions: Array = turtle_data.get("hurtbox_regions", [])
+	if turtle_regions.is_empty() or String((turtle_regions[0] as Dictionary).get("name", "")) != "shell_rear":
+		failures.append("roster parse: snapping_turtle should define a shell_rear hurtbox region")

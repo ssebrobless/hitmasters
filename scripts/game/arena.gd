@@ -984,7 +984,7 @@ func resolve_projectile_hits(projectile: Node) -> void:
 			if entity.has_method("take_damage_event"):
 				var event := DamageEventScript.new()
 				event.setup(projectile.damage, DamageEventScript.DELIVERY_RANGED, DamageEventScript.PLANE_GROUND, projectile.source_actor, "projectile")
-				event.set_hit(hit_info.point, hit_info.normal)
+				event.set_hit(hit_info.point, hit_info.normal, String(hit_info.get("region", "hull")), float(hit_info.get("region_mult", 1.0)))
 				entity.take_damage_event(event)
 			else:
 				entity.take_damage(projectile.damage, projectile.team, projectile.source_actor)
@@ -1033,7 +1033,7 @@ func damage_enemies_in_radius(source_team: int, center: Vector2, radius: float, 
 			if entity.has_method("take_damage_event"):
 				var event := DamageEventScript.new()
 				event.setup(damage, DamageEventScript.DELIVERY_AREA, DamageEventScript.PLANE_GROUND, source_actor, source_ability)
-				event.set_hit(hit_info.point, hit_info.normal)
+				event.set_hit(hit_info.point, hit_info.normal, String(hit_info.get("region", "hull")), float(hit_info.get("region_mult", 1.0)))
 				entity.take_damage_event(event)
 			else:
 				entity.take_damage(damage, source_team, source_actor)

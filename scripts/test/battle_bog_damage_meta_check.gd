@@ -39,6 +39,7 @@ func _initialize() -> void:
 	_check_metadata_from_melee(failures)
 	_check_metadata_from_line(failures)
 	_check_region_multiplier(failures)
+	_check_authored_region_from_line(failures)
 	_check_render_hitstop(failures)
 	_check_counter_hit(failures)
 	print("damage_meta failures=%d" % failures.size())
@@ -88,6 +89,21 @@ func _check_region_multiplier(failures: Array[String]) -> void:
 	var loss: float = before - target.health
 	if absf(loss - 13.5) > 0.01:
 		failures.append("region_mult should scale incoming damage; loss=%.2f" % loss)
+	arena.queue_free()
+
+func _check_authored_region_from_line(failures: Array[String]) -> void:
+	var arena := FakeArena.new()
+	get_root().add_child(arena)
+	var actor := _creature(arena, "chorus_frog", 0, Vector2.ZERO)
+	var target := _creature(arena, "water_snake", 1, Vector2.RIGHT * 60.0)
+	target.last_aim_direction = Vector2.LEFT
+	target.body_heading = Vector2.LEFT
+	var before: float = target.health
+	Projectile.instant_line(actor, 70.0, 10.0, DamageEventScript.DELIVERY_RANGED, DamageEventScript.PLANE_GROUND, "Head Probe", {"half_width_px": 8.0})
+	var event := _last_hit(arena)
+	var loss: float = before - target.health
+	if String(event.get("region", "")) != "head" or absf(float(event.get("region_mult", 0.0)) - 1.35) > 0.001 or absf(loss - 13.5) > 0.01:
+		failures.append("line hit should resolve authored snake head region; loss=%.2f event=%s" % [loss, str(event)])
 	arena.queue_free()
 
 func _check_render_hitstop(failures: Array[String]) -> void:

@@ -43,6 +43,8 @@ func load_catalog(path := ROSTER_PATH) -> bool:
 		if not creature.has("footprint") or typeof(creature.get("footprint")) != TYPE_DICTIONARY:
 			push_error("Creature %s is missing footprint." % creature_id)
 			valid = false
+		if not _validate_hurtbox_regions(creature_id, creature.get("hurtbox_regions", [])):
+			valid = false
 		if String(creature.get("diet", "")).is_empty():
 			push_error("Creature %s is missing diet." % creature_id)
 			valid = false
@@ -69,3 +71,53 @@ func px_to_units(px: float) -> float:
 
 func speed_to_px_per_sec(speed_units: float) -> float:
 	return speed_units * SimConstants.SPEED_PX_PER_SEC
+
+func _validate_hurtbox_regions(creature_id: String, regions: Variant) -> bool:
+	if regions == null:
+		return true
+	if typeof(regions) != TYPE_ARRAY:
+		push_error("Creature %s hurtbox_regions must be an array." % creature_id)
+		return false
+	var valid := true
+	for region_value: Variant in regions:
+		if typeof(region_value) != TYPE_DICTIONARY:
+			push_error("Creature %s hurtbox region must be an object." % creature_id)
+			valid = false
+			continue
+		var region: Dictionary = region_value
+		var name := String(region.get("name", ""))
+		var open_when := String(region.get("open_when", "always"))
+		if name.is_empty():
+			push_error("Creature %s hurtbox region is missing name." % creature_id)
+			valid = false
+		if not ["always", "lunge", "stunned", "low_window", "bask"].has(open_when):
+			push_error("Creature %s hurtbox region %s has invalid open_when %s." % [creature_id, name, open_when])
+			valid = false
+		var radius := _number_or_nan(region.get("radius_units", NAN))
+		if is_nan(radius) or radius < 0.35:
+			push_error("Creature %s hurtbox region %s radius_units must be >= 0.35." % [creature_id, name])
+			valid = false
+		var mult := _number_or_nan(region.get("mult", NAN))
+		if is_nan(mult) or mult < 0.75 or mult > 1.35:
+			push_error("Creature %s hurtbox region %s mult must be between 0.75 and 1.35." % [creature_id, name])
+			valid = false
+		if not _valid_region_offset(region.get("offset_units", null)):
+			push_error("Creature %s hurtbox region %s offset_units must be [forward, side] or {forward, side}." % [creature_id, name])
+			valid = false
+	return valid
+
+func _number_or_nan(value: Variant) -> float:
+	if typeof(value) == TYPE_INT or typeof(value) == TYPE_FLOAT:
+		return float(value)
+	return NAN
+
+func _valid_region_offset(value: Variant) -> bool:
+	if typeof(value) == TYPE_ARRAY:
+		return (value as Array).size() >= 2 and _is_number((value as Array)[0]) and _is_number((value as Array)[1])
+	if typeof(value) == TYPE_DICTIONARY:
+		var offset: Dictionary = value
+		return (_is_number(offset.get("forward", offset.get("x", null))) and _is_number(offset.get("side", offset.get("y", null))))
+	return false
+
+func _is_number(value: Variant) -> bool:
+	return typeof(value) == TYPE_INT or typeof(value) == TYPE_FLOAT

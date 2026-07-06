@@ -261,6 +261,21 @@ func can_use_abilities() -> bool:
 func open_low_window(duration: float) -> void:
 	low_window_timer = duration
 
+func is_region_open(open_when: String) -> bool:
+	match open_when:
+		"always":
+			return true
+		"low_window":
+			return low_window_timer > 0.0
+		"stunned":
+			return not can_act()
+		"bask":
+			return _has_modifier_source("Basking")
+		"lunge":
+			return dash_timer > 0.0
+		_:
+			return false
+
 func _dodges_event(event: Resource) -> bool:
 	# Elevated creatures (true flight or perch, not always-flying bugs) dodge
 	# ground melee — except during their low attack window.

@@ -1,5 +1,7 @@
 extends RefCounted
 
+const SimConstants := preload("res://scripts/sim/sim_constants.gd")
+
 # Authored hurtbox hulls (decision #21, RESEARCH_COMBAT_DEPTH.md Phase A).
 # A hull is the broad "did this credibly hit the creature?" shape derived from
 # the roster footprint: a circle for most creatures, an oriented capsule for
@@ -31,6 +33,41 @@ static func body_axis(actor: Node) -> Vector2:
 	if aim is Vector2 and (aim as Vector2) != Vector2.ZERO:
 		return (aim as Vector2).normalized()
 	return Vector2.RIGHT
+
+static func region_at(actor: Node, hit_point: Vector2) -> Dictionary:
+	var fallback := {"region": "hull", "region_mult": 1.0, "center": hit_point, "radius": 0.0}
+	if actor == null or not is_instance_valid(actor):
+		return fallback
+	var data_value: Variant = actor.get("creature_data")
+	if typeof(data_value) != TYPE_DICTIONARY:
+		return fallback
+	var creature_data: Dictionary = data_value
+	var regions_value: Variant = creature_data.get("hurtbox_regions", [])
+	if typeof(regions_value) != TYPE_ARRAY:
+		return fallback
+	var axis := body_axis(actor)
+	var center: Vector2 = (actor as Node2D).global_position if actor is Node2D else Vector2.ZERO
+	var best := fallback
+	var best_radius := INF
+	for region_value: Variant in regions_value:
+		if typeof(region_value) != TYPE_DICTIONARY:
+			continue
+		var region: Dictionary = region_value
+		if not _region_open(actor, String(region.get("open_when", "always"))):
+			continue
+		var radius := maxf(0.0, _float_or(region.get("radius_units", 0.0), 0.0) * SimConstants.UNIT_PX)
+		if radius <= 0.0 or radius >= best_radius:
+			continue
+		var region_center := center + _region_offset_px(region.get("offset_units", [0.0, 0.0]), axis)
+		if hit_point.distance_to(region_center) <= radius:
+			best_radius = radius
+			best = {
+				"region": String(region.get("name", "hull")),
+				"region_mult": clampf(_float_or(region.get("mult", 1.0), 1.0), 0.75, 1.35),
+				"center": region_center,
+				"radius": radius
+			}
+	return best
 
 # Closest point on the hull's core segment (circle => center). Facing checks
 # and distance math both route through this so circles keep exact legacy
@@ -76,8 +113,10 @@ static func segment_hit(hull: Dictionary, from: Vector2, to: Vector2, half_width
 	var on_core: Vector2 = pair[1]
 	if on_shot.distance_to(on_core) > radius:
 		return {"hit": false, "point": Vector2.ZERO, "normal": Vector2.ZERO}
-	var point := surface_point(hull, on_shot)
-	var normal := (on_shot - on_core).normalized() if on_shot.distance_to(on_core) > 0.0001 else (from - to).normalized()
+	var entry := _first_segment_hull_entry(hull, from, to, radius)
+	var entry_core := core_closest_point(hull, entry)
+	var point := surface_point(hull, entry)
+	var normal := (entry - entry_core).normalized() if entry.distance_to(entry_core) > 0.0001 else (from - to).normalized()
 	if normal == Vector2.ZERO:
 		normal = Vector2.RIGHT
 	return {"hit": true, "point": point, "normal": normal}
@@ -136,6 +175,47 @@ static func _get_float(node: Node, property: String, fallback: float) -> float:
 	if node == null or not is_instance_valid(node):
 		return fallback
 	var value: Variant = node.get(property)
+	if typeof(value) == TYPE_INT or typeof(value) == TYPE_FLOAT:
+		return float(value)
+	return fallback
+
+static func _first_segment_hull_entry(hull: Dictionary, from: Vector2, to: Vector2, expanded_radius: float) -> Vector2:
+	if from.distance_to(core_closest_point(hull, from)) <= expanded_radius:
+		return from
+	var low := 0.0
+	var high := 1.0
+	for _i in 18:
+		var mid := (low + high) * 0.5
+		var point := from.lerp(to, mid)
+		if point.distance_to(core_closest_point(hull, point)) <= expanded_radius:
+			high = mid
+		else:
+			low = mid
+	return from.lerp(to, high)
+
+static func _region_open(actor: Node, open_when: String) -> bool:
+	if open_when == "always":
+		return true
+	if actor != null and is_instance_valid(actor) and actor.has_method("is_region_open"):
+		return bool(actor.is_region_open(open_when))
+	return false
+
+static func _region_offset_px(offset_value: Variant, axis: Vector2) -> Vector2:
+	var forward := 0.0
+	var side := 0.0
+	if typeof(offset_value) == TYPE_ARRAY:
+		var offset_array: Array = offset_value
+		if offset_array.size() >= 2:
+			forward = _float_or(offset_array[0], 0.0)
+			side = _float_or(offset_array[1], 0.0)
+	elif typeof(offset_value) == TYPE_DICTIONARY:
+		var offset_dict: Dictionary = offset_value
+		forward = _float_or(offset_dict.get("forward", offset_dict.get("x", 0.0)), 0.0)
+		side = _float_or(offset_dict.get("side", offset_dict.get("y", 0.0)), 0.0)
+	var side_axis := Vector2(-axis.y, axis.x)
+	return (axis * forward + side_axis * side) * SimConstants.UNIT_PX
+
+static func _float_or(value: Variant, fallback: float) -> float:
 	if typeof(value) == TYPE_INT or typeof(value) == TYPE_FLOAT:
 		return float(value)
 	return fallback

@@ -50,7 +50,7 @@ static func melee_arc_hit(shape: Dictionary, target: Node) -> Dictionary:
 	var to_target: Vector2 = Hurtbox.core_closest_point(hull, origin) - origin
 	if to_target.normalized().dot(aim) < float(shape.get("facing_dot_min", DEFAULT_MELEE_DOT_MIN)):
 		return {"hit": false, "point": Vector2.ZERO, "normal": Vector2.ZERO}
-	return _point_normal_from_hull(hull, origin)
+	return _with_region(_point_normal_from_hull(hull, origin), target)
 
 static func overlaps_line(shape: Dictionary, target: Node) -> bool:
 	return line_hit(shape, target).hit
@@ -61,7 +61,7 @@ static func line_hit(shape: Dictionary, target: Node) -> Dictionary:
 	var from: Vector2 = shape.get("from", shape.get("origin", Vector2.ZERO))
 	var to: Vector2 = shape.get("to", from)
 	var hull := Hurtbox.hull_of(target)
-	return Hurtbox.segment_hit(hull, from, to, float(shape.get("half_width_px", 0.0)))
+	return _with_region(Hurtbox.segment_hit(hull, from, to, float(shape.get("half_width_px", 0.0))), target)
 
 static func circle_hit(center: Vector2, radius: float, target: Node) -> Dictionary:
 	if target == null or not is_instance_valid(target):
@@ -69,7 +69,7 @@ static func circle_hit(center: Vector2, radius: float, target: Node) -> Dictiona
 	var hull := Hurtbox.hull_of(target)
 	if not Hurtbox.overlaps_circle(hull, center, radius):
 		return {"hit": false, "point": Vector2.ZERO, "normal": Vector2.ZERO}
-	return _point_normal_from_hull(hull, center)
+	return _with_region(_point_normal_from_hull(hull, center), target)
 
 static func _aim_direction(actor: Node) -> Vector2:
 	if actor != null and is_instance_valid(actor) and actor.has_method("get_aim_direction"):
@@ -94,3 +94,11 @@ static func _point_normal_from_hull(hull: Dictionary, from: Vector2) -> Dictiona
 	var core := Hurtbox.core_closest_point(hull, from)
 	var normal := (from - core).normalized() if from.distance_to(core) > 0.0001 else Vector2.RIGHT
 	return {"hit": true, "point": point, "normal": normal}
+
+static func _with_region(hit: Dictionary, target: Node) -> Dictionary:
+	if not bool(hit.get("hit", false)):
+		return hit
+	var region := Hurtbox.region_at(target, hit.get("point", Vector2.ZERO))
+	hit["region"] = String(region.get("region", "hull"))
+	hit["region_mult"] = float(region.get("region_mult", 1.0))
+	return hit

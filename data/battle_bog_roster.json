@@ -107,6 +107,9 @@
       "wins": ["frontline brawls", "narrow approaches", "water standoffs"],
       "fears": ["kites", "burst windows", "spread teams"],
       "footprint": {"shape": "circle", "radius_units": 1.6},
+      "hurtbox_regions": [
+        {"name": "shell_rear", "offset_units": [-0.75, 0.0], "radius_units": 0.55, "mult": 0.75, "open_when": "always"}
+      ],
       "stats": {"health": 1200, "speed": 0.95, "swim_time_sec": 20, "regen_per_sec": 30, "primary_damage": 100, "attack_interval_sec": 1.6, "windup_sec": 0.7, "range": "1x2"},
       "primary": "Head retracts as 0.7s visual cue, then neck bite extends in aimed direction and stops on impact.",
       "abilities": [
@@ -123,6 +126,9 @@
       "role": ["latch_duelist", "execute_predator"],
       "diet": "carnivore",
       "footprint": {"shape": "capsule", "radius_units": 0.4, "length_units": 2.5},
+      "hurtbox_regions": [
+        {"name": "head", "offset_units": [1.25, 0.0], "radius_units": 0.45, "mult": 1.35, "open_when": "always"}
+      ],
       "stats": {"health": 950, "speed": 1.6, "swim_time_sec": 22, "regen_per_sec": 40, "primary_damage": "1% target max HP per second while latched", "attack_interval_sec": 0.7, "range": "1 unit mouth contact"},
       "primary": "Bite and bleed; holding LMB latches on hit. Lower-base-HP targets can be dragged; higher-base-HP targets drag the snake.",
       "abilities": [

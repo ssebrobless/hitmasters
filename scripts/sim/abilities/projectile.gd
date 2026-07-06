@@ -24,7 +24,7 @@ static func instant_line(actor: Node, range_px: float, damage: float, delivery: 
 		if not bool(hit_info.hit):
 			continue
 		var event: Resource = actor.make_damage_event(damage, delivery, plane, source_ability)
-		event.set_hit(hit_info.point, hit_info.normal)
+		event.set_hit(hit_info.point, hit_info.normal, String(hit_info.get("region", "hull")), float(hit_info.get("region_mult", 1.0)))
 		target.take_damage_event(event)
 		hits.append(target)
 	actor.damage_enemy_cores_line(range_px, damage, source_ability)
