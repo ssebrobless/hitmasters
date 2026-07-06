@@ -94,6 +94,7 @@ var latch_source := ""
 var latch_execute_timer := 0.0
 var latch_move_multiplier := 1.0
 var last_aim_direction := Vector2.RIGHT
+var body_heading := Vector2.RIGHT
 var render_hitstop_timer := 0.0
 var render_flash_timer := 0.0
 var render_shake_timer := 0.0
@@ -152,6 +153,7 @@ func apply_creature(next_creature_id: String) -> void:
 	latch_timer = 0.0
 	latch_source = ""
 	latch_execute_timer = 0.0
+	body_heading = last_aim_direction.normalized() if last_aim_direction != Vector2.ZERO else Vector2.RIGHT
 	kit = _make_kit()
 	if kit != null:
 		kit.setup(self)
@@ -204,6 +206,7 @@ func tick_sim(delta: float) -> void:
 	_update_flight(delta)
 	_update_terrain(delta)
 	_move_from_input(delta)
+	_update_body_heading(delta)
 	_tick_hunger(delta)
 	_try_auto_eat()
 	_update_takeoff_charge_from_displacement(last_move_displacement_px)
@@ -632,6 +635,13 @@ func get_aim_direction() -> Vector2:
 			last_aim_direction = direction.normalized()
 	return last_aim_direction
 
+func get_body_axis() -> Vector2:
+	if body_capsule_half_len_px > 0.0 and body_heading != Vector2.ZERO:
+		return body_heading.normalized()
+	if velocity.length() > 20.0:
+		return velocity.normalized()
+	return last_aim_direction.normalized() if last_aim_direction != Vector2.ZERO else Vector2.RIGHT
+
 func make_damage_event(amount: float, delivery: int, plane: int, source_ability: String) -> Resource:
 	var event := DamageEventScript.new()
 	event.setup(amount * _modifier_value("damage_dealt_mult", 1.0), delivery, plane, self, source_ability)
@@ -1054,6 +1064,21 @@ func _active_movement_profile() -> Dictionary:
 		return movement_profile
 	return MovementFeelScript.profile_for_surface(movement_profile, String(current_environment_profile.get("surface", "")))
 
+func _update_body_heading(delta: float) -> void:
+	var desired := last_aim_direction.normalized() if last_aim_direction != Vector2.ZERO else body_heading
+	if velocity.length() > 20.0:
+		desired = velocity.normalized()
+	if desired == Vector2.ZERO:
+		desired = Vector2.RIGHT
+	if body_capsule_half_len_px <= 0.0:
+		body_heading = desired
+		return
+	if body_heading == Vector2.ZERO:
+		body_heading = desired
+		return
+	var max_angle := deg_to_rad(float(_active_movement_profile().get("turn_rate_deg", 900.0))) * delta
+	body_heading = body_heading.normalized().rotated(clampf(body_heading.normalized().angle_to(desired), -max_angle, max_angle)).normalized()
+
 func _effective_movement_tags() -> Array:
 	var tags := movement_tags.duplicate()
 	if tags.has("land_walker") and not tags.has("ground_walker"):
@@ -1147,7 +1172,7 @@ func _draw() -> void:
 	var draw_alpha := 0.4 if is_stealthed() else 1.0
 	if wrong_terrain_seconds > 0.0:
 		_draw_wrong_terrain_warning()
-	VisualStyle.draw_battle_creature(self, creature_id, team, body_radius, last_aim_direction, render_flash_timer / 0.1, draw_alpha, is_airborne() or state == CreatureStateScript.State.PERCHED, anim)
+	VisualStyle.draw_battle_creature(self, creature_id, team, body_radius, get_body_axis(), render_flash_timer / 0.1, draw_alpha, is_airborne() or state == CreatureStateScript.State.PERCHED, anim)
 	if arena != null and arena.get("player") == self:
 		VisualStyle.draw_aim_indicator(self, body_radius, last_aim_direction)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

@@ -25,6 +25,7 @@ func _run() -> void:
 
 	_check_profile_ramp(arena, failures)
 	_check_turn_inertia(arena, failures)
+	_check_capsule_body_heading(arena, failures)
 	_check_directional_scuttle(arena, failures)
 	_check_dash_bypass(arena, failures)
 	_check_render_profile_keys(arena, failures)
@@ -69,6 +70,33 @@ func _check_turn_inertia(arena: Node, failures: Array[String]) -> void:
 		turtle.tick_sim(1.0 / 60.0)
 	if not (turtle.velocity.x > 8.0 and turtle.velocity.y < -1.0):
 		failures.append("heavy turtle profile should keep forward momentum while beginning a turn; velocity=%s" % str(turtle.velocity))
+
+func _check_capsule_body_heading(arena: Node, failures: Array[String]) -> void:
+	var gator: Node = arena.player
+	gator.apply_creature("alligator")
+	gator.global_position = Vector2.ZERO
+	gator.velocity = Vector2.ZERO
+	gator.last_aim_direction = Vector2.RIGHT
+	gator.body_heading = Vector2.RIGHT
+	gator.set_input_frame(_aim_frame(Vector2.LEFT))
+	for i in 6:
+		gator.tick_sim(1.0 / 60.0)
+	var gator_lagged: bool = gator.last_aim_direction.dot(Vector2.LEFT) > 0.99 and gator.body_heading.dot(Vector2.RIGHT) > 0.75
+	var frog: Node = arena.bots[0]
+	frog.apply_creature("bullfrog")
+	frog.global_position = Vector2.ZERO
+	frog.velocity = Vector2.ZERO
+	frog.last_aim_direction = Vector2.RIGHT
+	frog.body_heading = Vector2.RIGHT
+	frog.set_input_frame(_aim_frame(Vector2.LEFT))
+	frog.tick_sim(1.0 / 60.0)
+	var circle_snapped: bool = frog.body_heading.dot(Vector2.LEFT) > 0.99
+	if not gator_lagged or not circle_snapped:
+		failures.append("capsule body heading should lag aim flips while circles snap; gator_aim=%s gator_body=%s frog_body=%s" % [
+			str(gator.last_aim_direction),
+			str(gator.body_heading),
+			str(frog.body_heading)
+		])
 
 func _check_directional_scuttle(arena: Node, failures: Array[String]) -> void:
 	var actor: Node = arena.player
@@ -233,6 +261,12 @@ func _move_frame(direction: Vector2) -> Resource:
 	var frame := InputFrameScript.new()
 	frame.move = direction
 	frame.aim = Vector2.RIGHT * 100.0
+	return frame
+
+func _aim_frame(direction: Vector2) -> Resource:
+	var frame := InputFrameScript.new()
+	frame.move = Vector2.ZERO
+	frame.aim = direction * 100.0
 	return frame
 
 func _one_tick_velocity(actor: Node, creature_id: String, direction: Vector2) -> float:

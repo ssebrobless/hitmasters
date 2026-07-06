@@ -17,6 +17,13 @@ static func hull_of(actor: Node) -> Dictionary:
 	return {"kind": "capsule", "center": center, "radius": radius, "half_len": half_len, "axis": body_axis(actor)}
 
 static func body_axis(actor: Node) -> Vector2:
+	if actor != null and actor.has_method("get_body_axis"):
+		var body_axis_value: Variant = actor.get_body_axis()
+		if body_axis_value is Vector2 and (body_axis_value as Vector2) != Vector2.ZERO:
+			return (body_axis_value as Vector2).normalized()
+	var body_heading: Variant = actor.get("body_heading")
+	if body_heading is Vector2 and (body_heading as Vector2) != Vector2.ZERO:
+		return (body_heading as Vector2).normalized()
 	var velocity: Variant = actor.get("velocity")
 	if velocity is Vector2 and (velocity as Vector2).length() > AXIS_SPEED_THRESHOLD_PX:
 		return (velocity as Vector2).normalized()
