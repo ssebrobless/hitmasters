@@ -361,6 +361,28 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 			str(duck_idle_state),
 			str(duck_land_state)
 		])
+	actor.apply_creature("beaver")
+	actor.current_environment_profile = {"surface": "water"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	var beaver_water_state: Dictionary = actor.get_render_motion_state()
+	var beaver_swim: bool = bool(beaver_water_state.get("beaver_swim_pose", false)) and float(beaver_water_state.get("beaver_swim_intensity", 0.0)) > 0.25
+	actor.velocity = Vector2.ZERO
+	actor.set_input_frame(InputFrameScript.new())
+	var beaver_idle_state: Dictionary = actor.get_render_motion_state()
+	var beaver_idle_clear: bool = not bool(beaver_idle_state.get("beaver_swim_pose", false)) and float(beaver_idle_state.get("beaver_swim_intensity", 1.0)) <= 0.001
+	actor.current_environment_profile = {"surface": "land"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	var beaver_land_state: Dictionary = actor.get_render_motion_state()
+	var beaver_land_clear: bool = not bool(beaver_land_state.get("beaver_swim_pose", false))
+	if not beaver_swim or not beaver_idle_clear or not beaver_land_clear:
+		failures.append("moving beaver should expose paddle-tail swim render pose only in water; water=%s idle=%s land=%s state=%s/%s/%s" % [
+			str(beaver_swim),
+			str(beaver_idle_clear),
+			str(beaver_land_clear),
+			str(beaver_water_state),
+			str(beaver_idle_state),
+			str(beaver_land_state)
+		])
 
 func _move_frame(direction: Vector2) -> Resource:
 	var frame := InputFrameScript.new()

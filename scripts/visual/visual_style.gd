@@ -318,20 +318,27 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	var tail_wave := float(anim.get("tail_wave", 1.0))
 	var is_water_shrew := String(anim.get("creature_id", "")) == "water_shrew"
 	var is_newt := String(anim.get("creature_id", "")) == "newt"
+	var is_beaver := String(anim.get("creature_id", "")) == "beaver"
 	var surface_walk := bool(anim.get("surface_walk", false))
 	var surface_wake_intensity := clampf(float(anim.get("surface_wake_intensity", 0.0)), 0.0, 1.25)
 	var slick_crawl := is_newt and bool(anim.get("slick_crawl_pose", false))
 	var slick_crawl_intensity := clampf(float(anim.get("slick_crawl_intensity", 0.0)), 0.0, 1.25)
 	var tail_lost_pose := is_newt and bool(anim.get("tail_lost_pose", false))
+	var beaver_swim := is_beaver and bool(anim.get("beaver_swim_pose", false))
+	var beaver_swim_intensity := clampf(float(anim.get("beaver_swim_intensity", 0.0)), 0.0, 1.25)
 	if surface_walk:
 		body_wiggle += 0.42 * surface_wake_intensity
 		tail_wave += 0.25 * surface_wake_intensity
 	if slick_crawl:
 		body_wiggle += 0.35 * slick_crawl_intensity
 		tail_wave += 0.32 * slick_crawl_intensity
+	if beaver_swim:
+		body_wiggle += 0.16 * beaver_swim_intensity
+		tail_wave += 0.58 * beaver_swim_intensity
 	var submerged_shrew := is_water_shrew and bool(anim.get("in_water", false)) and not surface_walk
 	var water_tint := Color(0.2, 0.6, 0.85, 0.32 + 0.14 * surface_wake_intensity)
 	var slick_tint := Color(0.86, 0.58, 0.32, 0.20 + 0.10 * slick_crawl_intensity)
+	var beaver_water := Color(0.42, 0.68, 0.82, 0.20 + 0.12 * beaver_swim_intensity)
 
 	if surface_walk:
 		for wake_side: float in [-1.0, 1.0]:
@@ -356,11 +363,15 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	var tail_base: Vector2 = spine[0]
 	match tail_style:
 		"paddle":
-			var paddle_center := tail_base + tail_direction * radius * 1.0
+			if beaver_swim:
+				for wake_side: float in [-1.0, 1.0]:
+					var wake_start := tail_base + tail_direction * radius * 0.65 + side * wake_side * radius * 0.24
+					canvas.draw_line(wake_start, wake_start + tail_direction * radius * (0.8 + 0.28 * beaver_swim_intensity) + side * wake_side * radius * 0.28, beaver_water, maxf(radius * 0.08, 1.5))
+			var paddle_center := tail_base + tail_direction * radius * (1.0 + 0.18 * beaver_swim_intensity)
 			var paddle_points := PackedVector2Array()
 			for i in 12:
 				var paddle_angle := TAU * float(i) / 12.0
-				paddle_points.append(paddle_center + tail_direction * cos(paddle_angle) * radius * 0.7 + side * sin(paddle_angle) * radius * 0.42)
+				paddle_points.append(paddle_center + tail_direction * cos(paddle_angle) * radius * (0.7 + 0.08 * beaver_swim_intensity) + side * sin(paddle_angle) * radius * (0.42 + 0.08 * beaver_swim_intensity))
 			canvas.draw_colored_polygon(paddle_points, Color(0.16, 0.12, 0.1))
 			canvas.draw_line(paddle_center - side * radius * 0.3, paddle_center + side * radius * 0.3, Color(0.1, 0.08, 0.07), 1.5)
 		"fin":
@@ -394,6 +405,8 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 				canvas.draw_line(paw, paw + side * paw_side * radius * 0.2 + forward * radius * 0.05, fur_dark.lightened(0.1), 1.0)
 			if surface_walk:
 				canvas.draw_circle(paw + side * paw_side * radius * 0.08, maxf(radius * (0.08 + 0.03 * surface_wake_intensity), 1.2), water_tint.lightened(0.2))
+			if beaver_swim:
+				canvas.draw_circle(paw - forward * radius * 0.1, maxf(radius * (0.06 + 0.03 * beaver_swim_intensity), 1.1), beaver_water.lightened(0.2))
 
 	if slick_crawl:
 		for trail_index in 4:
@@ -418,6 +431,11 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 		for bubble_index in 3:
 			var bubble := forward * radius * (0.15 + float(bubble_index) * 0.18) + side * radius * (0.34 + float(bubble_index) * 0.12)
 			canvas.draw_circle(bubble, maxf(radius * 0.06, 1.0), water_tint.lightened(0.35))
+	elif beaver_swim:
+		for bubble_index in 4:
+			var t := float(bubble_index) / 3.0
+			var bubble := -forward * radius * (0.35 + t * 0.95) + side * sin(walk_phase * 0.9 + t * 2.7) * radius * (0.2 + 0.12 * beaver_swim_intensity)
+			canvas.draw_circle(bubble, maxf(radius * (0.04 + t * 0.035), 1.0), beaver_water.lightened(0.25))
 
 	var head: Vector2 = spine[6]
 	if not bool(skin.get("smooth", false)):
