@@ -1269,6 +1269,7 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 			var step_center := -forward * radius * 0.18 + side * step_side * radius * 0.66
 			canvas.draw_arc(step_center, radius * 0.34, PI * 0.08, PI * 0.92, 10, high_step_dust, maxf(radius * 0.055, 1.0))
 			canvas.draw_line(step_center - forward * radius * 0.1, step_center - forward * radius * 0.52 + side * step_side * radius * 0.08, Color(high_step_dust.r, high_step_dust.g, high_step_dust.b, 0.16), maxf(radius * 0.04, 1.0))
+			canvas.draw_circle(step_center + forward * radius * 0.18, maxf(radius * 0.09, 1.1), Color(high_step_dust.r, high_step_dust.g, high_step_dust.b, 0.18))
 	if death_roll_pose:
 		var churn := Color(0.46, 0.72, 0.82, 0.26)
 		canvas.draw_arc(Vector2.ZERO, radius * 1.52, -PI * 0.15, PI * 1.18, 42, churn, maxf(radius * 0.12, 2.0))
@@ -1281,6 +1282,8 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 			var wake_origin := -forward * radius * 0.45 + side * wake_side * radius * 0.58
 			canvas.draw_line(wake_origin, wake_origin - forward * radius * (0.92 + 0.28 * water_cruise_intensity) + side * wake_side * radius * 0.18, cruise_water, maxf(radius * 0.08, 1.3))
 			canvas.draw_arc(wake_origin + forward * radius * 0.18, radius * (0.36 + 0.1 * water_cruise_intensity), -0.35, 0.85, 12, Color(cruise_water.r, cruise_water.g, cruise_water.b, cruise_water.a * 0.82), maxf(radius * 0.055, 1.0))
+		canvas.draw_line(forward * radius * 1.16, -forward * radius * (1.34 + 0.22 * water_cruise_intensity), Color(cruise_water.r, cruise_water.g, cruise_water.b, cruise_water.a * 0.62), maxf(radius * 0.065, 1.1))
+		canvas.draw_arc(forward * radius * 1.0, radius * (0.42 + 0.08 * water_cruise_intensity), -PI * 0.05, PI * 1.05, 16, Color(cruise_water.r, cruise_water.g, cruise_water.b, cruise_water.a * 0.55), maxf(radius * 0.05, 1.0))
 
 	# Keeled tail, swaying.
 	var tail_direction := (-forward).rotated((sin(walk_phase * 0.9) * 0.25 * tail_sway) if moving else 0.08)
