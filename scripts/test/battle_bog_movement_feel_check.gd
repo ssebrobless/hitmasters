@@ -713,18 +713,39 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
 	var otter_water_state: Dictionary = actor.get_render_motion_state()
-	var otter_swim: bool = bool(otter_water_state.get("otter_swim_pose", false)) and not bool(otter_water_state.get("otter_land_slide_pose", false)) and float(otter_water_state.get("otter_motion_intensity", 0.0)) > 0.25
+	var otter_swim: bool = bool(otter_water_state.get("otter_swim_pose", false)) \
+		and not bool(otter_water_state.get("otter_land_slide_pose", false)) \
+		and not bool(otter_water_state.get("otter_pack_latch_pose", false)) \
+		and not bool(otter_water_state.get("mink_bound_pose", false)) \
+		and not bool(otter_water_state.get("mink_swim_pose", false)) \
+		and not bool(otter_water_state.get("beaver_lumber_pose", false)) \
+		and not bool(otter_water_state.get("beaver_swim_pose", false)) \
+		and float(otter_water_state.get("otter_motion_intensity", 0.0)) > 0.25
 	actor.current_environment_profile = {"surface": "land"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
 	var otter_land_state: Dictionary = actor.get_render_motion_state()
-	var otter_slide: bool = bool(otter_land_state.get("otter_land_slide_pose", false)) and not bool(otter_land_state.get("otter_swim_pose", false)) and float(otter_land_state.get("otter_motion_intensity", 0.0)) > 0.25
+	var otter_slide: bool = bool(otter_land_state.get("otter_land_slide_pose", false)) \
+		and not bool(otter_land_state.get("otter_swim_pose", false)) \
+		and not bool(otter_land_state.get("otter_pack_latch_pose", false)) \
+		and not bool(otter_land_state.get("mink_bound_pose", false)) \
+		and not bool(otter_land_state.get("mink_swim_pose", false)) \
+		and not bool(otter_land_state.get("beaver_lumber_pose", false)) \
+		and not bool(otter_land_state.get("beaver_swim_pose", false)) \
+		and float(otter_land_state.get("otter_motion_intensity", 0.0)) > 0.25
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
 	var otter_idle_state: Dictionary = actor.get_render_motion_state()
-	var otter_idle_clear: bool = not bool(otter_idle_state.get("otter_swim_pose", false)) and not bool(otter_idle_state.get("otter_land_slide_pose", false)) and float(otter_idle_state.get("otter_motion_intensity", 1.0)) <= 0.001
+	var otter_idle_clear: bool = not bool(otter_idle_state.get("otter_swim_pose", false)) \
+		and not bool(otter_idle_state.get("otter_land_slide_pose", false)) \
+		and not bool(otter_idle_state.get("otter_pack_latch_pose", false)) \
+		and not bool(otter_idle_state.get("mink_bound_pose", false)) \
+		and not bool(otter_idle_state.get("mink_swim_pose", false)) \
+		and not bool(otter_idle_state.get("beaver_lumber_pose", false)) \
+		and not bool(otter_idle_state.get("beaver_swim_pose", false)) \
+		and float(otter_idle_state.get("otter_motion_intensity", 1.0)) <= 0.001
 	if not otter_swim or not otter_slide or not otter_idle_clear:
-		failures.append("moving otter should expose water swim and land slide render poses, then clear when idle; swim=%s slide=%s idle=%s state=%s/%s/%s" % [
+		failures.append("moving otter should expose water swim and low land slide without mink/beaver/pack overlap, then clear when idle; swim=%s slide=%s idle=%s state=%s/%s/%s" % [
 			str(otter_swim),
 			str(otter_slide),
 			str(otter_idle_clear),

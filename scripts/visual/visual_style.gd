@@ -676,6 +676,9 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 		var slide_center := -forward * radius * 0.35
 		canvas.draw_arc(slide_center, radius * (0.72 + 0.1 * otter_motion_intensity), PI * 0.12, PI * 0.88, 14, otter_slide_dust, maxf(radius * 0.07, 1.2))
 		canvas.draw_line(-forward * radius * 0.65, -forward * radius * (1.5 + 0.24 * otter_motion_intensity), Color(otter_slide_dust.r, otter_slide_dust.g, otter_slide_dust.b, otter_slide_dust.a * 0.75), maxf(radius * 0.05, 1.1))
+		for skid_side: float in [-1.0, 1.0]:
+			var skid_start := -forward * radius * 0.15 + side * skid_side * radius * 0.46
+			canvas.draw_line(skid_start, skid_start - forward * radius * (0.82 + 0.22 * otter_motion_intensity) + side * skid_side * radius * 0.08, Color(otter_slide_dust.r, otter_slide_dust.g, otter_slide_dust.b, 0.16 + 0.08 * otter_motion_intensity), maxf(radius * 0.055, 1.1))
 	if otter_swim:
 		for wake_side: float in [-1.0, 1.0]:
 			var wake_start := -forward * radius * 0.55 + side * wake_side * radius * 0.46
@@ -743,6 +746,8 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 				canvas.draw_circle(tail_pos, radius * lerpf(0.32 + 0.04 * otter_motion_intensity, 0.14, t), fur_dark)
 				if otter_swim and t > 0.2:
 					canvas.draw_circle(tail_pos - forward * radius * 0.12, maxf(radius * lerpf(0.08, 0.04, t), 1.0), otter_water.lightened(0.2))
+				if otter_land_slide and t > 0.2:
+					canvas.draw_line(tail_pos, tail_pos - forward * radius * (0.24 + 0.1 * otter_motion_intensity), Color(otter_slide_dust.r, otter_slide_dust.g, otter_slide_dust.b, 0.2 + 0.08 * otter_motion_intensity), maxf(radius * 0.045, 1.0))
 		_:
 			for i in 4:
 				var t := float(i) / 3.0
@@ -799,6 +804,11 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 		canvas.draw_circle(spine[i], segment_radii[i] + 2.0, fur_dark)
 	for i in 7:
 		canvas.draw_circle(spine[i], segment_radii[i], fur.darkened(0.28) if submerged_shrew else fur)
+	if otter_land_slide:
+		var belly_slick := Color(belly.r, belly.g, belly.b, 0.16 + 0.06 * otter_motion_intensity)
+		for slick_index in 3:
+			var t := 0.32 + float(slick_index) * 0.18
+			canvas.draw_circle(spine[2].lerp(spine[5], t) - forward * radius * 0.05, radius * (0.16 + 0.03 * otter_motion_intensity), belly_slick)
 	if mink_bound:
 		var bound_flash := Color(belly.r, belly.g, belly.b, 0.22 + 0.08 * mink_bound_intensity)
 		for flash_index in 3:
