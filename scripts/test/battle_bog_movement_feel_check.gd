@@ -435,6 +435,36 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 			str(chorus_hop_state),
 			str(chorus_idle_state)
 		])
+	actor.apply_creature("newt")
+	actor.current_environment_profile = {"surface": "land"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var newt_land_state: Dictionary = actor.get_render_motion_state()
+	var newt_crawl: bool = bool(newt_land_state.get("slick_crawl_pose", false)) and not bool(newt_land_state.get("newt_swim_pose", false)) and float(newt_land_state.get("slick_crawl_intensity", 0.0)) > 0.25
+	actor.current_environment_profile = {"surface": "water"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	actor.kit.tail_lost_timer = 1.0
+	var newt_water_state: Dictionary = actor.get_render_motion_state()
+	var newt_swim: bool = bool(newt_water_state.get("newt_swim_pose", false)) and not bool(newt_water_state.get("slick_crawl_pose", false)) and float(newt_water_state.get("newt_swim_intensity", 0.0)) > 0.25 and bool(newt_water_state.get("tail_lost_pose", false))
+	actor.kit.tail_lost_timer = 0.0
+	actor.velocity = Vector2.ZERO
+	actor.set_input_frame(InputFrameScript.new())
+	var newt_idle_state: Dictionary = actor.get_render_motion_state()
+	var newt_idle_clear: bool = not bool(newt_idle_state.get("slick_crawl_pose", false)) \
+		and not bool(newt_idle_state.get("newt_swim_pose", false)) \
+		and float(newt_idle_state.get("slick_crawl_intensity", 1.0)) <= 0.001 \
+		and float(newt_idle_state.get("newt_swim_intensity", 1.0)) <= 0.001 \
+		and not bool(newt_idle_state.get("tail_lost_pose", false))
+	if not newt_crawl or not newt_swim or not newt_idle_clear:
+		failures.append("moving newt should expose mutually exclusive land crawl and water undulation render poses, preserve tail-loss read, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
+			str(newt_crawl),
+			str(newt_swim),
+			str(newt_idle_clear),
+			str(newt_land_state),
+			str(newt_water_state),
+			str(newt_idle_state)
+		])
 	actor.apply_creature("snapping_turtle")
 	actor.current_environment_profile = {"surface": "water"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()

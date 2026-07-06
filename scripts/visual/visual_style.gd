@@ -512,6 +512,8 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	var surface_wake_intensity := clampf(float(anim.get("surface_wake_intensity", 0.0)), 0.0, 1.25)
 	var slick_crawl := is_newt and bool(anim.get("slick_crawl_pose", false))
 	var slick_crawl_intensity := clampf(float(anim.get("slick_crawl_intensity", 0.0)), 0.0, 1.25)
+	var newt_swim := is_newt and bool(anim.get("newt_swim_pose", false))
+	var newt_swim_intensity := clampf(float(anim.get("newt_swim_intensity", 0.0)), 0.0, 1.25)
 	var tail_lost_pose := is_newt and bool(anim.get("tail_lost_pose", false))
 	var beaver_swim := is_beaver and bool(anim.get("beaver_swim_pose", false))
 	var beaver_swim_intensity := clampf(float(anim.get("beaver_swim_intensity", 0.0)), 0.0, 1.25)
@@ -530,6 +532,10 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	if slick_crawl:
 		body_wiggle += 0.35 * slick_crawl_intensity
 		tail_wave += 0.32 * slick_crawl_intensity
+	if newt_swim:
+		stretch += 0.06 * newt_swim_intensity
+		body_wiggle += 0.24 * newt_swim_intensity
+		tail_wave += 0.62 * newt_swim_intensity
 	if beaver_swim:
 		body_wiggle += 0.16 * beaver_swim_intensity
 		tail_wave += 0.58 * beaver_swim_intensity
@@ -560,6 +566,7 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	var submerged_shrew := is_water_shrew and bool(anim.get("in_water", false)) and not surface_walk
 	var water_tint := Color(0.2, 0.6, 0.85, 0.32 + 0.14 * surface_wake_intensity)
 	var slick_tint := Color(0.86, 0.58, 0.32, 0.20 + 0.10 * slick_crawl_intensity)
+	var newt_water := Color(0.38, 0.64, 0.78, 0.18 + 0.12 * newt_swim_intensity)
 	var beaver_water := Color(0.42, 0.68, 0.82, 0.20 + 0.12 * beaver_swim_intensity)
 	var mink_dust := Color(0.72, 0.66, 0.56, 0.18 + 0.08 * mink_bound_intensity)
 	var mink_water := Color(0.38, 0.66, 0.82, 0.20 + 0.12 * mink_swim_intensity)
@@ -582,6 +589,10 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			var wake_start := -forward * radius * 0.45 + side * wake_side * radius * 0.38
 			canvas.draw_line(wake_start, wake_start - forward * radius * (0.76 + 0.24 * mink_swim_intensity) + side * wake_side * radius * 0.16, mink_water, maxf(radius * 0.06, 1.2))
 			canvas.draw_arc(wake_start + forward * radius * 0.1, radius * (0.28 + 0.08 * mink_swim_intensity), -0.35, 0.85, 12, Color(mink_water.r, mink_water.g, mink_water.b, mink_water.a * 0.75), maxf(radius * 0.04, 1.0))
+	if newt_swim:
+		for wake_side: float in [-1.0, 1.0]:
+			var wake_start := -forward * radius * 0.5 + side * wake_side * radius * 0.26
+			canvas.draw_line(wake_start, wake_start - forward * radius * (0.62 + 0.2 * newt_swim_intensity) + side * wake_side * radius * 0.14, newt_water, maxf(radius * 0.045, 1.0))
 	if otter_land_slide:
 		var slide_center := -forward * radius * 0.35
 		canvas.draw_arc(slide_center, radius * (0.72 + 0.1 * otter_motion_intensity), PI * 0.12, PI * 0.88, 14, otter_slide_dust, maxf(radius * 0.07, 1.2))
@@ -633,9 +644,13 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 				canvas.draw_circle(tail_base + tail_direction * radius * 0.25, radius * 0.2, fur_dark.lightened(0.15))
 				canvas.draw_circle(tail_base + tail_direction * radius * 0.38, radius * 0.08, Color(0.95, 0.38, 0.24, 0.85))
 			else:
+				if newt_swim:
+					for wake_side: float in [-1.0, 1.0]:
+						var wake_start := tail_base + tail_direction * radius * 0.82 + side * wake_side * radius * 0.12
+						canvas.draw_line(wake_start, wake_start + tail_direction * radius * (0.46 + 0.2 * newt_swim_intensity) + side * wake_side * radius * 0.16, newt_water, maxf(radius * 0.05, 1.0))
 				canvas.draw_colored_polygon(PackedVector2Array([
 					tail_base + side * radius * 0.16,
-					tail_base + tail_direction * radius * 1.3,
+					tail_base + tail_direction * radius * (1.3 + 0.1 * newt_swim_intensity),
 					tail_base - side * radius * 0.16
 				]), fur_dark.lightened(0.08))
 		"thick":
@@ -666,6 +681,8 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			canvas.draw_circle(paw, radius * (0.09 if slick_crawl else 0.13), fur_dark)
 			if slick_crawl:
 				canvas.draw_line(paw, paw + side * paw_side * radius * 0.2 + forward * radius * 0.05, fur_dark.lightened(0.1), 1.0)
+			if newt_swim:
+				canvas.draw_circle(paw - forward * radius * 0.08, maxf(radius * (0.04 + 0.025 * newt_swim_intensity), 1.0), newt_water.lightened(0.2))
 			if mink_bound:
 				canvas.draw_line(paw, paw - forward * radius * (0.22 + 0.08 * mink_bound_intensity), fur_dark.lightened(0.08), 1.0)
 			if mink_swim:
@@ -702,6 +719,11 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 		for bubble_index in 3:
 			var bubble := forward * radius * (0.15 + float(bubble_index) * 0.18) + side * radius * (0.34 + float(bubble_index) * 0.12)
 			canvas.draw_circle(bubble, maxf(radius * 0.06, 1.0), water_tint.lightened(0.35))
+	elif newt_swim:
+		for bubble_index in 4:
+			var t := float(bubble_index) / 3.0
+			var bubble := -forward * radius * (0.25 + t * 0.86) + side * sin(walk_phase * 1.15 + t * 2.8) * radius * (0.14 + 0.14 * newt_swim_intensity)
+			canvas.draw_circle(bubble, maxf(radius * (0.035 + t * 0.03), 1.0), newt_water.lightened(0.25))
 	elif beaver_swim:
 		for bubble_index in 4:
 			var t := float(bubble_index) / 3.0

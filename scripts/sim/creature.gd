@@ -648,9 +648,10 @@ func get_render_motion_state() -> Dictionary:
 	var alligator_high_walk := creature_id == "alligator" and moving and surface != EnvironmentProfileScript.SURFACE_WATER and not _has_modifier_source("Ambush")
 	var heron_wading := creature_id == "great_blue_heron" and surface == EnvironmentProfileScript.SURFACE_WATER and not is_airborne() and state != CreatureStateScript.State.PERCHED
 	var wading_stride := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if heron_wading and moving else 0.0
-	var newt_crawling := creature_id == "newt" and moving and not is_airborne() and state != CreatureStateScript.State.PERCHED
+	var newt_crawling := creature_id == "newt" and surface != EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne() and state != CreatureStateScript.State.PERCHED
+	var newt_swimming := creature_id == "newt" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne() and state != CreatureStateScript.State.PERCHED
 	var newt_tail_lost := creature_id == "newt" and kit != null and float(kit.get("tail_lost_timer")) > 0.0
-	var newt_crawl_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if newt_crawling else 0.0
+	var newt_motion_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if newt_crawling or newt_swimming else 0.0
 	var water_snake_swim := creature_id == "water_snake" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var water_slither_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if water_snake_swim else 0.0
 	var turtle_swim := creature_id == "snapping_turtle" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
@@ -712,7 +713,9 @@ func get_render_motion_state() -> Dictionary:
 		"wading_pose": heron_wading,
 		"wading_stride": wading_stride,
 		"slick_crawl_pose": newt_crawling,
-		"slick_crawl_intensity": newt_crawl_intensity,
+		"slick_crawl_intensity": newt_motion_intensity if newt_crawling else 0.0,
+		"newt_swim_pose": newt_swimming,
+		"newt_swim_intensity": newt_motion_intensity if newt_swimming else 0.0,
 		"tail_lost_pose": newt_tail_lost,
 		"water_slither_pose": water_snake_swim,
 		"water_slither_intensity": water_slither_intensity,
