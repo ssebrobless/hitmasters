@@ -37,6 +37,7 @@ func _run() -> void:
 	_check_wave4_profile_seeds(failures)
 	_check_render_state_flags(arena, failures)
 	_check_bird_transition_cues(arena, failures)
+	_check_predator_latch_cues(arena, failures)
 	_check_visual_height_profiles(arena, failures)
 
 	print("movement_feel failures=%d" % failures.size())
@@ -618,6 +619,49 @@ func _check_bird_transition_cues(arena: Node, failures: Array[String]) -> void:
 			str(takeoff_state),
 			str(landing_state)
 		])
+
+func _check_predator_latch_cues(arena: Node, failures: Array[String]) -> void:
+	var snake_state := _latched_render_state(arena, "water_snake", "Bite")
+	var gator_hold_state := _latched_render_state(arena, "alligator", "Bite")
+	var gator_roll_state := _latched_render_state(arena, "alligator", "Death Roll")
+	var mink_choke_state := _latched_render_state(arena, "mink", "Choke")
+	var otter_pack_state := _latched_render_state(arena, "otter", "Gang Up")
+	var victim_state: Dictionary = arena.bots[0].get_render_motion_state()
+	var snake_coil: bool = bool(snake_state.get("water_snake_coil_pose", false)) and bool(snake_state.get("latch_attacker_pose", false))
+	var gator_hold: bool = bool(gator_hold_state.get("alligator_jaw_hold_pose", false)) and not bool(gator_hold_state.get("alligator_death_roll_pose", false))
+	var gator_roll: bool = bool(gator_roll_state.get("alligator_death_roll_pose", false)) and not bool(gator_roll_state.get("alligator_jaw_hold_pose", false))
+	var mink_choke: bool = bool(mink_choke_state.get("mink_choke_pose", false)) and String(mink_choke_state.get("latch_source", "")) == "Choke"
+	var otter_pack: bool = bool(otter_pack_state.get("otter_pack_latch_pose", false)) and String(otter_pack_state.get("latch_source", "")) == "Gang Up"
+	var victim_read: bool = bool(victim_state.get("latched_victim_pose", false))
+	if not snake_coil or not gator_hold or not gator_roll or not mink_choke or not otter_pack or not victim_read:
+		failures.append("predator latches should expose source-specific read poses for coil, jaw hold, death roll, choke, pack latch, and held victim; snake=%s gator=%s/%s mink=%s otter=%s victim=%s states=%s/%s/%s/%s/%s/%s" % [
+			str(snake_coil),
+			str(gator_hold),
+			str(gator_roll),
+			str(mink_choke),
+			str(otter_pack),
+			str(victim_read),
+			str(snake_state),
+			str(gator_hold_state),
+			str(gator_roll_state),
+			str(mink_choke_state),
+			str(otter_pack_state),
+			str(victim_state)
+		])
+	arena.player.release_latch("test_reset")
+
+func _latched_render_state(arena: Node, creature_id: String, source: String) -> Dictionary:
+	var actor: Node = arena.player
+	var victim: Node = arena.bots[0]
+	actor.release_latch("test_reset")
+	victim.release_latch("test_reset")
+	actor.apply_creature(creature_id)
+	victim.apply_creature("cane_toad")
+	actor.global_position = Vector2(340.0, 320.0)
+	victim.global_position = actor.global_position + Vector2.RIGHT * 28.0
+	actor.attach_to_victim(victim, 5.0, source, 10.0 if source == "Choke" else 0.0)
+	victim.receive_latch(actor, 5.0, source)
+	return actor.get_render_motion_state()
 
 func _all_roster_creatures_have_height_profile(arena: Node) -> bool:
 	var actor: Node = arena.player

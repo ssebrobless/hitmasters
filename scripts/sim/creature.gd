@@ -599,6 +599,15 @@ func get_render_motion_state() -> Dictionary:
 	var landing_flap_t := clampf(render_landing_flap_timer / LANDING_FLAP_TELL_SEC, 0.0, 1.0) if LANDING_FLAP_TELL_SEC > 0.0 else 0.0
 	var grounded_lockout_t := clampf(flight_grounded_timer / FLIGHT_GROUNDED_LOCKOUT_SEC, 0.0, 1.0) if FLIGHT_GROUNDED_LOCKOUT_SEC > 0.0 and has_movement("flight") and not has_movement("always_flying") else 0.0
 	var bird_transition_pose := has_movement("flight") and not has_movement("always_flying") and maxf(maxf(takeoff_charge_t, takeoff_flap_t), maxf(landing_flap_t, grounded_lockout_t)) > 0.0
+	var latch_attacking := latch_victim != null and is_instance_valid(latch_victim)
+	var latch_being_held := latched_attacker != null and is_instance_valid(latched_attacker)
+	var latch_source_name := String(latch_source)
+	var predator_hold_t := 1.0 if latch_attacking else 0.0
+	var water_snake_coil := creature_id == "water_snake" and latch_attacking and latch_source_name == "Bite"
+	var alligator_jaw_hold := creature_id == "alligator" and latch_attacking and latch_source_name == "Bite"
+	var alligator_death_roll := creature_id == "alligator" and latch_attacking and latch_source_name == "Death Roll"
+	var mink_choke := creature_id == "mink" and latch_attacking and latch_source_name == "Choke"
+	var otter_pack_latch := creature_id == "otter" and latch_attacking and (latch_source_name == "Bite" or latch_source_name == "Gang Up")
 	var toxic_recoil_t := clampf(render_toxic_recoil_timer / TOXIC_RECOIL_TELL_SEC, 0.0, 1.0) if TOXIC_RECOIL_TELL_SEC > 0.0 else 0.0
 	var escape_curl_t := clampf(render_escape_curl_timer / ESCAPE_CURL_TELL_SEC, 0.0, 1.0) if ESCAPE_CURL_TELL_SEC > 0.0 else 0.0
 	var plunge_t := clampf(render_plunge_timer / PLUNGE_TELL_SEC, 0.0, 1.0) if PLUNGE_TELL_SEC > 0.0 else 0.0
@@ -691,9 +700,11 @@ func get_render_motion_state() -> Dictionary:
 		"beaver_swim_intensity": beaver_swim_intensity,
 		"mink_bound_pose": mink_bound,
 		"mink_bound_intensity": mink_bound_intensity,
+		"mink_choke_pose": mink_choke,
 		"otter_swim_pose": otter_swim,
 		"otter_land_slide_pose": otter_land_slide,
 		"otter_motion_intensity": otter_motion_intensity,
+		"otter_pack_latch_pose": otter_pack_latch,
 		"leech_undulate_pose": leech_undulate,
 		"leech_inchworm_pose": leech_inchworm,
 		"leech_motion_intensity": leech_motion_intensity,
@@ -712,6 +723,13 @@ func get_render_motion_state() -> Dictionary:
 		"landing_flap_t": landing_flap_t,
 		"grounded_lockout_t": grounded_lockout_t,
 		"bird_transition_pose": bird_transition_pose,
+		"latch_source": latch_source_name,
+		"latch_attacker_pose": latch_attacking,
+		"latched_victim_pose": latch_being_held,
+		"predator_hold_t": predator_hold_t,
+		"water_snake_coil_pose": water_snake_coil,
+		"alligator_jaw_hold_pose": alligator_jaw_hold,
+		"alligator_death_roll_pose": alligator_death_roll,
 		"toxic_recoil_t": toxic_recoil_t,
 		"escape_curl_t": escape_curl_t,
 		"plunge_t": plunge_t

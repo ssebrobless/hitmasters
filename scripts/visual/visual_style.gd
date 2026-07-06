@@ -451,9 +451,11 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	var beaver_swim_intensity := clampf(float(anim.get("beaver_swim_intensity", 0.0)), 0.0, 1.25)
 	var mink_bound := is_mink and bool(anim.get("mink_bound_pose", false))
 	var mink_bound_intensity := clampf(float(anim.get("mink_bound_intensity", 0.0)), 0.0, 1.25)
+	var mink_choke := is_mink and bool(anim.get("mink_choke_pose", false))
 	var otter_swim := is_otter and bool(anim.get("otter_swim_pose", false))
 	var otter_land_slide := is_otter and bool(anim.get("otter_land_slide_pose", false))
 	var otter_motion_intensity := clampf(float(anim.get("otter_motion_intensity", 0.0)), 0.0, 1.25)
+	var otter_pack_latch := is_otter and bool(anim.get("otter_pack_latch_pose", false))
 	if surface_walk:
 		body_wiggle += 0.42 * surface_wake_intensity
 		tail_wave += 0.25 * surface_wake_intensity
@@ -467,6 +469,10 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 		stretch += 0.12 * mink_bound_intensity
 		body_wiggle += 0.22 * mink_bound_intensity
 		tail_wave += 0.34 * mink_bound_intensity
+	if mink_choke:
+		stretch += 0.18
+		body_wiggle += 0.28
+		tail_wave += 0.22
 	if otter_swim:
 		stretch += 0.1 * otter_motion_intensity
 		body_wiggle += 0.2 * otter_motion_intensity
@@ -475,6 +481,10 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 		stretch += 0.08 * otter_motion_intensity
 		body_wiggle += 0.12 * otter_motion_intensity
 		tail_wave += 0.28 * otter_motion_intensity
+	if otter_pack_latch:
+		stretch += 0.1
+		body_wiggle += 0.22
+		tail_wave += 0.32
 	var submerged_shrew := is_water_shrew and bool(anim.get("in_water", false)) and not surface_walk
 	var water_tint := Color(0.2, 0.6, 0.85, 0.32 + 0.14 * surface_wake_intensity)
 	var slick_tint := Color(0.86, 0.58, 0.32, 0.20 + 0.10 * slick_crawl_intensity)
@@ -513,6 +523,16 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			wiggle = sin(walk_phase * 1.2 - t * 2.2) * radius * 0.07 * body_wiggle * (1.0 - t * 0.5)
 		spine.append(forward * along + side * wiggle)
 		segment_radii.append(radius * lerpf(0.42, 0.5, sin(t * PI)) * bulk)
+	if mink_choke:
+		var hold_color := Color(0.95, 0.78, 0.42, 0.34)
+		canvas.draw_line(spine[5] + side * radius * 0.18, spine[6] + forward * radius * 0.72 + side * radius * 0.34, hold_color, maxf(radius * 0.08, 1.4))
+		canvas.draw_line(spine[5] - side * radius * 0.18, spine[6] + forward * radius * 0.72 - side * radius * 0.34, hold_color, maxf(radius * 0.08, 1.4))
+		canvas.draw_arc(spine[6] + forward * radius * 0.28, radius * 0.42, -PI * 0.35, PI * 0.35, 16, Color(hold_color.r, hold_color.g, hold_color.b, 0.26), maxf(radius * 0.08, 1.2))
+	if otter_pack_latch:
+		var pack_color := Color(0.52, 0.76, 0.88, 0.28)
+		for pack_side: float in [-1.0, 1.0]:
+			canvas.draw_line(spine[3] + side * pack_side * radius * 0.72, spine[6] + forward * radius * 0.9 + side * pack_side * radius * 0.42, pack_color, maxf(radius * 0.08, 1.4))
+			canvas.draw_arc(spine[4] + side * pack_side * radius * 0.36, radius * 0.44, -PI * 0.2, PI * 0.8, 16, Color(pack_color.r, pack_color.g, pack_color.b, 0.18), maxf(radius * 0.06, 1.1))
 
 	var tail_style := String(skin.get("tail", "bushy"))
 	var tail_direction := (-forward).rotated((sin(walk_phase * 1.4 + 1.8) * 0.3 * tail_wave) if moving else 0.12)
@@ -627,6 +647,12 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 		var fang_origin := head + forward * radius * 0.4
 		canvas.draw_line(fang_origin + side * 2.0, fang_origin + forward * radius * 0.4 + side * 2.0, Color(0.98, 0.98, 0.92, strike), 2.0)
 		canvas.draw_line(fang_origin - side * 2.0, fang_origin + forward * radius * 0.4 - side * 2.0, Color(0.98, 0.98, 0.92, strike), 2.0)
+	if mink_choke:
+		var fang_origin := head + forward * radius * 0.38
+		canvas.draw_line(fang_origin + side * radius * 0.12, fang_origin + forward * radius * 0.58 + side * radius * 0.28, Color(0.98, 0.92, 0.72, 0.82), maxf(radius * 0.09, 1.6))
+		canvas.draw_line(fang_origin - side * radius * 0.12, fang_origin + forward * radius * 0.58 - side * radius * 0.28, Color(0.98, 0.92, 0.72, 0.82), maxf(radius * 0.09, 1.6))
+	if otter_pack_latch:
+		canvas.draw_arc(head + forward * radius * 0.28, radius * 0.68, -PI * 0.28, PI * 0.28, 16, Color(0.72, 0.9, 1.0, 0.22), maxf(radius * 0.08, 1.4))
 
 static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, airborne: bool, anim: Dictionary = {}) -> void:
 	var main: Color = skin.get("main", Color(0.4, 0.32, 0.22))
@@ -813,9 +839,12 @@ static func _base_serpent(canvas: CanvasItem, radius: float, forward: Vector2, s
 	var slither_amp := float(anim.get("slither_amp", 1.0))
 	var water_slither := String(anim.get("creature_id", "")) == "water_snake" and bool(anim.get("water_slither_pose", false))
 	var water_slither_intensity := clampf(float(anim.get("water_slither_intensity", 0.0)), 0.0, 1.25)
+	var coil_pose := String(anim.get("creature_id", "")) == "water_snake" and bool(anim.get("water_snake_coil_pose", false))
 	var slither := slither_amp if moving else 0.3 * slither_amp
 	if water_slither:
 		slither += 0.42 * water_slither_intensity
+	if coil_pose:
+		slither += 0.65
 	var points: Array[Vector2] = []
 	for i in segments:
 		var t := float(i) / float(segments - 1)
@@ -838,6 +867,13 @@ static func _base_serpent(canvas: CanvasItem, radius: float, forward: Vector2, s
 		var t := float(i) / float(segments - 1)
 		var seg_radius := radius * lerpf(0.42, 0.12, t)
 		canvas.draw_circle(points[i], seg_radius, dark if i % 2 == 1 else main)
+	if coil_pose:
+		var coil_color := Color(0.72, 0.52, 0.28, 0.36)
+		for coil_index in [1, 3, 5]:
+			var center := points[coil_index]
+			var coil_radius := radius * (0.62 - float(coil_index) * 0.035)
+			canvas.draw_arc(center, coil_radius, -PI * 0.2, PI * 1.12, 24, coil_color, maxf(radius * 0.08, 1.5))
+		canvas.draw_line(points[0] + side * radius * 0.18, points[2] - side * radius * 0.24, Color(coil_color.r, coil_color.g, coil_color.b, 0.42), maxf(radius * 0.09, 1.6))
 	# Head with flicking tongue.
 	var head: Vector2 = points[0]
 	canvas.draw_circle(head, radius * 0.45, main)
@@ -856,12 +892,20 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var crawl_weight := float(anim.get("crawl_weight", 0.0))
 	var ambush_pose := bool(anim.get("ambush_pose", false))
 	var high_walk_pose := bool(anim.get("high_walk_pose", false))
+	var jaw_hold_pose := bool(anim.get("alligator_jaw_hold_pose", false))
+	var death_roll_pose := bool(anim.get("alligator_death_roll_pose", false))
 	if ambush_pose:
 		crawl_weight = maxf(crawl_weight, 0.72)
 		tail_sway *= 0.35
 	elif high_walk_pose:
 		crawl_weight = minf(crawl_weight, 0.16)
 		tail_sway *= 1.18
+	if jaw_hold_pose:
+		crawl_weight = maxf(crawl_weight, 0.42)
+		tail_sway *= 1.28
+	if death_roll_pose:
+		crawl_weight = maxf(crawl_weight, 0.62)
+		tail_sway *= 2.1
 
 	if high_walk_pose:
 		canvas.draw_colored_polygon(PackedVector2Array([
@@ -870,6 +914,12 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 			forward * radius * 1.38 - side * radius * 0.36,
 			-forward * radius * 1.0 - side * radius * 0.48
 		]), Color(0.02, 0.03, 0.02, 0.18))
+	if death_roll_pose:
+		var churn := Color(0.46, 0.72, 0.82, 0.26)
+		canvas.draw_arc(Vector2.ZERO, radius * 1.52, -PI * 0.15, PI * 1.18, 42, churn, maxf(radius * 0.12, 2.0))
+		canvas.draw_arc(Vector2.ZERO, radius * 1.08, PI * 0.22, PI * 1.48, 34, Color(churn.r, churn.g, churn.b, 0.18), maxf(radius * 0.1, 1.5))
+		for roll_side: float in [-1.0, 1.0]:
+			canvas.draw_line(-forward * radius * 0.7 + side * roll_side * radius * 0.55, forward * radius * 1.15 - side * roll_side * radius * 0.36, Color(churn.r, churn.g, churn.b, 0.22), maxf(radius * 0.08, 1.3))
 
 	# Keeled tail, swaying.
 	var tail_direction := (-forward).rotated((sin(walk_phase * 0.9) * 0.25 * tail_sway) if moving else 0.08)
@@ -917,6 +967,11 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 		forward * radius * 0.7 - side * radius * 0.3
 	])
 	canvas.draw_colored_polygon(snout_points, main)
+	if jaw_hold_pose or death_roll_pose:
+		var clamp_color := Color(0.96, 0.82, 0.42, 0.36 if jaw_hold_pose else 0.48)
+		canvas.draw_line(forward * radius * 1.18 + side * radius * 0.24, forward * radius * 1.78 + side * radius * 0.28, clamp_color, maxf(radius * 0.09, 1.5))
+		canvas.draw_line(forward * radius * 1.18 - side * radius * 0.24, forward * radius * 1.78 - side * radius * 0.28, clamp_color, maxf(radius * 0.09, 1.5))
+		canvas.draw_arc(forward * radius * 1.42, radius * 0.42, -PI * 0.34, PI * 0.34, 16, Color(clamp_color.r, clamp_color.g, clamp_color.b, clamp_color.a * 0.7), maxf(radius * 0.08, 1.3))
 	canvas.draw_circle(forward * radius * 1.52 + side * radius * 0.08, maxf(radius * 0.04, 1.0), dark)
 	canvas.draw_circle(forward * radius * 1.52 - side * radius * 0.08, maxf(radius * 0.04, 1.0), dark)
 	canvas.draw_circle(forward * radius * 0.78 + side * radius * 0.22, radius * 0.1, dark)
