@@ -12,7 +12,7 @@ called Hitmasters. The repo is at the project root; the main scene flow
 (MainMenu → CharacterSelect → Arena) already works.
 
 ## Read these first, in order
-1. `docs/BATTLE_BOG_DECISIONS.md` — 19 locked design rulings. These are law.
+1. `docs/BATTLE_BOG_DECISIONS.md` — locked design rulings. These are law.
 2. `docs/BATTLE_BOG_BUILD_PLAN.md` — the milestone plan you are executing,
    including the target directory layout and per-milestone acceptance checks.
 3. `data/battle_bog_roster.json` — the single source of truth for every
@@ -33,8 +33,8 @@ mentioned in the layout.
   regenerate, reformat, or "fix" it. If you believe it contains an error,
   report it and continue.
 - Never hardcode a creature stat or ability number in a script — read it from
-  the catalog. Conversion constants (1 unit = 16 px; speed 1.0 = 130 px/s)
-  live only in `scripts/sim/sim_constants.gd`.
+  the catalog. Conversion constants (1 unit = 16 px; speed 1.0 = 91 px/s per
+  decision #32) live only in `scripts/sim/sim_constants.gd`.
 - No `Input.*` calls anywhere under `scripts/sim/` or in creature/kit logic.
   Exactly one human-input reader (in `scripts/ui/`) builds an InputFrame;
   everything downstream consumes InputFrame. Bots build InputFrames too.

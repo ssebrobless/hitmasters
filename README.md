@@ -24,7 +24,7 @@ through food, hunger, and breeding.
 | `docs/BATTLE_BOG_SYSTEMS.md` | System map for habitats, food, hunger, terrain, mud huts, stocks, and controls. |
 | `docs/BATTLE_BOG_ROSTER.md` | Full playable creature roster translated from the design notes. |
 | `docs/BATTLE_BOG_IMPLEMENTATION_PLAN.md` | Migration path from the current prototype into Battle Bog. |
-| `docs/BATTLE_BOG_DECISIONS.md` | 19 locked design rulings; overrides other docs on conflict. |
+| `docs/BATTLE_BOG_DECISIONS.md` | Locked design rulings; overrides other docs on conflict. |
 | `docs/BATTLE_BOG_BUILD_PLAN.md` | Hardened milestone plan (M0-M8) with file layout and acceptance checks. |
 | `docs/CODEX_HANDOFF_PROMPT.md` | Ready-to-paste implementation prompt for the coding agent, one milestone at a time. |
 | `data/battle_bog_roster.json` | Structured roster data for future character select/gameplay wiring. |

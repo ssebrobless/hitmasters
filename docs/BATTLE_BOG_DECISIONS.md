@@ -6,7 +6,7 @@ Resolved 2026-07-03. These override ambiguity in the systems/roster docs.
 | --- | --- | --- |
 | 1 | Damage taxonomy | Two orthogonal tags: delivery (`melee` vs `ranged`) and plane (`ground` vs `air`). Airborne birds dodge ground-melee only; ranged hits fliers normally. Mosquito's 9% miss is its unique passive, not a global rule. "Physical attacker" passives (Bufotoxin, Toxic Skin, Toxic Secretion, Rib Exudation) trigger on melee contact only. |
 | 2 | Latch model | Struggle model. Latched victim keeps moving (slowed; drag direction per base-HP rule) and can attack and use abilities. Latch ends on attacker release, duration timeout, victim dash/displacement ability, or ally knockback. Latcher takes full damage while attached. |
-| 3 | Units & scale | 1 design unit = 16 px. Speed 1.0 = 130 px/s. Camera zooms in and arena shrinks relative to the Hitmasters prototype; slower, denser game feel. |
+| 3 | Units & scale | 1 design unit = 16 px. Original speed 1.0 = 130 px/s, amended by decision #32 to 91 px/s. Camera zooms in and arena shrinks relative to the Hitmasters prototype; slower, denser game feel. |
 | 4 | Wrong-terrain risk | Ramping percent DOT: 2% max HP/s for the first 3 s in wrong terrain (or after swim timer expires), then 5%/s. Applies identically to non-swimmers in water and expired semi-aquatics. |
 | 5 | Migration win condition | Slice 1 keeps cores, but each core is placed inside its team's habitat plot so the habitat exists spatially from day one. Stocks/habitat defeat replaces cores in Phase 3. |
 | 6 | Stock identity | Same creature, fixed 3 stocks (1 fielded + 2 reserve). Death = respawn as your creature at the habitat. |

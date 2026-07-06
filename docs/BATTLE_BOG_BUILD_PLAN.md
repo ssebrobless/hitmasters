@@ -5,8 +5,9 @@ Authority order when documents disagree:
 All numeric kit/stat values come from `data/battle_bog_roster.json` — never hardcode
 a creature number in a script.
 
-Conversion constants (from decisions #3): `UNIT_PX = 16.0`, `SPEED_PX_PER_SEC = 130.0`
-(speed 1.0). Define once in `scripts/sim/sim_constants.gd`; everything imports them.
+Conversion constants (from decisions #3 and #32): `UNIT_PX = 16.0`,
+`SPEED_PX_PER_SEC = 91.0` (speed 1.0). Define once in
+`scripts/sim/sim_constants.gd`; everything imports them.
 
 Target directory layout (created incrementally):
 
@@ -18,7 +19,7 @@ scripts/
     creature.gd          generic creature controller (replaces player.gd logic)
     creature_state.gd    state enum + transition rules (normal/latched/airborne/perched/burrowed/mounted/stance/defending)
     terrain_map.gd       zone lookup: land/shallow/water/cover/habitat/hut per world point
-    damage_event.gd      {amount, delivery: MELEE|RANGED, plane: GROUND|AIR, source_actor, source_ability}
+    damage_event.gd      {amount, delivery: MELEE|RANGED|AREA, plane: GROUND|AIR, source_actor, source_ability}
     abilities/           one primitive per file (see M2)
     kits/                per-creature kit scripts wiring primitives to roster data
   ai/
