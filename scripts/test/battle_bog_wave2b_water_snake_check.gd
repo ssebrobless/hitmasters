@@ -30,6 +30,7 @@ func _run() -> void:
 	_check_latched_dps_drag_and_release(arena, failures)
 	_check_musking_and_retreat(arena, failures)
 	_check_ingestion(arena, failures)
+	_check_water_slither_render(arena, failures)
 	_check_bot_hook(arena, failures)
 
 	print("wave2b_water_snake failures=%d" % failures.size())
@@ -161,6 +162,31 @@ func _check_ingestion(arena: Node, failures: Array[String]) -> void:
 			actor.health,
 			str(victim.is_alive()),
 			actor.kit.ingestion_timer
+		])
+
+func _check_water_slither_render(arena: Node, failures: Array[String]) -> void:
+	var actor: Node = arena.player
+	actor.release_latch("test_reset")
+	actor.current_environment_profile = {"surface": "water"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	var swim_state: Dictionary = actor.get_render_motion_state()
+	var swim_read: bool = bool(swim_state.get("water_slither_pose", false)) and bool(swim_state.get("in_water", false)) and float(swim_state.get("water_slither_intensity", 0.0)) > 0.25
+	actor.velocity = Vector2.ZERO
+	var idle_water_state: Dictionary = actor.get_render_motion_state()
+	var idle_clear: bool = not bool(idle_water_state.get("water_slither_pose", false)) and float(idle_water_state.get("water_slither_intensity", 1.0)) <= 0.001
+	actor.current_environment_profile = {"surface": "land"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	var land_state: Dictionary = actor.get_render_motion_state()
+	var land_clear: bool = not bool(land_state.get("water_slither_pose", false))
+	actor.velocity = Vector2.ZERO
+	if not swim_read or not idle_clear or not land_clear:
+		failures.append("Water Snake should expose a water-slither render wake only while moving in water; swim=%s idle=%s land=%s state=%s/%s/%s" % [
+			str(swim_read),
+			str(idle_clear),
+			str(land_clear),
+			str(swim_state),
+			str(idle_water_state),
+			str(land_state)
 		])
 
 func _check_bot_hook(arena: Node, failures: Array[String]) -> void:

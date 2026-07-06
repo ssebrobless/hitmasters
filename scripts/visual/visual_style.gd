@@ -563,13 +563,25 @@ static func _base_serpent(canvas: CanvasItem, radius: float, forward: Vector2, s
 	var dark: Color = skin.get("dark", main.darkened(0.35))
 	var segments := 9
 	var slither_amp := float(anim.get("slither_amp", 1.0))
+	var water_slither := String(anim.get("creature_id", "")) == "water_snake" and bool(anim.get("water_slither_pose", false))
+	var water_slither_intensity := clampf(float(anim.get("water_slither_intensity", 0.0)), 0.0, 1.25)
 	var slither := slither_amp if moving else 0.3 * slither_amp
+	if water_slither:
+		slither += 0.42 * water_slither_intensity
 	var points: Array[Vector2] = []
 	for i in segments:
 		var t := float(i) / float(segments - 1)
 		var along := lerpf(0.9, -2.2, t) * radius
 		var sway := sin(walk_phase * 1.6 + t * 4.2) * radius * 0.3 * slither * t
 		points.append(forward * along + side * sway)
+	if water_slither:
+		var water_color := Color(0.44, 0.72, 0.86, 0.26 + 0.10 * water_slither_intensity)
+		for wake_index in range(1, segments - 1, 2):
+			var t := float(wake_index) / float(segments - 1)
+			var wake_side := 1.0 if wake_index % 4 == 1 else -1.0
+			var wake_center := points[wake_index] + side * wake_side * radius * (0.28 + 0.08 * water_slither_intensity)
+			canvas.draw_arc(wake_center, radius * (0.28 + t * 0.18 + water_slither_intensity * 0.05), -0.45, 0.85, 12, water_color, 1.1 + water_slither_intensity * 0.6)
+		canvas.draw_line(points[0] - forward * radius * 0.2, points[segments - 1] - forward * radius * 0.35, Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.45), maxf(radius * 0.05, 1.0))
 	for i in range(segments - 1, -1, -1):
 		var t := float(i) / float(segments - 1)
 		var seg_radius := radius * lerpf(0.42, 0.12, t)
