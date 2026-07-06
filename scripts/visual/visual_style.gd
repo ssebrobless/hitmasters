@@ -121,8 +121,18 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 				_strike_tongue(canvas, radius, attack_aim.normalized(), attack_reach, strike)
 
 	if flash_alpha > 0.0:
-		canvas.draw_circle(Vector2.ZERO, radius + 3.0, Color(1.0, 1.0, 1.0, clampf(flash_alpha, 0.0, 1.0) * 0.85))
+		var flash_mult := clampf(float(anim.get("flash_region_mult", 1.0)), 0.75, 1.35)
+		var flash_color := _region_flash_color(flash_mult)
+		flash_color.a = clampf(flash_alpha, 0.0, 1.0) * 0.85
+		canvas.draw_circle(Vector2.ZERO, radius + 3.0, flash_color)
 	canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+static func _region_flash_color(region_mult: float) -> Color:
+	if region_mult > 1.05:
+		return Color(1.0, 0.72, 0.45)
+	if region_mult < 0.95:
+		return Color(0.72, 0.88, 1.0)
+	return Color.WHITE
 
 # Snap out fast, HOLD the extended pose, then ease back — the hold is what
 # makes small creatures' attacks readable.

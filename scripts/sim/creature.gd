@@ -101,6 +101,7 @@ var last_aim_direction := Vector2.RIGHT
 var body_heading := Vector2.RIGHT
 var render_hitstop_timer := 0.0
 var render_flash_timer := 0.0
+var render_flash_region_mult := 1.0
 var render_shake_timer := 0.0
 var anim_walk_phase := 0.0
 var anim_attack_timer := 0.0
@@ -440,8 +441,9 @@ func _apply_own_anim(event_type: String, payload: Dictionary) -> void:
 			anim_attack_aim = payload.get("aim", last_aim_direction)
 			anim_windup_timer = 0.0
 
-func apply_render_hit_feedback(amount: float) -> void:
+func apply_render_hit_feedback(amount: float, region_mult := 1.0) -> void:
 	render_flash_timer = 0.1
+	render_flash_region_mult = clampf(region_mult, 0.75, 1.35)
 	if amount >= 50.0:
 		render_shake_timer = 0.1
 	queue_redraw()
@@ -1190,6 +1192,7 @@ func _draw() -> void:
 		"attack_reach": anim_attack_reach,
 		"attack_aim": anim_attack_aim,
 		"windup_t": 1.0 - anim_windup_timer / anim_windup_duration if anim_windup_timer > 0.0 else -1.0,
+		"flash_region_mult": render_flash_region_mult,
 		"shake_offset": shake_offset
 	})
 	anim.merge(get_render_motion_state(), true)
