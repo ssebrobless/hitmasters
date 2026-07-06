@@ -1301,6 +1301,11 @@ static func _base_spider(canvas: CanvasItem, radius: float, forward: Vector2, si
 	var lunge_pose := bool(anim.get("spider_lunge_pose", false))
 	var burrowed_pose := bool(anim.get("spider_burrowed_pose", false))
 	var latch_pose := bool(anim.get("spider_latch_pose", false))
+	var skitter_pose := bool(anim.get("spider_skitter_pose", false))
+	var skitter_intensity := clampf(float(anim.get("spider_skitter_intensity", 0.0)), 0.0, 1.25)
+	if skitter_pose:
+		low_slung = maxf(low_slung, 0.22 + 0.08 * skitter_intensity)
+		scuttle_stride += 0.16 * skitter_intensity
 	if lunge_pose:
 		low_slung = maxf(low_slung, 0.48)
 	if burrowed_pose:
@@ -1317,6 +1322,10 @@ static func _base_spider(canvas: CanvasItem, radius: float, forward: Vector2, si
 		]), Color(0.1, 0.07, 0.04, 0.42))
 	if lunge_pose:
 		canvas.draw_line(-forward * radius * 0.85, -forward * radius * 1.45, Color(accent.r, accent.g, accent.b, 0.24), maxf(radius * 0.12, 2.0))
+	if skitter_pose:
+		for trail_side: float in [-1.0, 1.0]:
+			var trail_start := -forward * radius * 0.36 + side * trail_side * radius * 0.52
+			canvas.draw_line(trail_start, trail_start - forward * radius * (0.42 + 0.18 * skitter_intensity) + side * trail_side * radius * 0.16, Color(accent.r, accent.g, accent.b, 0.14 + 0.08 * skitter_intensity), maxf(radius * 0.045, 1.0))
 
 	# Eight legs, two joints each, alternating gait.
 	for leg_index in 8:
@@ -1332,6 +1341,8 @@ static func _base_spider(canvas: CanvasItem, radius: float, forward: Vector2, si
 		var foot := forward.rotated(base_angle + step * 1.4) * radius * (1.22 + scuttle_stride * 0.13 - burrow_tuck) + forward * radius * (lunge_reach * 1.7 - (0.18 if lunge_pose and rearleg else 0.0))
 		canvas.draw_line(Vector2.ZERO, knee, dark, maxf(radius * 0.09, 1.5))
 		canvas.draw_line(knee, foot, dark, maxf(radius * 0.06, 1.2))
+		if skitter_pose and pair % 2 == 0:
+			canvas.draw_line(foot, foot - forward * radius * (0.18 + 0.1 * skitter_intensity), Color(accent.r, accent.g, accent.b, 0.2 + 0.08 * skitter_intensity), maxf(radius * 0.035, 1.0))
 
 	# Abdomen + cephalothorax with dorsal stripe.
 	var body_push := forward * radius * (0.18 if lunge_pose else 0.0)

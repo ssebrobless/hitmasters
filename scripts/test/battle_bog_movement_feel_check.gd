@@ -707,6 +707,41 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 			str(leech_water_state),
 			str(leech_idle_state)
 		])
+	actor.apply_creature("wolf_spider")
+	actor.current_environment_profile = {"surface": "land"}
+	actor.state = CreatureStateScript.State.NORMAL
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var spider_skitter_state: Dictionary = actor.get_render_motion_state()
+	var spider_skitter: bool = bool(spider_skitter_state.get("spider_skitter_pose", false)) \
+		and float(spider_skitter_state.get("spider_skitter_intensity", 0.0)) > 0.25 \
+		and not bool(spider_skitter_state.get("spider_lunge_pose", false)) \
+		and not bool(spider_skitter_state.get("spider_burrowed_pose", false)) \
+		and not bool(spider_skitter_state.get("spider_latch_pose", false))
+	actor.kit.lunge_active = true
+	var spider_lunge_state: Dictionary = actor.get_render_motion_state()
+	var spider_lunge_suppresses: bool = bool(spider_lunge_state.get("spider_lunge_pose", false)) and not bool(spider_lunge_state.get("spider_skitter_pose", false))
+	actor.kit.lunge_active = false
+	actor.state = CreatureStateScript.State.BURROWED
+	var spider_burrow_state: Dictionary = actor.get_render_motion_state()
+	var spider_burrow_suppresses: bool = bool(spider_burrow_state.get("spider_burrowed_pose", false)) and not bool(spider_burrow_state.get("spider_skitter_pose", false))
+	actor.state = CreatureStateScript.State.NORMAL
+	actor.velocity = Vector2.ZERO
+	actor.set_input_frame(InputFrameScript.new())
+	var spider_idle_state: Dictionary = actor.get_render_motion_state()
+	var spider_idle_clear: bool = not bool(spider_idle_state.get("spider_skitter_pose", false)) \
+		and float(spider_idle_state.get("spider_skitter_intensity", 1.0)) <= 0.001
+	if not spider_skitter or not spider_lunge_suppresses or not spider_burrow_suppresses or not spider_idle_clear:
+		failures.append("wolf spider should expose normal skitter, suppress it during lunge/burrow, then clear when idle; skitter=%s lunge=%s burrow=%s idle=%s state=%s/%s/%s/%s" % [
+			str(spider_skitter),
+			str(spider_lunge_suppresses),
+			str(spider_burrow_suppresses),
+			str(spider_idle_clear),
+			str(spider_skitter_state),
+			str(spider_lunge_state),
+			str(spider_burrow_state),
+			str(spider_idle_state)
+		])
 	actor.apply_creature("alligator")
 	actor.add_modifier("Ambush", {"move_speed_mult": 0.7}, 1.0)
 	if not bool(actor.get_render_motion_state().get("ambush_pose", false)):

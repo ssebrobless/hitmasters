@@ -671,6 +671,8 @@ func get_render_motion_state() -> Dictionary:
 	var wolf_spider_lunge := creature_id == "wolf_spider" and kit != null and bool(kit.get("lunge_active"))
 	var wolf_spider_burrowed := creature_id == "wolf_spider" and state == CreatureStateScript.State.BURROWED
 	var wolf_spider_latched := creature_id == "wolf_spider" and latch_victim != null and latch_source == "Bite"
+	var wolf_spider_skitter := creature_id == "wolf_spider" and moving and not is_airborne() and not wolf_spider_lunge and not wolf_spider_burrowed and not wolf_spider_latched
+	var wolf_spider_skitter_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if wolf_spider_skitter else 0.0
 	var firefly_hover := creature_id == "firefly" and moving
 	var firefly_hover_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if firefly_hover else 0.0
 	var firefly_flash := creature_id == "firefly" and kit != null and float(kit.get("flash_timer")) > 0.0
@@ -755,6 +757,8 @@ func get_render_motion_state() -> Dictionary:
 		"spider_lunge_pose": wolf_spider_lunge,
 		"spider_burrowed_pose": wolf_spider_burrowed,
 		"spider_latch_pose": wolf_spider_latched,
+		"spider_skitter_pose": wolf_spider_skitter,
+		"spider_skitter_intensity": wolf_spider_skitter_intensity,
 		"firefly_hover_pose": firefly_hover,
 		"firefly_hover_intensity": firefly_hover_intensity,
 		"firefly_flash_pose": firefly_flash,
