@@ -1128,12 +1128,23 @@ static func _base_crustacean(canvas: CanvasItem, radius: float, forward: Vector2
 	var display_stance := bool(anim.get("display_stance", false))
 	var escape_dash := bool(anim.get("escape_dash", false))
 	var escape_curl_t := clampf(float(anim.get("escape_curl_t", 0.0)), 0.0, 1.0)
+	var crayfish_scuttle := String(anim.get("creature_id", "")) == "crayfish" and bool(anim.get("crayfish_scuttle_pose", false))
+	var crayfish_tail_flick_swim := String(anim.get("creature_id", "")) == "crayfish" and bool(anim.get("crayfish_tail_flick_swim_pose", false))
+	var crayfish_motion_intensity := clampf(float(anim.get("crayfish_motion_intensity", 0.0)), 0.0, 1.25)
 	var tail_curl := float(anim.get("tail_curl", 0.0)) if moving or escape_dash else 0.0
+	if crayfish_tail_flick_swim:
+		tail_curl = maxf(tail_curl, 0.46 + 0.24 * crayfish_motion_intensity)
 	tail_curl = maxf(tail_curl, escape_curl_t * 0.9)
 	if escape_dash:
 		tail_curl = maxf(tail_curl, 0.95)
 
 	# Fan tail.
+	if crayfish_tail_flick_swim:
+		var swim_wake := Color(0.44, 0.72, 0.86, 0.18 + 0.1 * crayfish_motion_intensity)
+		for wake_side: float in [-1.0, 1.0]:
+			var tail_origin := -forward * radius * 0.92 + side * wake_side * radius * 0.25
+			canvas.draw_line(tail_origin, tail_origin - forward * radius * (0.78 + 0.24 * crayfish_motion_intensity) + side * wake_side * radius * 0.28, swim_wake, maxf(radius * 0.07, 1.2))
+			canvas.draw_arc(tail_origin - forward * radius * 0.16, radius * (0.26 + 0.08 * crayfish_motion_intensity), PI * 0.08, PI * 0.88, 10, swim_wake, maxf(radius * 0.045, 1.0))
 	if escape_curl_t > 0.0:
 		var wake := Color(0.95, 0.72, 0.45, 0.22 * escape_curl_t)
 		for wake_side: float in [-1.0, 1.0]:
@@ -1154,6 +1165,11 @@ static func _base_crustacean(canvas: CanvasItem, radius: float, forward: Vector2
 		var side_reach := radius * (0.82 + 0.08 * scuttle_stride)
 		var leg_tip := leg_base + side * leg_side * side_reach + forward * radius * leg_step
 		canvas.draw_line(leg_base, leg_tip, dark, 1.5)
+		if crayfish_scuttle and leg_index % 2 == 0:
+			var scuff_alpha := 0.18 + 0.08 * crayfish_motion_intensity
+			canvas.draw_arc(leg_tip - forward * radius * 0.08, radius * (0.12 + 0.04 * crayfish_motion_intensity), PI * 0.08, PI * 0.9, 8, Color(dark.r, dark.g, dark.b, scuff_alpha), maxf(radius * 0.035, 1.0))
+		elif crayfish_tail_flick_swim and leg_index % 3 == 0:
+			canvas.draw_circle(leg_tip - forward * radius * 0.08, maxf(radius * (0.04 + 0.02 * crayfish_motion_intensity), 1.0), Color(0.44, 0.72, 0.86, 0.16 + 0.06 * crayfish_motion_intensity))
 
 	# Segmented abdomen + carapace.
 	for i in 3:

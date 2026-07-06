@@ -686,6 +686,9 @@ func get_render_motion_state() -> Dictionary:
 	var otter_swim := creature_id == "otter" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var otter_land_slide := creature_id == "otter" and surface != EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var otter_motion_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if otter_swim or otter_land_slide else 0.0
+	var crayfish_scuttle := creature_id == "crayfish" and surface != EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
+	var crayfish_tail_flick_swim := creature_id == "crayfish" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
+	var crayfish_motion_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if crayfish_scuttle or crayfish_tail_flick_swim else 0.0
 	var leech_undulate := creature_id == "leech" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var leech_inchworm := creature_id == "leech" and surface != EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var leech_motion_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if leech_undulate or leech_inchworm else 0.0
@@ -760,6 +763,9 @@ func get_render_motion_state() -> Dictionary:
 		"otter_land_slide_pose": otter_land_slide,
 		"otter_motion_intensity": otter_motion_intensity,
 		"otter_pack_latch_pose": otter_pack_latch,
+		"crayfish_scuttle_pose": crayfish_scuttle,
+		"crayfish_tail_flick_swim_pose": crayfish_tail_flick_swim,
+		"crayfish_motion_intensity": crayfish_motion_intensity,
 		"leech_undulate_pose": leech_undulate,
 		"leech_inchworm_pose": leech_inchworm,
 		"leech_motion_intensity": leech_motion_intensity,

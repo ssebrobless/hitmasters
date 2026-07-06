@@ -644,6 +644,36 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 			str(otter_land_state),
 			str(otter_idle_state)
 		])
+	actor.apply_creature("crayfish")
+	actor.current_environment_profile = {"surface": "land"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var crayfish_land_state: Dictionary = actor.get_render_motion_state()
+	var crayfish_scuttle: bool = bool(crayfish_land_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(crayfish_land_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and float(crayfish_land_state.get("crayfish_motion_intensity", 0.0)) > 0.25
+	actor.current_environment_profile = {"surface": "water"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var crayfish_water_state: Dictionary = actor.get_render_motion_state()
+	var crayfish_swim: bool = bool(crayfish_water_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and not bool(crayfish_water_state.get("crayfish_scuttle_pose", false)) \
+		and float(crayfish_water_state.get("crayfish_motion_intensity", 0.0)) > 0.25
+	actor.velocity = Vector2.ZERO
+	actor.set_input_frame(InputFrameScript.new())
+	var crayfish_idle_state: Dictionary = actor.get_render_motion_state()
+	var crayfish_idle_clear: bool = not bool(crayfish_idle_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(crayfish_idle_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and float(crayfish_idle_state.get("crayfish_motion_intensity", 1.0)) <= 0.001
+	if not crayfish_scuttle or not crayfish_swim or not crayfish_idle_clear:
+		failures.append("moving crayfish should expose land scuttle and water tail-flick swim render poses, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
+			str(crayfish_scuttle),
+			str(crayfish_swim),
+			str(crayfish_idle_clear),
+			str(crayfish_land_state),
+			str(crayfish_water_state),
+			str(crayfish_idle_state)
+		])
 	actor.apply_creature("leech")
 	actor.current_environment_profile = {"surface": "land"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
