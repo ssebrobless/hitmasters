@@ -1154,7 +1154,12 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and bool(mosquito_move_state.get("mosquito_trail_pose", false)) \
 		and float(mosquito_move_state.get("mosquito_blood_ratio", 0.0)) > 0.45 \
 		and not bool(mosquito_move_state.get("firefly_hover_pose", false)) \
-		and not bool(mosquito_move_state.get("firefly_flash_pose", false))
+		and not bool(mosquito_move_state.get("firefly_flash_pose", false)) \
+		and not bool(mosquito_move_state.get("owl_glide_pose", false)) \
+		and not bool(mosquito_move_state.get("owl_silent_flight_pose", false)) \
+		and not bool(mosquito_move_state.get("kingfisher_dart_pose", false)) \
+		and not bool(mosquito_move_state.get("wading_pose", false)) \
+		and not bool(mosquito_move_state.get("duck_paddle_pose", false))
 	actor.kit.trail_timer = 0.0
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
@@ -1163,9 +1168,13 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(mosquito_idle_state.get("mosquito_trail_pose", false)) \
 		and not bool(mosquito_idle_state.get("firefly_hover_pose", false)) \
 		and not bool(mosquito_idle_state.get("firefly_flash_pose", false)) \
+		and not bool(mosquito_idle_state.get("owl_glide_pose", false)) \
+		and not bool(mosquito_idle_state.get("kingfisher_dart_pose", false)) \
+		and not bool(mosquito_idle_state.get("wading_pose", false)) \
+		and not bool(mosquito_idle_state.get("duck_paddle_pose", false)) \
 		and float(mosquito_idle_state.get("mosquito_swarm_intensity", 1.0)) <= 0.001
 	if not mosquito_swarm or not mosquito_idle_clear:
-		failures.append("moving mosquito swarm should expose directional swarm-cloud drift, trail, and blood ratio without firefly overlap, then clear when idle; moving=%s idle=%s state=%s/%s" % [
+		failures.append("moving mosquito swarm should expose directional swarm-cloud drift, trail, and blood ratio without firefly, bird, heron, or duck overlap, then clear when idle; moving=%s idle=%s state=%s/%s" % [
 			str(mosquito_swarm),
 			str(mosquito_idle_clear),
 			str(mosquito_move_state),
@@ -1180,7 +1189,12 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and float(firefly_hover_state.get("firefly_hover_intensity", 0.0)) > 0.25 \
 		and bool(firefly_hover_state.get("firefly_flash_pose", false)) \
 		and not bool(firefly_hover_state.get("mosquito_swarm_pose", false)) \
-		and not bool(firefly_hover_state.get("mosquito_trail_pose", false))
+		and not bool(firefly_hover_state.get("mosquito_trail_pose", false)) \
+		and not bool(firefly_hover_state.get("owl_glide_pose", false)) \
+		and not bool(firefly_hover_state.get("owl_silent_flight_pose", false)) \
+		and not bool(firefly_hover_state.get("kingfisher_dart_pose", false)) \
+		and not bool(firefly_hover_state.get("wading_pose", false)) \
+		and not bool(firefly_hover_state.get("duck_paddle_pose", false))
 	actor.kit.flash_timer = 0.0
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
@@ -1189,9 +1203,13 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and float(firefly_idle_state.get("firefly_hover_intensity", 1.0)) <= 0.001 \
 		and not bool(firefly_idle_state.get("firefly_flash_pose", false)) \
 		and not bool(firefly_idle_state.get("mosquito_swarm_pose", false)) \
-		and not bool(firefly_idle_state.get("mosquito_trail_pose", false))
+		and not bool(firefly_idle_state.get("mosquito_trail_pose", false)) \
+		and not bool(firefly_idle_state.get("owl_glide_pose", false)) \
+		and not bool(firefly_idle_state.get("kingfisher_dart_pose", false)) \
+		and not bool(firefly_idle_state.get("wading_pose", false)) \
+		and not bool(firefly_idle_state.get("duck_paddle_pose", false))
 	if not firefly_hover or not firefly_idle_clear:
-		failures.append("moving firefly should expose single-hover drift and flash cues without mosquito overlap, then clear when idle; moving=%s idle=%s state=%s/%s" % [
+		failures.append("moving firefly should expose single-hover lantern drift and flash cues without mosquito, bird, heron, or duck overlap, then clear when idle; moving=%s idle=%s state=%s/%s" % [
 			str(firefly_hover),
 			str(firefly_idle_clear),
 			str(firefly_hover_state),

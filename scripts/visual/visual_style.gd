@@ -1607,6 +1607,7 @@ static func _base_bug(canvas: CanvasItem, radius: float, forward: Vector2, side:
 	canvas.draw_circle(-forward * radius * 0.4 + hover_drift, radius * (1.55 + pulse * 0.5) * glow_scale, Color(glow.r, glow.g, glow.b, 0.1 + pulse * 0.08))
 	canvas.draw_circle(-forward * radius * 0.4 + hover_drift, radius * 0.55 * glow_scale, Color(glow.r, glow.g, glow.b, 0.55 + pulse * 0.35))
 	if hover_pose:
+		canvas.draw_arc(-forward * radius * 0.4 + hover_drift, radius * (0.82 + 0.14 * hover_intensity), -PI * 0.15, TAU * 0.72, 20, Color(glow.r, glow.g, glow.b, 0.22 + 0.08 * hover_intensity), maxf(radius * 0.055, 1.0))
 		for trail_index in 3:
 			var t := float(trail_index + 1) / 3.0
 			var trail := -forward * radius * (0.8 + t * 0.55) + side * sin(walk_phase * 0.9 + t * 2.4) * radius * 0.18 + hover_drift
@@ -1614,6 +1615,8 @@ static func _base_bug(canvas: CanvasItem, radius: float, forward: Vector2, side:
 		for drift_side: float in [-1.0, 1.0]:
 			var shimmer := -forward * radius * 0.22 + side * drift_side * radius * (0.62 + 0.08 * hover_intensity) + hover_drift
 			canvas.draw_line(shimmer, shimmer - forward * radius * (0.44 + 0.12 * hover_intensity) + side * drift_side * radius * 0.16, Color(glow.r, glow.g, glow.b, 0.16 + 0.08 * hover_intensity), maxf(radius * 0.045, 1.0))
+		var lantern_drop := -forward * radius * (0.62 + 0.1 * pulse) + hover_drift
+		canvas.draw_circle(lantern_drop, maxf(radius * (0.18 + 0.04 * hover_intensity), 1.4), Color(glow.r, glow.g, glow.b, 0.42 + 0.14 * pulse))
 	if flash_pose:
 		canvas.draw_arc(-forward * radius * 0.4 + hover_drift, radius * 2.05, -0.25, TAU * 0.72, 28, Color(glow.r, glow.g, glow.b, 0.32 + pulse * 0.16), maxf(radius * 0.1, 1.5))
 	# Wings blurred mid-beat.
