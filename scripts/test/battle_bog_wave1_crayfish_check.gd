@@ -79,12 +79,19 @@ func _check_caridoid_escape(arena: Node, failures: Array[String]) -> void:
 	var dashed_back: bool = actor.dash_timer > 0.0 and actor.dash_velocity.x < 0.0
 	var smacked: bool = target.health < target.max_health
 	var spent: bool = actor.q_charges == 2
-	if not dashed_back or not smacked or not spent:
-		failures.append("Caridoid Escape should smack front target, dash backward, spend charge; dashed=%s smacked=%s charges=%d vel=%s" % [
+	var render_state: Dictionary = actor.get_render_motion_state()
+	var curled: bool = bool(render_state.get("escape_dash", false)) and float(render_state.get("escape_curl_t", 0.0)) > 0.9
+	actor._process(0.12)
+	var decayed: bool = float(actor.get_render_motion_state().get("escape_curl_t", 1.0)) < float(render_state.get("escape_curl_t", 0.0))
+	if not dashed_back or not smacked or not spent or not curled or not decayed:
+		failures.append("Caridoid Escape should smack front target, dash backward, spend charge, and show tail curl; dashed=%s smacked=%s charges=%d curled=%s decayed=%s vel=%s state=%s" % [
 			str(dashed_back),
 			str(smacked),
 			actor.q_charges,
-			str(actor.dash_velocity)
+			str(curled),
+			str(decayed),
+			str(actor.dash_velocity),
+			str(render_state)
 		])
 	actor.dash_timer = 0.0
 	actor.dash_velocity = Vector2.ZERO

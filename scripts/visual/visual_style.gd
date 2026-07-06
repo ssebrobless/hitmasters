@@ -605,11 +605,17 @@ static func _base_crustacean(canvas: CanvasItem, radius: float, forward: Vector2
 	var scuttle_stride := float(anim.get("scuttle_stride", 1.0))
 	var display_stance := bool(anim.get("display_stance", false))
 	var escape_dash := bool(anim.get("escape_dash", false))
+	var escape_curl_t := clampf(float(anim.get("escape_curl_t", 0.0)), 0.0, 1.0)
 	var tail_curl := float(anim.get("tail_curl", 0.0)) if moving or escape_dash else 0.0
+	tail_curl = maxf(tail_curl, escape_curl_t * 0.9)
 	if escape_dash:
 		tail_curl = maxf(tail_curl, 0.95)
 
 	# Fan tail.
+	if escape_curl_t > 0.0:
+		var wake := Color(0.95, 0.72, 0.45, 0.22 * escape_curl_t)
+		for wake_side: float in [-1.0, 1.0]:
+			canvas.draw_line(-forward * radius * 1.05 + side * wake_side * radius * 0.32, -forward * radius * (1.7 + 0.25 * escape_curl_t) + side * wake_side * radius * 0.62, wake, maxf(radius * 0.08, 1.5))
 	canvas.draw_colored_polygon(PackedVector2Array([
 		-forward * radius * 0.6,
 		-forward * radius * (1.25 - tail_curl * 0.12) + side * radius * (0.4 + tail_curl * 0.18),
