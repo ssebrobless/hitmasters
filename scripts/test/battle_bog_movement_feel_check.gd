@@ -404,6 +404,9 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var bullfrog_hop_state: Dictionary = actor.get_render_motion_state()
 	var bullfrog_hop: bool = bool(bullfrog_hop_state.get("bullfrog_heavy_hop_pose", false)) \
 		and float(bullfrog_hop_state.get("bullfrog_heavy_hop_intensity", 0.0)) > 0.25 \
+		and not bool(bullfrog_hop_state.get("rooted_pose", false)) \
+		and not bool(bullfrog_hop_state.get("chorus_hop_pose", false)) \
+		and not bool(bullfrog_hop_state.get("cane_squat_hop_pose", false)) \
 		and not bool(bullfrog_hop_state.get("bullfrog_coil_pose", false)) \
 		and not bool(bullfrog_hop_state.get("bullfrog_lunge_pose", false)) \
 		and not bool(bullfrog_hop_state.get("camouflage_eye_cue", false))
@@ -414,6 +417,9 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var bullfrog_camouflage: bool = bool(bullfrog_camouflage_state.get("bullfrog_coil_pose", false)) \
 		and bool(bullfrog_camouflage_state.get("camouflage_eye_cue", false)) \
 		and float(bullfrog_camouflage_state.get("bullfrog_coil_intensity", 0.0)) > 0.9 \
+		and not bool(bullfrog_camouflage_state.get("rooted_pose", false)) \
+		and not bool(bullfrog_camouflage_state.get("chorus_hop_pose", false)) \
+		and not bool(bullfrog_camouflage_state.get("cane_squat_hop_pose", false)) \
 		and not bool(bullfrog_camouflage_state.get("bullfrog_heavy_hop_pose", false))
 	actor.break_stealth()
 	actor.kit.lunge_active = true
@@ -425,6 +431,9 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var bullfrog_lunge: bool = bool(bullfrog_lunge_state.get("bullfrog_lunge_pose", false)) \
 		and bool(bullfrog_lunge_state.get("bullfrog_coil_pose", false)) \
 		and float(bullfrog_lunge_state.get("bullfrog_lunge_intensity", 0.0)) > 0.9 \
+		and not bool(bullfrog_lunge_state.get("rooted_pose", false)) \
+		and not bool(bullfrog_lunge_state.get("chorus_hop_pose", false)) \
+		and not bool(bullfrog_lunge_state.get("cane_squat_hop_pose", false)) \
 		and not bool(bullfrog_lunge_state.get("bullfrog_heavy_hop_pose", false))
 	actor.kit.lunge_active = false
 	actor.dash_timer = 0.0
@@ -433,12 +442,15 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.set_input_frame(InputFrameScript.new())
 	var bullfrog_idle_state: Dictionary = actor.get_render_motion_state()
 	var bullfrog_idle_clear: bool = not bool(bullfrog_idle_state.get("bullfrog_heavy_hop_pose", false)) \
+		and not bool(bullfrog_idle_state.get("rooted_pose", false)) \
+		and not bool(bullfrog_idle_state.get("chorus_hop_pose", false)) \
+		and not bool(bullfrog_idle_state.get("cane_squat_hop_pose", false)) \
 		and not bool(bullfrog_idle_state.get("bullfrog_coil_pose", false)) \
 		and not bool(bullfrog_idle_state.get("bullfrog_lunge_pose", false)) \
 		and not bool(bullfrog_idle_state.get("camouflage_eye_cue", false)) \
 		and float(bullfrog_idle_state.get("bullfrog_heavy_hop_intensity", 1.0)) <= 0.001
 	if not bullfrog_hop or not bullfrog_camouflage or not bullfrog_lunge or not bullfrog_idle_clear:
-		failures.append("bullfrog should expose normal heavy hop, suppress it during camouflage/lunge, and clear when idle; hop=%s camouflage=%s lunge=%s idle=%s state=%s/%s/%s/%s" % [
+		failures.append("bullfrog should expose heavy body-thump hop without rooted, chorus, or cane overlap, suppress it during camouflage/lunge, and clear when idle; hop=%s camouflage=%s lunge=%s idle=%s state=%s/%s/%s/%s" % [
 			str(bullfrog_hop),
 			str(bullfrog_camouflage),
 			str(bullfrog_lunge),

@@ -310,6 +310,7 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 		for thump_side: float in [-1.0, 1.0]:
 			var thump_center := -forward * radius * 0.42 + side * thump_side * radius * 0.42
 			canvas.draw_arc(thump_center, radius * (0.34 + 0.1 * bullfrog_heavy_hop_intensity), PI * 0.08, PI * 0.92, 10, thump_color, maxf(radius * 0.055, 1.0))
+		canvas.draw_arc(-forward * radius * 0.12, radius * (0.74 + 0.1 * bullfrog_heavy_hop_intensity), PI * 0.08, PI * 0.92, 16, Color(thump_color.r, thump_color.g, thump_color.b, thump_color.a * 0.82), maxf(radius * 0.07, 1.2))
 		canvas.draw_line(-forward * radius * 0.7, -forward * radius * (1.16 + 0.18 * bullfrog_heavy_hop_intensity), Color(thump_color.r, thump_color.g, thump_color.b, thump_color.a * 0.72), maxf(radius * 0.06, 1.1))
 	if cane_squat_hop:
 		var squat_scuff := Color(dark.r, dark.g, dark.b, 0.16 + 0.08 * cane_squat_hop_intensity)
@@ -333,6 +334,7 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 		if bullfrog_heavy_hop:
 			var heel_drag := foot - forward * radius * (0.2 + 0.12 * bullfrog_heavy_hop_intensity)
 			canvas.draw_line(foot, heel_drag + side * leg_side * radius * 0.06, Color(dark.r, dark.g, dark.b, 0.26 + 0.08 * bullfrog_heavy_hop_intensity), maxf(radius * 0.055, 1.0))
+			canvas.draw_arc(heel_drag - forward * radius * 0.06, radius * (0.2 + 0.05 * bullfrog_heavy_hop_intensity), PI * 0.08, PI * 0.9, 8, Color(dark.r, dark.g, dark.b, 0.18 + 0.08 * bullfrog_heavy_hop_intensity), maxf(radius * 0.045, 1.0))
 		if chorus_hop:
 			var toe_trail := foot - forward * radius * (0.22 + 0.12 * chorus_hop_intensity)
 			canvas.draw_line(foot, toe_trail + side * leg_side * radius * 0.08, Color(dark.r, dark.g, dark.b, 0.32 + 0.12 * chorus_hop_intensity), maxf(radius * 0.06, 1.1))
