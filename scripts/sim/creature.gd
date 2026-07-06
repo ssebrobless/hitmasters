@@ -571,6 +571,9 @@ func get_render_motion_state() -> Dictionary:
 	var beaver_swim_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if beaver_swim else 0.0
 	var mink_bound := creature_id == "mink" and moving and not is_airborne()
 	var mink_bound_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if mink_bound else 0.0
+	var otter_swim := creature_id == "otter" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
+	var otter_land_slide := creature_id == "otter" and surface != EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
+	var otter_motion_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if otter_swim or otter_land_slide else 0.0
 	return {
 		"creature_id": creature_id,
 		"terrain_surface": surface,
@@ -605,6 +608,9 @@ func get_render_motion_state() -> Dictionary:
 		"beaver_swim_intensity": beaver_swim_intensity,
 		"mink_bound_pose": mink_bound,
 		"mink_bound_intensity": mink_bound_intensity,
+		"otter_swim_pose": otter_swim,
+		"otter_land_slide_pose": otter_land_slide,
+		"otter_motion_intensity": otter_motion_intensity,
 		"water_walk_active": water_walk_active,
 		"rooted_pose": _has_modifier_source("Thanatosis"),
 		"display_stance": _has_modifier_source("Meral Display"),

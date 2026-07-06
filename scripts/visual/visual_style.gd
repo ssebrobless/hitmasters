@@ -348,6 +348,7 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	var is_newt := String(anim.get("creature_id", "")) == "newt"
 	var is_beaver := String(anim.get("creature_id", "")) == "beaver"
 	var is_mink := String(anim.get("creature_id", "")) == "mink"
+	var is_otter := String(anim.get("creature_id", "")) == "otter"
 	var surface_walk := bool(anim.get("surface_walk", false))
 	var surface_wake_intensity := clampf(float(anim.get("surface_wake_intensity", 0.0)), 0.0, 1.25)
 	var slick_crawl := is_newt and bool(anim.get("slick_crawl_pose", false))
@@ -357,6 +358,9 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 	var beaver_swim_intensity := clampf(float(anim.get("beaver_swim_intensity", 0.0)), 0.0, 1.25)
 	var mink_bound := is_mink and bool(anim.get("mink_bound_pose", false))
 	var mink_bound_intensity := clampf(float(anim.get("mink_bound_intensity", 0.0)), 0.0, 1.25)
+	var otter_swim := is_otter and bool(anim.get("otter_swim_pose", false))
+	var otter_land_slide := is_otter and bool(anim.get("otter_land_slide_pose", false))
+	var otter_motion_intensity := clampf(float(anim.get("otter_motion_intensity", 0.0)), 0.0, 1.25)
 	if surface_walk:
 		body_wiggle += 0.42 * surface_wake_intensity
 		tail_wave += 0.25 * surface_wake_intensity
@@ -370,11 +374,21 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 		stretch += 0.12 * mink_bound_intensity
 		body_wiggle += 0.22 * mink_bound_intensity
 		tail_wave += 0.34 * mink_bound_intensity
+	if otter_swim:
+		stretch += 0.1 * otter_motion_intensity
+		body_wiggle += 0.2 * otter_motion_intensity
+		tail_wave += 0.62 * otter_motion_intensity
+	if otter_land_slide:
+		stretch += 0.08 * otter_motion_intensity
+		body_wiggle += 0.12 * otter_motion_intensity
+		tail_wave += 0.28 * otter_motion_intensity
 	var submerged_shrew := is_water_shrew and bool(anim.get("in_water", false)) and not surface_walk
 	var water_tint := Color(0.2, 0.6, 0.85, 0.32 + 0.14 * surface_wake_intensity)
 	var slick_tint := Color(0.86, 0.58, 0.32, 0.20 + 0.10 * slick_crawl_intensity)
 	var beaver_water := Color(0.42, 0.68, 0.82, 0.20 + 0.12 * beaver_swim_intensity)
 	var mink_dust := Color(0.72, 0.66, 0.56, 0.18 + 0.08 * mink_bound_intensity)
+	var otter_water := Color(0.36, 0.66, 0.82, 0.22 + 0.12 * otter_motion_intensity)
+	var otter_slide_dust := Color(0.58, 0.52, 0.42, 0.14 + 0.08 * otter_motion_intensity)
 
 	if surface_walk:
 		for wake_side: float in [-1.0, 1.0]:
@@ -387,6 +401,14 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 		var shadow_center := -forward * radius * (0.18 + 0.12 * bound_phase)
 		canvas.draw_arc(shadow_center, radius * (0.74 + 0.1 * mink_bound_intensity), PI * 0.08, PI * 0.92, 14, mink_dust, maxf(radius * 0.07, 1.4))
 		canvas.draw_line(-forward * radius * 0.72, -forward * radius * (1.35 + 0.26 * mink_bound_intensity), Color(mink_dust.r, mink_dust.g, mink_dust.b, mink_dust.a * 0.75), maxf(radius * 0.06, 1.2))
+	if otter_land_slide:
+		var slide_center := -forward * radius * 0.35
+		canvas.draw_arc(slide_center, radius * (0.72 + 0.1 * otter_motion_intensity), PI * 0.12, PI * 0.88, 14, otter_slide_dust, maxf(radius * 0.07, 1.2))
+		canvas.draw_line(-forward * radius * 0.65, -forward * radius * (1.5 + 0.24 * otter_motion_intensity), Color(otter_slide_dust.r, otter_slide_dust.g, otter_slide_dust.b, otter_slide_dust.a * 0.75), maxf(radius * 0.05, 1.1))
+	if otter_swim:
+		for wake_side: float in [-1.0, 1.0]:
+			var wake_start := -forward * radius * 0.55 + side * wake_side * radius * 0.46
+			canvas.draw_line(wake_start, wake_start - forward * radius * (0.85 + 0.32 * otter_motion_intensity) + side * wake_side * radius * 0.18, otter_water, maxf(radius * 0.07, 1.3))
 
 	var spine: Array[Vector2] = []
 	var segment_radii: Array[float] = []
@@ -428,7 +450,10 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 		"thick":
 			for i in 4:
 				var t := float(i) / 3.0
-				canvas.draw_circle(tail_base + tail_direction * radius * (0.35 + t * 1.1), radius * lerpf(0.32, 0.14, t), fur_dark)
+				var tail_pos := tail_base + tail_direction * radius * (0.35 + t * (1.1 + 0.16 * otter_motion_intensity))
+				canvas.draw_circle(tail_pos, radius * lerpf(0.32 + 0.04 * otter_motion_intensity, 0.14, t), fur_dark)
+				if otter_swim and t > 0.2:
+					canvas.draw_circle(tail_pos - forward * radius * 0.12, maxf(radius * lerpf(0.08, 0.04, t), 1.0), otter_water.lightened(0.2))
 		_:
 			for i in 4:
 				var t := float(i) / 3.0
@@ -449,10 +474,14 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 				canvas.draw_line(paw, paw + side * paw_side * radius * 0.2 + forward * radius * 0.05, fur_dark.lightened(0.1), 1.0)
 			if mink_bound:
 				canvas.draw_line(paw, paw - forward * radius * (0.22 + 0.08 * mink_bound_intensity), fur_dark.lightened(0.08), 1.0)
+			if otter_land_slide:
+				canvas.draw_line(paw, paw - forward * radius * (0.18 + 0.08 * otter_motion_intensity), fur_dark.lightened(0.08), 1.0)
 			if surface_walk:
 				canvas.draw_circle(paw + side * paw_side * radius * 0.08, maxf(radius * (0.08 + 0.03 * surface_wake_intensity), 1.2), water_tint.lightened(0.2))
 			if beaver_swim:
 				canvas.draw_circle(paw - forward * radius * 0.1, maxf(radius * (0.06 + 0.03 * beaver_swim_intensity), 1.1), beaver_water.lightened(0.2))
+			if otter_swim:
+				canvas.draw_circle(paw - forward * radius * 0.12, maxf(radius * (0.05 + 0.03 * otter_motion_intensity), 1.0), otter_water.lightened(0.2))
 
 	if slick_crawl:
 		for trail_index in 4:
@@ -482,6 +511,11 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			var t := float(bubble_index) / 3.0
 			var bubble := -forward * radius * (0.35 + t * 0.95) + side * sin(walk_phase * 0.9 + t * 2.7) * radius * (0.2 + 0.12 * beaver_swim_intensity)
 			canvas.draw_circle(bubble, maxf(radius * (0.04 + t * 0.035), 1.0), beaver_water.lightened(0.25))
+	elif otter_swim:
+		for bubble_index in 5:
+			var t := float(bubble_index) / 4.0
+			var bubble := -forward * radius * (0.35 + t * 1.2) + side * sin(walk_phase * 1.35 + t * 2.4) * radius * (0.18 + 0.16 * otter_motion_intensity)
+			canvas.draw_circle(bubble, maxf(radius * (0.035 + t * 0.03), 1.0), otter_water.lightened(0.25))
 
 	var head: Vector2 = spine[6]
 	if not bool(skin.get("smooth", false)):
