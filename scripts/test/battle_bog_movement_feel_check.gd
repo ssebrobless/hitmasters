@@ -570,6 +570,28 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 			str(owl_glide_state),
 			str(owl_silent_state)
 		])
+	actor.apply_creature("mosquito_swarm")
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	actor.secondary_resource = actor.secondary_resource_max * 0.5
+	actor.kit.trail_timer = 1.0
+	var mosquito_move_state: Dictionary = actor.get_render_motion_state()
+	var mosquito_swarm: bool = bool(mosquito_move_state.get("mosquito_swarm_pose", false)) \
+		and float(mosquito_move_state.get("mosquito_swarm_intensity", 0.0)) > 0.25 \
+		and bool(mosquito_move_state.get("mosquito_trail_pose", false)) \
+		and float(mosquito_move_state.get("mosquito_blood_ratio", 0.0)) > 0.45
+	actor.kit.trail_timer = 0.0
+	actor.velocity = Vector2.ZERO
+	actor.set_input_frame(InputFrameScript.new())
+	var mosquito_idle_state: Dictionary = actor.get_render_motion_state()
+	var mosquito_idle_clear: bool = not bool(mosquito_idle_state.get("mosquito_swarm_pose", false)) and float(mosquito_idle_state.get("mosquito_swarm_intensity", 1.0)) <= 0.001
+	if not mosquito_swarm or not mosquito_idle_clear:
+		failures.append("moving mosquito swarm should expose directional swarm drift, trail, and blood ratio cues that clear when idle; moving=%s idle=%s state=%s/%s" % [
+			str(mosquito_swarm),
+			str(mosquito_idle_clear),
+			str(mosquito_move_state),
+			str(mosquito_idle_state)
+		])
 	actor.apply_creature("duck")
 	actor.current_environment_profile = {"surface": "water"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
