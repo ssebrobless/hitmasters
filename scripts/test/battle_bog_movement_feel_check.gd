@@ -809,6 +809,14 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var crayfish_land_state: Dictionary = actor.get_render_motion_state()
 	var crayfish_scuttle: bool = bool(crayfish_land_state.get("crayfish_scuttle_pose", false)) \
 		and not bool(crayfish_land_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and not bool(crayfish_land_state.get("leech_inchworm_pose", false)) \
+		and not bool(crayfish_land_state.get("slick_crawl_pose", false)) \
+		and not bool(crayfish_land_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(crayfish_land_state.get("turtle_plod_pose", false)) \
+		and not bool(crayfish_land_state.get("bog_turtle_creep_pose", false)) \
+		and not bool(crayfish_land_state.get("mink_bound_pose", false)) \
+		and not bool(crayfish_land_state.get("otter_land_slide_pose", false)) \
+		and not bool(crayfish_land_state.get("spider_skitter_pose", false)) \
 		and float(crayfish_land_state.get("crayfish_motion_intensity", 0.0)) > 0.25
 	actor.current_environment_profile = {"surface": "water"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
@@ -816,15 +824,37 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var crayfish_water_state: Dictionary = actor.get_render_motion_state()
 	var crayfish_swim: bool = bool(crayfish_water_state.get("crayfish_tail_flick_swim_pose", false)) \
 		and not bool(crayfish_water_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(crayfish_water_state.get("leech_undulate_pose", false)) \
+		and not bool(crayfish_water_state.get("newt_swim_pose", false)) \
+		and not bool(crayfish_water_state.get("water_slither_pose", false)) \
+		and not bool(crayfish_water_state.get("turtle_swim_pose", false)) \
+		and not bool(crayfish_water_state.get("bog_turtle_paddle_pose", false)) \
+		and not bool(crayfish_water_state.get("duck_paddle_pose", false)) \
+		and not bool(crayfish_water_state.get("beaver_swim_pose", false)) \
+		and not bool(crayfish_water_state.get("mink_swim_pose", false)) \
+		and not bool(crayfish_water_state.get("otter_swim_pose", false)) \
 		and float(crayfish_water_state.get("crayfish_motion_intensity", 0.0)) > 0.25
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
 	var crayfish_idle_state: Dictionary = actor.get_render_motion_state()
 	var crayfish_idle_clear: bool = not bool(crayfish_idle_state.get("crayfish_scuttle_pose", false)) \
 		and not bool(crayfish_idle_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and not bool(crayfish_idle_state.get("leech_inchworm_pose", false)) \
+		and not bool(crayfish_idle_state.get("leech_undulate_pose", false)) \
+		and not bool(crayfish_idle_state.get("slick_crawl_pose", false)) \
+		and not bool(crayfish_idle_state.get("newt_swim_pose", false)) \
+		and not bool(crayfish_idle_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(crayfish_idle_state.get("water_slither_pose", false)) \
+		and not bool(crayfish_idle_state.get("turtle_plod_pose", false)) \
+		and not bool(crayfish_idle_state.get("turtle_swim_pose", false)) \
+		and not bool(crayfish_idle_state.get("mink_bound_pose", false)) \
+		and not bool(crayfish_idle_state.get("mink_swim_pose", false)) \
+		and not bool(crayfish_idle_state.get("otter_land_slide_pose", false)) \
+		and not bool(crayfish_idle_state.get("otter_swim_pose", false)) \
+		and not bool(crayfish_idle_state.get("spider_skitter_pose", false)) \
 		and float(crayfish_idle_state.get("crayfish_motion_intensity", 1.0)) <= 0.001
 	if not crayfish_scuttle or not crayfish_swim or not crayfish_idle_clear:
-		failures.append("moving crayfish should expose land scuttle and water tail-flick swim render poses, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
+		failures.append("moving crayfish should expose sideways land scuttle and water tail-flick burst without crawler, swimmer, slider, or spider overlap, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
 			str(crayfish_scuttle),
 			str(crayfish_swim),
 			str(crayfish_idle_clear),
