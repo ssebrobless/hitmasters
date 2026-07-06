@@ -1019,14 +1019,19 @@ func get_closest_enemy(source: Node, max_distance: float) -> Node:
 			closest_distance = distance
 	return closest
 
-func damage_enemies_in_radius(source_team: int, center: Vector2, radius: float, damage: float, source_actor: Node = null) -> void:
+func damage_enemies_in_radius(source_team: int, center: Vector2, radius: float, damage: float, source_actor: Node = null, source_ability := "Area") -> void:
 	for entity in entities:
 		if not _valid_target(entity) or entity.team == source_team:
 			continue
 		if cover_blocks_point(center, entity.global_position, minf(radius, 18.0)):
 			continue
 		if HurtboxScript.overlaps_circle(HurtboxScript.hull_of(entity), center, radius):
-			entity.take_damage(damage, source_team, source_actor)
+			if entity.has_method("take_damage_event"):
+				var event := DamageEventScript.new()
+				event.setup(damage, DamageEventScript.DELIVERY_AREA, DamageEventScript.PLANE_GROUND, source_actor, source_ability)
+				entity.take_damage_event(event)
+			else:
+				entity.take_damage(damage, source_team, source_actor)
 
 	for core_team in cores.keys():
 		var core = cores[core_team]

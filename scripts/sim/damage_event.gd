@@ -3,6 +3,7 @@ class_name DamageEvent
 
 const DELIVERY_MELEE := 0
 const DELIVERY_RANGED := 1
+const DELIVERY_AREA := 2
 const PLANE_GROUND := 0
 const PLANE_AIR := 1
 
