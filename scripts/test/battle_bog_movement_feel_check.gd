@@ -1550,9 +1550,17 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(beaver_water_state.get("beaver_lumber_pose", false)) \
 		and not bool(beaver_water_state.get("duck_paddle_pose", false)) \
 		and not bool(beaver_water_state.get("turtle_swim_pose", false)) \
+		and not bool(beaver_water_state.get("bog_turtle_paddle_pose", false)) \
 		and not bool(beaver_water_state.get("mink_swim_pose", false)) \
 		and not bool(beaver_water_state.get("otter_swim_pose", false)) \
 		and not bool(beaver_water_state.get("otter_land_slide_pose", false)) \
+		and not bool(beaver_water_state.get("water_slither_pose", false)) \
+		and not bool(beaver_water_state.get("newt_swim_pose", false)) \
+		and not bool(beaver_water_state.get("leech_undulate_pose", false)) \
+		and not bool(beaver_water_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and not bool(beaver_water_state.get("surface_walk", false)) \
+		and not bool(beaver_water_state.get("submerged_shrew_pose", false)) \
+		and not bool(beaver_water_state.get("alligator_water_cruise_pose", false)) \
 		and float(beaver_water_state.get("beaver_swim_intensity", 0.0)) > 0.25 \
 		and float(beaver_water_state.get("beaver_lumber_intensity", 1.0)) <= 0.001
 	actor.velocity = Vector2.ZERO
@@ -1561,11 +1569,28 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var beaver_idle_clear: bool = not bool(beaver_idle_state.get("beaver_swim_pose", false)) \
 		and not bool(beaver_idle_state.get("beaver_lumber_pose", false)) \
 		and not bool(beaver_idle_state.get("duck_paddle_pose", false)) \
+		and not bool(beaver_idle_state.get("duck_waddle_pose", false)) \
 		and not bool(beaver_idle_state.get("turtle_swim_pose", false)) \
+		and not bool(beaver_idle_state.get("turtle_plod_pose", false)) \
+		and not bool(beaver_idle_state.get("bog_turtle_paddle_pose", false)) \
+		and not bool(beaver_idle_state.get("bog_turtle_creep_pose", false)) \
 		and not bool(beaver_idle_state.get("mink_swim_pose", false)) \
 		and not bool(beaver_idle_state.get("otter_swim_pose", false)) \
 		and not bool(beaver_idle_state.get("mink_bound_pose", false)) \
 		and not bool(beaver_idle_state.get("otter_land_slide_pose", false)) \
+		and not bool(beaver_idle_state.get("water_slither_pose", false)) \
+		and not bool(beaver_idle_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(beaver_idle_state.get("slick_crawl_pose", false)) \
+		and not bool(beaver_idle_state.get("newt_swim_pose", false)) \
+		and not bool(beaver_idle_state.get("leech_inchworm_pose", false)) \
+		and not bool(beaver_idle_state.get("leech_undulate_pose", false)) \
+		and not bool(beaver_idle_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(beaver_idle_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and not bool(beaver_idle_state.get("shrew_land_skitter_pose", false)) \
+		and not bool(beaver_idle_state.get("surface_walk", false)) \
+		and not bool(beaver_idle_state.get("submerged_shrew_pose", false)) \
+		and not bool(beaver_idle_state.get("high_walk_pose", false)) \
+		and not bool(beaver_idle_state.get("alligator_water_cruise_pose", false)) \
 		and float(beaver_idle_state.get("beaver_swim_intensity", 1.0)) <= 0.001 \
 		and float(beaver_idle_state.get("beaver_lumber_intensity", 1.0)) <= 0.001
 	actor.current_environment_profile = {"surface": "land"}
@@ -1575,12 +1600,19 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(beaver_land_state.get("beaver_swim_pose", false)) \
 		and not bool(beaver_land_state.get("duck_waddle_pose", false)) \
 		and not bool(beaver_land_state.get("turtle_plod_pose", false)) \
+		and not bool(beaver_land_state.get("bog_turtle_creep_pose", false)) \
 		and not bool(beaver_land_state.get("mink_bound_pose", false)) \
 		and not bool(beaver_land_state.get("otter_land_slide_pose", false)) \
+		and not bool(beaver_land_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(beaver_land_state.get("slick_crawl_pose", false)) \
+		and not bool(beaver_land_state.get("leech_inchworm_pose", false)) \
+		and not bool(beaver_land_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(beaver_land_state.get("shrew_land_skitter_pose", false)) \
+		and not bool(beaver_land_state.get("high_walk_pose", false)) \
 		and float(beaver_land_state.get("beaver_lumber_intensity", 0.0)) > 0.25 \
 		and float(beaver_land_state.get("beaver_swim_intensity", 1.0)) <= 0.001
 	if not beaver_swim or not beaver_idle_clear or not beaver_lumber:
-		failures.append("moving beaver should expose water paddle-tail swim and land lumber without duck/turtle/mustelid overlap, then clear when idle; water=%s idle=%s land=%s state=%s/%s/%s" % [
+		failures.append("moving beaver should expose heavy paddle-tail swim and land lumber without duck, turtle, mustelid, crawler, snake, shrew, gator, or crustacean overlap, then clear when idle; water=%s idle=%s land=%s state=%s/%s/%s" % [
 			str(beaver_swim),
 			str(beaver_idle_clear),
 			str(beaver_lumber),
