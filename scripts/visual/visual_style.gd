@@ -1462,25 +1462,29 @@ static func _base_bug(canvas: CanvasItem, radius: float, forward: Vector2, side:
 	var hover_intensity := clampf(float(anim.get("firefly_hover_intensity", 0.0)), 0.0, 1.25)
 	var flash_pose := String(anim.get("creature_id", "")) == "firefly" and bool(anim.get("firefly_flash_pose", false))
 	var glow_scale := 1.0 + breathe * pulse + (0.24 if flash_pose else 0.0)
+	var hover_drift := side * sin(walk_phase * 0.72) * radius * 0.16 * hover_intensity if hover_pose else Vector2.ZERO
 	# Bioluminescent glow halo.
-	canvas.draw_circle(-forward * radius * 0.4, radius * (1.55 + pulse * 0.5) * glow_scale, Color(glow.r, glow.g, glow.b, 0.1 + pulse * 0.08))
-	canvas.draw_circle(-forward * radius * 0.4, radius * 0.55 * glow_scale, Color(glow.r, glow.g, glow.b, 0.55 + pulse * 0.35))
+	canvas.draw_circle(-forward * radius * 0.4 + hover_drift, radius * (1.55 + pulse * 0.5) * glow_scale, Color(glow.r, glow.g, glow.b, 0.1 + pulse * 0.08))
+	canvas.draw_circle(-forward * radius * 0.4 + hover_drift, radius * 0.55 * glow_scale, Color(glow.r, glow.g, glow.b, 0.55 + pulse * 0.35))
 	if hover_pose:
 		for trail_index in 3:
 			var t := float(trail_index + 1) / 3.0
-			var trail := -forward * radius * (0.8 + t * 0.55) + side * sin(walk_phase * 0.9 + t * 2.4) * radius * 0.18
+			var trail := -forward * radius * (0.8 + t * 0.55) + side * sin(walk_phase * 0.9 + t * 2.4) * radius * 0.18 + hover_drift
 			canvas.draw_circle(trail, radius * (0.18 + 0.08 * t) * hover_intensity, Color(glow.r, glow.g, glow.b, (0.18 - t * 0.04) * hover_intensity))
+		for drift_side: float in [-1.0, 1.0]:
+			var shimmer := -forward * radius * 0.22 + side * drift_side * radius * (0.62 + 0.08 * hover_intensity) + hover_drift
+			canvas.draw_line(shimmer, shimmer - forward * radius * (0.44 + 0.12 * hover_intensity) + side * drift_side * radius * 0.16, Color(glow.r, glow.g, glow.b, 0.16 + 0.08 * hover_intensity), maxf(radius * 0.045, 1.0))
 	if flash_pose:
-		canvas.draw_arc(-forward * radius * 0.4, radius * 2.05, -0.25, TAU * 0.72, 28, Color(glow.r, glow.g, glow.b, 0.32 + pulse * 0.16), maxf(radius * 0.1, 1.5))
+		canvas.draw_arc(-forward * radius * 0.4 + hover_drift, radius * 2.05, -0.25, TAU * 0.72, 28, Color(glow.r, glow.g, glow.b, 0.32 + pulse * 0.16), maxf(radius * 0.1, 1.5))
 	# Wings blurred mid-beat.
 	for wing_side: float in [-1.0, 1.0]:
 		var wing_flare := sin(walk_phase * wingbeat + wing_side) * radius * (0.08 + 0.05 * hover_intensity) if moving else 0.0
-		canvas.draw_circle(side * wing_side * (radius * 0.5 + wing_flare) + forward * radius * 0.1, radius * (0.4 + 0.05 * hover_intensity), Color(0.8, 0.85, 0.9, 0.25 + 0.07 * hover_intensity))
+		canvas.draw_circle(side * wing_side * (radius * 0.5 + wing_flare) + forward * radius * 0.1 + hover_drift, radius * (0.4 + 0.05 * hover_intensity), Color(0.8, 0.85, 0.9, 0.25 + 0.07 * hover_intensity))
 	# Body + head.
-	canvas.draw_circle(Vector2.ZERO, radius * 0.42, dark)
-	canvas.draw_circle(forward * radius * 0.42, radius * 0.28, main)
-	canvas.draw_circle(forward * radius * 0.55 + side * radius * 0.1, maxf(radius * 0.07, 1.2), Color(0.05, 0.04, 0.03))
-	canvas.draw_circle(forward * radius * 0.55 - side * radius * 0.1, maxf(radius * 0.07, 1.2), Color(0.05, 0.04, 0.03))
+	canvas.draw_circle(hover_drift, radius * 0.42, dark)
+	canvas.draw_circle(forward * radius * 0.42 + hover_drift, radius * 0.28, main)
+	canvas.draw_circle(forward * radius * 0.55 + side * radius * 0.1 + hover_drift, maxf(radius * 0.07, 1.2), Color(0.05, 0.04, 0.03))
+	canvas.draw_circle(forward * radius * 0.55 - side * radius * 0.1 + hover_drift, maxf(radius * 0.07, 1.2), Color(0.05, 0.04, 0.03))
 
 # ---------- strike overlays ----------
 

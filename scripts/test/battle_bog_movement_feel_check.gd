@@ -876,6 +876,28 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 			str(mosquito_move_state),
 			str(mosquito_idle_state)
 		])
+	actor.apply_creature("firefly")
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	actor.kit.flash_timer = 1.0
+	var firefly_hover_state: Dictionary = actor.get_render_motion_state()
+	var firefly_hover: bool = bool(firefly_hover_state.get("firefly_hover_pose", false)) \
+		and float(firefly_hover_state.get("firefly_hover_intensity", 0.0)) > 0.25 \
+		and bool(firefly_hover_state.get("firefly_flash_pose", false))
+	actor.kit.flash_timer = 0.0
+	actor.velocity = Vector2.ZERO
+	actor.set_input_frame(InputFrameScript.new())
+	var firefly_idle_state: Dictionary = actor.get_render_motion_state()
+	var firefly_idle_clear: bool = not bool(firefly_idle_state.get("firefly_hover_pose", false)) \
+		and float(firefly_idle_state.get("firefly_hover_intensity", 1.0)) <= 0.001 \
+		and not bool(firefly_idle_state.get("firefly_flash_pose", false))
+	if not firefly_hover or not firefly_idle_clear:
+		failures.append("moving firefly should expose hovering drift and flash cues that clear when idle; moving=%s idle=%s state=%s/%s" % [
+			str(firefly_hover),
+			str(firefly_idle_clear),
+			str(firefly_hover_state),
+			str(firefly_idle_state)
+		])
 	actor.apply_creature("duck")
 	actor.current_environment_profile = {"surface": "water"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
