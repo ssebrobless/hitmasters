@@ -53,6 +53,7 @@ func _run() -> void:
 	var failures: Array[String] = []
 	_check_area_delivery(arena, failures)
 	_check_environment_delivery(arena, failures)
+	_check_hit_spark_uses_hit_position(arena, failures)
 	print("area_delivery failures=%d" % failures.size())
 	for failure in failures:
 		push_error(failure)
@@ -114,6 +115,31 @@ func _check_environment_delivery(arena: Node, failures: Array[String]) -> void:
 			str(hunger_probe.deliveries),
 			str(hunger_probe.abilities)
 		])
+
+func _check_hit_spark_uses_hit_position(arena: Node, failures: Array[String]) -> void:
+	var target_position := Vector2(100.0, 100.0)
+	var hit_position := Vector2(124.0, 100.0)
+	arena.record_vfx_event({
+		"type": "hit_landed",
+		"position": target_position,
+		"hit_position": hit_position,
+		"region": "head",
+		"region_mult": 1.35,
+		"amount": 10.0,
+		"heavy": false
+	})
+	var spark := _last_circle_telegraph(arena)
+	var centered_on_hit: bool = spark.get("center", Vector2.ZERO) == hit_position
+	var scaled_by_region: bool = absf(float(spark.get("radius", 0.0)) - 13.5) < 0.01
+	if not centered_on_hit or not scaled_by_region:
+		failures.append("hit spark should use hit_position and region_mult; spark=%s" % str(spark))
+
+func _last_circle_telegraph(arena: Node) -> Dictionary:
+	var telegraphs: Array = arena.get("telegraphs")
+	for i in range(telegraphs.size() - 1, -1, -1):
+		if String(telegraphs[i].get("type", "")) == "circle":
+			return telegraphs[i]
+	return {}
 
 func _creature(arena: Node, creature_id: String, team: int, position: Vector2) -> Node:
 	var creature := CreatureScript.new()

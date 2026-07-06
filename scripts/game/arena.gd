@@ -1421,6 +1421,11 @@ func _spawn_vfx_for_event(event: Dictionary) -> void:
 			if target != null and is_instance_valid(target) and target.has_method("apply_render_hit_feedback"):
 				target.apply_render_hit_feedback(amount)
 			var heavy := bool(event.get("heavy", false))
+			var hit_position: Vector2 = event.get("hit_position", Vector2.ZERO)
+			var spark_center: Vector2 = hit_position if hit_position != Vector2.ZERO else event.get("position", Vector2.ZERO)
+			var region_mult: float = clampf(float(event.get("region_mult", 1.0)), 0.75, 1.35)
+			var spark_color := Color(1.0, 0.9, 0.7, 0.85)
+			spark_color.a *= lerpf(0.85, 1.15, inverse_lerp(0.75, 1.35, region_mult))
 			telegraphs.append({
 				"type": "float_text",
 				"position": event.get("position", Vector2.ZERO),
@@ -1432,9 +1437,9 @@ func _spawn_vfx_for_event(event: Dictionary) -> void:
 			})
 			telegraphs.append({
 				"type": "circle",
-				"center": event.get("position", Vector2.ZERO),
-				"radius": 16.0 if heavy else 10.0,
-				"color": Color(1.0, 0.9, 0.7, 0.85),
+				"center": spark_center,
+				"radius": (16.0 if heavy else 10.0) * region_mult,
+				"color": spark_color,
 				"width": 3.0,
 				"filled": true,
 				"duration": 0.16,

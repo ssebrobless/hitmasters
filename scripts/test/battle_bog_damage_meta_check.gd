@@ -156,7 +156,7 @@ func _check_counter_hit(failures: Array[String]) -> void:
 func _has_hit_meta(event: Dictionary) -> bool:
 	var hit_position: Vector2 = event.get("hit_position", Vector2.ZERO)
 	var hit_normal: Vector2 = event.get("hit_normal", Vector2.ZERO)
-	return hit_position != Vector2.ZERO and hit_normal.length() > 0.9 and String(event.get("region", "")) == "hull"
+	return hit_position != Vector2.ZERO and hit_normal.length() > 0.9 and String(event.get("region", "")) == "hull" and absf(float(event.get("region_mult", 0.0)) - 1.0) < 0.001
 
 func _has_event(arena: FakeArena, event_type: String) -> bool:
 	for event in arena.vfx_events:

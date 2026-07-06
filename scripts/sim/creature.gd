@@ -322,6 +322,7 @@ func take_damage_event(event: Resource) -> void:
 			"hit_position": event.hit_position,
 			"hit_normal": event.hit_normal,
 			"region": event.region,
+			"region_mult": event.region_mult,
 			"source_ability": event.source_ability
 		})
 	if health <= 0.0:
