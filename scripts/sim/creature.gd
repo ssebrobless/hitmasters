@@ -674,8 +674,9 @@ func get_render_motion_state() -> Dictionary:
 	var owl_silent := creature_id == "owl" and stealth_timer > 0.0
 	var beaver_swim := creature_id == "beaver" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var beaver_swim_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if beaver_swim else 0.0
-	var mink_bound := creature_id == "mink" and moving and not is_airborne()
-	var mink_bound_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if mink_bound else 0.0
+	var mink_bound := creature_id == "mink" and moving and surface != EnvironmentProfileScript.SURFACE_WATER and not is_airborne()
+	var mink_swim := creature_id == "mink" and moving and surface == EnvironmentProfileScript.SURFACE_WATER and not is_airborne()
+	var mink_motion_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if mink_bound or mink_swim else 0.0
 	var otter_swim := creature_id == "otter" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var otter_land_slide := creature_id == "otter" and surface != EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var otter_motion_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if otter_swim or otter_land_slide else 0.0
@@ -736,7 +737,9 @@ func get_render_motion_state() -> Dictionary:
 		"beaver_swim_pose": beaver_swim,
 		"beaver_swim_intensity": beaver_swim_intensity,
 		"mink_bound_pose": mink_bound,
-		"mink_bound_intensity": mink_bound_intensity,
+		"mink_bound_intensity": mink_motion_intensity if mink_bound else 0.0,
+		"mink_swim_pose": mink_swim,
+		"mink_swim_intensity": mink_motion_intensity if mink_swim else 0.0,
 		"mink_choke_pose": mink_choke,
 		"otter_swim_pose": otter_swim,
 		"otter_land_slide_pose": otter_land_slide,
