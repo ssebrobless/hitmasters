@@ -812,6 +812,8 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var wading_stride := clampf(float(anim.get("wading_stride", 0.0)), 0.0, 1.25)
 	var duck_paddle := String(anim.get("creature_id", "")) == "duck" and bool(anim.get("duck_paddle_pose", false))
 	var duck_paddle_intensity := clampf(float(anim.get("duck_paddle_intensity", 0.0)), 0.0, 1.25)
+	var duck_waddle := String(anim.get("creature_id", "")) == "duck" and bool(anim.get("duck_waddle_pose", false))
+	var duck_waddle_intensity := clampf(float(anim.get("duck_waddle_intensity", 0.0)), 0.0, 1.25)
 	var owl_glide := String(anim.get("creature_id", "")) == "owl" and bool(anim.get("owl_glide_pose", false))
 	var owl_glide_intensity := clampf(float(anim.get("owl_glide_intensity", 0.0)), 0.0, 1.25)
 	var owl_silent := String(anim.get("creature_id", "")) == "owl" and bool(anim.get("owl_silent_flight_pose", false))
@@ -880,15 +882,21 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 
 	# Body.
 	var body_points := PackedVector2Array()
+	var duck_body_sway := sin(walk_phase * 0.82) * radius * 0.08 * duck_waddle_intensity if duck_waddle else 0.0
 	for i in 14:
 		var body_angle := TAU * float(i) / 14.0
-		body_points.append(forward * cos(body_angle) * radius * 0.8 + side * sin(body_angle) * radius * (0.62 + waddle_sway * 0.04))
+		body_points.append(forward * cos(body_angle) * radius * 0.8 + side * (sin(body_angle) * radius * (0.62 + waddle_sway * 0.04) + duck_body_sway))
 	if duck_paddle:
 		var water_color := Color(0.48, 0.74, 0.86, 0.22 + duck_paddle_intensity * 0.08)
 		for wake_side: float in [-1.0, 1.0]:
 			var wake_center := -forward * radius * 0.2 + side * wake_side * radius * 0.56
 			canvas.draw_arc(wake_center, radius * (0.38 + duck_paddle_intensity * 0.12), -0.35, 0.92, 14, water_color, 1.2 + duck_paddle_intensity * 0.6)
 		canvas.draw_line(-forward * radius * 0.8, -forward * radius * (1.45 + duck_paddle_intensity * 0.16), Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.75), maxf(radius * 0.08, 1.3))
+	if duck_waddle:
+		var dust_color := Color(0.46, 0.36, 0.22, 0.16 + duck_waddle_intensity * 0.08)
+		for dust_side: float in [-1.0, 1.0]:
+			var dust_center := -forward * radius * 0.46 + side * dust_side * radius * (0.42 + 0.08 * duck_waddle_intensity)
+			canvas.draw_arc(dust_center, radius * (0.22 + 0.04 * duck_waddle_intensity), PI * 0.06, PI * 0.9, 8, dust_color, maxf(radius * 0.045, 1.0))
 	canvas.draw_colored_polygon(body_points, main)
 	canvas.draw_circle(forward * radius * 0.3, radius * 0.34, breast)
 	if bool(skin.get("barred", false)):
@@ -897,7 +905,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 			canvas.draw_line(forward * radius * bar + side * radius * 0.4, forward * radius * (bar - 0.12), dark.lightened(0.05), 1.5)
 
 	# Legs when grounded.
-	if not airborne and (moving or perched_pose or wading_pose or duck_paddle):
+	if not airborne and (moving or perched_pose or wading_pose or duck_paddle or duck_waddle):
 		for leg_side: float in [-1.0, 1.0]:
 			var leg_step := 0.0 if perched_pose else sin(walk_phase * 1.6 + (PI if leg_side > 0.0 else 0.0)) * radius * 0.12 * bird_stride
 			if wading_pose:
@@ -920,6 +928,13 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 					foot - forward * radius * 0.18,
 					foot - forward * radius * 0.12 - side * leg_side * radius * 0.08
 				]), beak.darkened(0.05))
+			elif duck_waddle:
+				var waddle_step := sin(walk_phase * 0.82 + (PI if leg_side > 0.0 else 0.0)) * radius * (0.1 + 0.08 * duck_waddle_intensity)
+				var hip := -forward * radius * 0.06 + side * leg_side * radius * 0.18
+				var foot := -forward * radius * 0.44 + side * leg_side * radius * (0.34 + 0.08 * duck_waddle_intensity) + forward * waddle_step
+				canvas.draw_line(hip, foot, beak.darkened(0.25), 1.5)
+				canvas.draw_line(foot, foot - forward * radius * (0.16 + 0.05 * duck_waddle_intensity), beak.darkened(0.1), 1.2)
+				canvas.draw_arc(foot - forward * radius * 0.08, radius * (0.16 + 0.04 * duck_waddle_intensity), PI * 0.08, PI * 0.9, 8, Color(0.46, 0.36, 0.22, 0.18 + 0.08 * duck_waddle_intensity), maxf(radius * 0.045, 1.0))
 			else:
 				canvas.draw_line(side * leg_side * radius * 0.2, side * leg_side * radius * 0.24 + forward * leg_step - forward * radius * 0.05, beak.darkened(0.2), 1.5)
 
