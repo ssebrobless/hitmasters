@@ -787,6 +787,38 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 			str(kingfisher_plunge_state),
 			str(kingfisher_idle_state)
 		])
+	actor.apply_creature("great_blue_heron")
+	actor.state = CreatureStateScript.State.NORMAL
+	actor.current_environment_profile = {"surface": "water"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var heron_water_state: Dictionary = actor.get_render_motion_state()
+	var heron_wade: bool = bool(heron_water_state.get("wading_pose", false)) \
+		and not bool(heron_water_state.get("heron_stalk_pose", false)) \
+		and float(heron_water_state.get("wading_stride", 0.0)) > 0.25 \
+		and float(heron_water_state.get("heron_stalk_intensity", 1.0)) <= 0.001
+	actor.current_environment_profile = {"surface": "land"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var heron_land_state: Dictionary = actor.get_render_motion_state()
+	var heron_stalk: bool = bool(heron_land_state.get("heron_stalk_pose", false)) \
+		and not bool(heron_land_state.get("wading_pose", false)) \
+		and float(heron_land_state.get("heron_stalk_intensity", 0.0)) > 0.25 \
+		and float(heron_land_state.get("wading_stride", 1.0)) <= 0.001
+	actor.state = CreatureStateScript.State.PERCHED
+	var heron_perched_state: Dictionary = actor.get_render_motion_state()
+	var heron_perch_suppresses: bool = bool(heron_perched_state.get("perched_pose", false)) \
+		and not bool(heron_perched_state.get("heron_stalk_pose", false)) \
+		and not bool(heron_perched_state.get("wading_pose", false))
+	if not heron_wade or not heron_stalk or not heron_perch_suppresses:
+		failures.append("great blue heron should expose water wading and land stalking as separate grounded poses, then suppress both when perched; water=%s land=%s perched=%s state=%s/%s/%s" % [
+			str(heron_wade),
+			str(heron_stalk),
+			str(heron_perch_suppresses),
+			str(heron_water_state),
+			str(heron_land_state),
+			str(heron_perched_state)
+		])
 	actor.apply_creature("mosquito_swarm")
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))

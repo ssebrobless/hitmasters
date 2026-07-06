@@ -651,7 +651,9 @@ func get_render_motion_state() -> Dictionary:
 	var alligator_water_cruise_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if alligator_water_cruise else 0.0
 	var alligator_high_walk := creature_id == "alligator" and moving and surface != EnvironmentProfileScript.SURFACE_WATER and not _has_modifier_source("Ambush")
 	var heron_wading := creature_id == "great_blue_heron" and surface == EnvironmentProfileScript.SURFACE_WATER and not is_airborne() and state != CreatureStateScript.State.PERCHED
+	var heron_stalk := creature_id == "great_blue_heron" and moving and surface != EnvironmentProfileScript.SURFACE_WATER and not is_airborne() and state != CreatureStateScript.State.PERCHED
 	var wading_stride := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if heron_wading and moving else 0.0
+	var heron_stalk_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if heron_stalk else 0.0
 	var newt_crawling := creature_id == "newt" and surface != EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne() and state != CreatureStateScript.State.PERCHED
 	var newt_swimming := creature_id == "newt" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne() and state != CreatureStateScript.State.PERCHED
 	var newt_tail_lost := creature_id == "newt" and kit != null and float(kit.get("tail_lost_timer")) > 0.0
@@ -730,6 +732,8 @@ func get_render_motion_state() -> Dictionary:
 		"alligator_water_cruise_intensity": alligator_water_cruise_intensity,
 		"wading_pose": heron_wading,
 		"wading_stride": wading_stride,
+		"heron_stalk_pose": heron_stalk,
+		"heron_stalk_intensity": heron_stalk_intensity,
 		"slick_crawl_pose": newt_crawling,
 		"slick_crawl_intensity": newt_motion_intensity if newt_crawling else 0.0,
 		"newt_swim_pose": newt_swimming,

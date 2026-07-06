@@ -823,6 +823,8 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 	var plunge_pose := String(anim.get("creature_id", "")) == "kingfisher" and plunge_t > 0.0
 	var wading_pose := String(anim.get("creature_id", "")) == "great_blue_heron" and bool(anim.get("wading_pose", false))
 	var wading_stride := clampf(float(anim.get("wading_stride", 0.0)), 0.0, 1.25)
+	var heron_stalk := String(anim.get("creature_id", "")) == "great_blue_heron" and bool(anim.get("heron_stalk_pose", false))
+	var heron_stalk_intensity := clampf(float(anim.get("heron_stalk_intensity", 0.0)), 0.0, 1.25)
 	var duck_paddle := String(anim.get("creature_id", "")) == "duck" and bool(anim.get("duck_paddle_pose", false))
 	var duck_paddle_intensity := clampf(float(anim.get("duck_paddle_intensity", 0.0)), 0.0, 1.25)
 	var duck_waddle := String(anim.get("creature_id", "")) == "duck" and bool(anim.get("duck_waddle_pose", false))
@@ -922,6 +924,11 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 		for dust_side: float in [-1.0, 1.0]:
 			var dust_center := -forward * radius * 0.46 + side * dust_side * radius * (0.42 + 0.08 * duck_waddle_intensity)
 			canvas.draw_arc(dust_center, radius * (0.22 + 0.04 * duck_waddle_intensity), PI * 0.06, PI * 0.9, 8, dust_color, maxf(radius * 0.045, 1.0))
+	if heron_stalk:
+		var stalk_dust := Color(0.42, 0.36, 0.26, 0.12 + heron_stalk_intensity * 0.07)
+		for dust_side: float in [-1.0, 1.0]:
+			var dust_center := -forward * radius * 0.28 + side * dust_side * radius * 0.32
+			canvas.draw_arc(dust_center, radius * (0.18 + 0.05 * heron_stalk_intensity), PI * 0.08, PI * 0.9, 8, stalk_dust, maxf(radius * 0.04, 1.0))
 	canvas.draw_colored_polygon(body_points, main)
 	canvas.draw_circle(forward * radius * 0.3, radius * 0.34, breast)
 	if bool(skin.get("barred", false)):
@@ -930,7 +937,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 			canvas.draw_line(forward * radius * bar + side * radius * 0.4, forward * radius * (bar - 0.12), dark.lightened(0.05), 1.5)
 
 	# Legs when grounded.
-	if not airborne and (moving or perched_pose or wading_pose or duck_paddle or duck_waddle):
+	if not airborne and (moving or perched_pose or wading_pose or heron_stalk or duck_paddle or duck_waddle):
 		for leg_side: float in [-1.0, 1.0]:
 			var leg_step := 0.0 if perched_pose else sin(walk_phase * 1.6 + (PI if leg_side > 0.0 else 0.0)) * radius * 0.12 * bird_stride
 			if wading_pose:
@@ -942,6 +949,14 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 				canvas.draw_arc(foot, radius * (0.22 + 0.08 * wading_stride), -0.2, TAU * 0.72, 16, water_color, 1.2 + wading_stride)
 				canvas.draw_line(hip, knee, beak.darkened(0.22), 1.6)
 				canvas.draw_line(knee, foot, beak.darkened(0.18), 1.6)
+			elif heron_stalk:
+				var stalk_step := sin(walk_phase * 0.62 + (PI if leg_side > 0.0 else 0.0)) * radius * (0.22 + 0.12 * heron_stalk_intensity)
+				var hip := side * leg_side * radius * 0.16 - forward * radius * 0.04
+				var knee := side * leg_side * radius * 0.24 + forward * stalk_step
+				var foot := side * leg_side * radius * 0.34 + forward * (stalk_step + radius * 0.32)
+				canvas.draw_line(hip, knee, beak.darkened(0.25), 1.6)
+				canvas.draw_line(knee, foot, beak.darkened(0.18), 1.6)
+				canvas.draw_arc(foot - forward * radius * 0.08, radius * (0.16 + 0.04 * heron_stalk_intensity), PI * 0.08, PI * 0.9, 8, Color(0.42, 0.36, 0.26, 0.16 + 0.08 * heron_stalk_intensity), maxf(radius * 0.04, 1.0))
 			elif duck_paddle:
 				var paddle_step := sin(walk_phase * 1.8 + (PI if leg_side > 0.0 else 0.0)) * radius * (0.16 + 0.08 * duck_paddle_intensity)
 				var hip := -forward * radius * 0.12 + side * leg_side * radius * 0.18
@@ -965,9 +980,11 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 
 	# Head (long neck for heron), beak, eyes.
 	var head_scale := float(skin.get("head_scale", 1.0))
-	var head_center := forward * radius * (0.75 + neck * (0.44 if wading_pose else 0.55)) + side * sin(walk_phase * 0.42) * radius * 0.06 * wading_stride
+	var neck_pose_offset := 0.44 if wading_pose else 0.5 if heron_stalk else 0.55
+	var head_sway := wading_stride if wading_pose else heron_stalk_intensity * 0.75 if heron_stalk else 0.0
+	var head_center := forward * radius * (0.75 + neck * neck_pose_offset) + side * sin(walk_phase * 0.42) * radius * 0.06 * head_sway
 	if neck > 0.0:
-		if wading_pose:
+		if wading_pose or heron_stalk:
 			var neck_mid := forward * radius * 0.72 - side * radius * 0.1
 			canvas.draw_line(forward * radius * 0.42, neck_mid, main, maxf(radius * 0.18, 2.2))
 			canvas.draw_line(neck_mid, head_center, main, maxf(radius * 0.16, 2.0))
