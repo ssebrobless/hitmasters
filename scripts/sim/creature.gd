@@ -576,6 +576,9 @@ func get_render_motion_state() -> Dictionary:
 	var otter_swim := creature_id == "otter" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var otter_land_slide := creature_id == "otter" and surface != EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var otter_motion_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if otter_swim or otter_land_slide else 0.0
+	var leech_undulate := creature_id == "leech" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
+	var leech_inchworm := creature_id == "leech" and surface != EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
+	var leech_motion_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if leech_undulate or leech_inchworm else 0.0
 	return {
 		"creature_id": creature_id,
 		"terrain_surface": surface,
@@ -615,6 +618,9 @@ func get_render_motion_state() -> Dictionary:
 		"otter_swim_pose": otter_swim,
 		"otter_land_slide_pose": otter_land_slide,
 		"otter_motion_intensity": otter_motion_intensity,
+		"leech_undulate_pose": leech_undulate,
+		"leech_inchworm_pose": leech_inchworm,
+		"leech_motion_intensity": leech_motion_intensity,
 		"water_walk_active": water_walk_active,
 		"rooted_pose": _has_modifier_source("Thanatosis"),
 		"display_stance": _has_modifier_source("Meral Display"),

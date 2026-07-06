@@ -982,15 +982,38 @@ static func _base_cluster(canvas: CanvasItem, radius: float, forward: Vector2, s
 	var inchworm_pulse := float(anim.get("inchworm_pulse", 0.0))
 	var body_wiggle := float(anim.get("body_wiggle", 1.0))
 	var tail_wave := float(anim.get("tail_wave", 1.0))
+	var leech_undulate := String(anim.get("creature_id", "")) == "leech" and bool(anim.get("leech_undulate_pose", false))
+	var leech_inchworm := String(anim.get("creature_id", "")) == "leech" and bool(anim.get("leech_inchworm_pose", false))
+	var leech_motion_intensity := clampf(float(anim.get("leech_motion_intensity", 0.0)), 0.0, 1.25)
+	var water_color := Color(0.35, 0.62, 0.76, 0.18 + 0.1 * leech_motion_intensity)
+	if leech_undulate:
+		cluster_spread += 0.16 * leech_motion_intensity
+		body_wiggle += 0.32 * leech_motion_intensity
+		tail_wave += 0.44 * leech_motion_intensity
+		for wake_side: float in [-1.0, 1.0]:
+			var wake_start := -forward * radius * 0.45 + side * wake_side * radius * 0.4
+			canvas.draw_line(wake_start, wake_start - forward * radius * (0.82 + 0.24 * leech_motion_intensity) + side * wake_side * radius * 0.18, water_color, maxf(radius * 0.06, 1.0))
+	if leech_inchworm:
+		cluster_spread = maxf(0.45, cluster_spread - 0.12 * leech_motion_intensity)
+		inchworm_pulse += 0.22 * leech_motion_intensity
+		canvas.draw_arc(-forward * radius * 0.28, radius * (0.5 + 0.07 * leech_motion_intensity), PI * 0.1, PI * 0.9, 12, Color(dark.r, dark.g, dark.b, 0.18 + 0.08 * leech_motion_intensity), maxf(radius * 0.06, 1.0))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 11
 	var wriggle := Time.get_ticks_msec() * 0.002 * tail_wave
 	for i in 12:
 		var offset := Vector2(rng.randf_range(-0.6, 0.6), rng.randf_range(-0.6, 0.6)) * radius * cluster_spread
 		var pulse := sin(walk_phase * 1.2 + float(i) * 0.75) * inchworm_pulse
+		if leech_inchworm:
+			offset += forward * pulse * radius * 0.36
+		if leech_undulate:
+			offset += side * sin(walk_phase * 1.25 + float(i) * 0.65) * radius * 0.18 * leech_motion_intensity
 		var leech_forward := forward.rotated(rng.randf_range(-PI, PI) + sin(wriggle + float(i)) * 0.3 * body_wiggle)
+		if leech_inchworm:
+			leech_forward = forward.rotated(sin(walk_phase * 1.1 + float(i)) * 0.28)
+		elif leech_undulate:
+			leech_forward = forward.rotated(sin(wriggle + float(i) * 0.45) * 0.62)
 		var leech_side := Vector2(-leech_forward.y, leech_forward.x)
-		var half_len := radius * (0.28 + pulse * 0.08)
+		var half_len := radius * (0.28 + pulse * 0.08 + (0.06 * leech_motion_intensity if leech_undulate else 0.0))
 		var points := PackedVector2Array([
 			offset - leech_forward * half_len + leech_side * radius * 0.08,
 			offset + leech_forward * half_len + leech_side * radius * 0.05,
@@ -999,6 +1022,8 @@ static func _base_cluster(canvas: CanvasItem, radius: float, forward: Vector2, s
 			offset - leech_forward * half_len - leech_side * radius * 0.08
 		])
 		canvas.draw_colored_polygon(points, dark if i % 3 == 0 else main)
+		if leech_undulate and i % 4 == 0:
+			canvas.draw_circle(offset - forward * radius * 0.16, maxf(radius * 0.035, 1.0), water_color.lightened(0.25))
 
 static func _base_bug(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, skin: Dictionary, walk_phase: float, moving: bool, anim: Dictionary = {}) -> void:
 	var main: Color = skin.get("main", Color(0.22, 0.16, 0.1))

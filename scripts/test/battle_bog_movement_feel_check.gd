@@ -409,6 +409,30 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 			str(otter_land_state),
 			str(otter_idle_state)
 		])
+	actor.apply_creature("leech")
+	actor.current_environment_profile = {"surface": "land"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var leech_land_state: Dictionary = actor.get_render_motion_state()
+	var leech_inchworm: bool = bool(leech_land_state.get("leech_inchworm_pose", false)) and not bool(leech_land_state.get("leech_undulate_pose", false)) and float(leech_land_state.get("leech_motion_intensity", 0.0)) > 0.25
+	actor.current_environment_profile = {"surface": "water"}
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var leech_water_state: Dictionary = actor.get_render_motion_state()
+	var leech_undulate: bool = bool(leech_water_state.get("leech_undulate_pose", false)) and not bool(leech_water_state.get("leech_inchworm_pose", false)) and float(leech_water_state.get("leech_motion_intensity", 0.0)) > 0.25
+	actor.velocity = Vector2.ZERO
+	actor.set_input_frame(InputFrameScript.new())
+	var leech_idle_state: Dictionary = actor.get_render_motion_state()
+	var leech_idle_clear: bool = not bool(leech_idle_state.get("leech_inchworm_pose", false)) and not bool(leech_idle_state.get("leech_undulate_pose", false)) and float(leech_idle_state.get("leech_motion_intensity", 1.0)) <= 0.001
+	if not leech_inchworm or not leech_undulate or not leech_idle_clear:
+		failures.append("moving leech should expose land inchworm and water undulate render poses, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
+			str(leech_inchworm),
+			str(leech_undulate),
+			str(leech_idle_clear),
+			str(leech_land_state),
+			str(leech_water_state),
+			str(leech_idle_state)
+		])
 	actor.apply_creature("alligator")
 	actor.add_modifier("Ambush", {"move_speed_mult": 0.7}, 1.0)
 	if not bool(actor.get_render_motion_state().get("ambush_pose", false)):
