@@ -115,12 +115,20 @@ func _check_slick_crawl_render(arena: Node, failures: Array[String]) -> void:
 	actor.modifiers.clear()
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	var render_state: Dictionary = actor.get_render_motion_state()
-	var crawl_read: bool = bool(render_state.get("slick_crawl_pose", false)) and float(render_state.get("slick_crawl_intensity", 0.0)) > 0.25
+	var crawl_read: bool = bool(render_state.get("slick_crawl_pose", false)) \
+		and float(render_state.get("slick_crawl_intensity", 0.0)) > 0.25 \
+		and not bool(render_state.get("leech_inchworm_pose", false)) \
+		and not bool(render_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(render_state.get("crayfish_scuttle_pose", false))
 	actor.velocity = Vector2.ZERO
 	var idle_state: Dictionary = actor.get_render_motion_state()
-	var idle_clear: bool = not bool(idle_state.get("slick_crawl_pose", false)) and float(idle_state.get("slick_crawl_intensity", 1.0)) <= 0.001
+	var idle_clear: bool = not bool(idle_state.get("slick_crawl_pose", false)) \
+		and not bool(idle_state.get("leech_inchworm_pose", false)) \
+		and not bool(idle_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(idle_state.get("crayfish_scuttle_pose", false)) \
+		and float(idle_state.get("slick_crawl_intensity", 1.0)) <= 0.001
 	if not crawl_read or not idle_clear:
-		failures.append("Newt movement should expose a low slick-crawl render pose only while moving; crawl=%s idle=%s state=%s/%s" % [
+		failures.append("Newt movement should expose a low slick-crawl render pose without leech/snake/crayfish overlap only while moving; crawl=%s idle=%s state=%s/%s" % [
 			str(crawl_read),
 			str(idle_clear),
 			str(render_state),

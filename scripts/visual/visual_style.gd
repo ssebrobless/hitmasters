@@ -799,11 +799,20 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			var t := float(trail_index) / 3.0
 			var trail_center := -forward * radius * (0.2 + t * 1.1) + side * sin(walk_phase * 1.1 + t * 2.0) * radius * 0.16
 			canvas.draw_arc(trail_center, radius * (0.2 + t * 0.08), -0.3, TAU * 0.65, 12, slick_tint, 1.0)
+		for crawl_side: float in [-1.0, 1.0]:
+			var track_start := -forward * radius * 0.22 + side * crawl_side * radius * 0.5
+			canvas.draw_line(track_start, track_start - forward * radius * (0.52 + 0.14 * slick_crawl_intensity) + side * crawl_side * radius * 0.12, Color(slick_tint.r, slick_tint.g, slick_tint.b, slick_tint.a * 0.72), maxf(radius * 0.045, 1.0))
 
 	for i in 7:
 		canvas.draw_circle(spine[i], segment_radii[i] + 2.0, fur_dark)
 	for i in 7:
 		canvas.draw_circle(spine[i], segment_radii[i], fur.darkened(0.28) if submerged_shrew else fur)
+	if slick_crawl:
+		var belly_sheen := Color(slick_tint.r, slick_tint.g, slick_tint.b, 0.14 + 0.06 * slick_crawl_intensity)
+		for sheen_index in 4:
+			var t := 0.22 + float(sheen_index) * 0.16
+			var sheen_center := spine[1].lerp(spine[5], t) + side * sin(walk_phase * 1.1 + float(sheen_index)) * radius * 0.08
+			canvas.draw_circle(sheen_center, radius * (0.1 + 0.02 * slick_crawl_intensity), belly_sheen)
 	if otter_land_slide:
 		var belly_slick := Color(belly.r, belly.g, belly.b, 0.16 + 0.06 * otter_motion_intensity)
 		for slick_index in 3:
