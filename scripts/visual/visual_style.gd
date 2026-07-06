@@ -799,6 +799,15 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 		canvas.draw_circle(spine[i], segment_radii[i] + 2.0, fur_dark)
 	for i in 7:
 		canvas.draw_circle(spine[i], segment_radii[i], fur.darkened(0.28) if submerged_shrew else fur)
+	if mink_bound:
+		var bound_flash := Color(belly.r, belly.g, belly.b, 0.22 + 0.08 * mink_bound_intensity)
+		for flash_index in 3:
+			var t := 0.36 + float(flash_index) * 0.16
+			var flash_center := spine[2].lerp(spine[5], t) + side * sin(walk_phase * 1.4 + float(flash_index)) * radius * 0.1
+			canvas.draw_circle(flash_center, radius * (0.13 + 0.025 * mink_bound_intensity), bound_flash)
+		for snap_side: float in [-1.0, 1.0]:
+			var snap_start := spine[4] + side * snap_side * radius * 0.5 - forward * radius * 0.1
+			canvas.draw_line(snap_start, snap_start - forward * radius * (0.55 + 0.16 * mink_bound_intensity) + side * snap_side * radius * 0.16, Color(mink_dust.r, mink_dust.g, mink_dust.b, 0.22 + 0.08 * mink_bound_intensity), maxf(radius * 0.045, 1.0))
 	if bool(skin.get("spots", false)):
 		var accent: Color = skin.get("accent", Color(0.9, 0.5, 0.15))
 		for i in 6:
