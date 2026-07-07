@@ -2400,7 +2400,7 @@ func _draw_habitat_stock_visuals() -> void:
 		var position: Vector2 = visual.get("position", Vector2.ZERO)
 		var team := int(visual.get("team", BLUE))
 		var team_color := _habitat_stock_color(team)
-		draw_circle(position, 10.0, Color(0.04, 0.05, 0.045, 0.82))
+		draw_circle(position, 10.0, VisualGrammar.shadow_color(0.82))
 		draw_circle(position, 7.0, team_color)
 		draw_arc(position, 11.5, 0.0, TAU, 20, Color(0.88, 0.92, 0.82, 0.45), 1.5)
 		draw_string(ThemeDB.fallback_font, position + Vector2(-5.0, 4.0), str(int(visual.get("slot_index", 0)) + 1), HORIZONTAL_ALIGNMENT_LEFT, 10.0, 9, Color(0.02, 0.025, 0.02, 0.95))

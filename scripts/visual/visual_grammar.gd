@@ -87,6 +87,11 @@ static func environment_palette() -> Dictionary:
 		"shadow": SHADOW
 	}
 
+static func shadow_color(alpha := SHADOW.a) -> Color:
+	var output := SHADOW
+	output.a = alpha
+	return output
+
 static func with_alpha(color: Color, alpha: float) -> Color:
 	var output := color
 	output.a *= alpha

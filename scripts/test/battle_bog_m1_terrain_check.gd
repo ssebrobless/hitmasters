@@ -112,7 +112,8 @@ func _visual_palette_ok() -> bool:
 		and _max_channel(shallow) <= 0.55 \
 		and _max_channel(water) <= 0.55 \
 		and _max_channel(cover) <= 0.55
-	return hierarchy_ok and value_band_ok and foam.a < 1.0
+	var shadow_helper_ok := _color_matches(VisualGrammar.shadow_color(0.62), Color(0.04, 0.05, 0.03, 0.62))
+	return hierarchy_ok and value_band_ok and shadow_helper_ok and foam.a < 1.0
 
 func _visual_constitution_palette_matches(palette: Dictionary) -> bool:
 	return _color_matches(palette["land_dark"], Color(0.16, 0.19, 0.11)) \

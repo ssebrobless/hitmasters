@@ -193,7 +193,7 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		var shadow_alpha := clampf(float(anim.get("height_shadow_alpha", 0.32 - height_ratio * 0.07 + low_window_t * 0.18)), 0.12, 0.5)
 		var shadow_radius := visual_radius * clampf(float(anim.get("height_shadow_radius_mult", 0.82 + height_ratio * 0.08 + low_window_t * 0.18)), 0.75, 1.3)
 		canvas.draw_set_transform(shake_offset, 0.0, Vector2.ONE)
-		canvas.draw_circle(Vector2(0.0, visual_radius * 0.55), shadow_radius, _with_alpha(Color(0.0, 0.0, 0.0, shadow_alpha), alpha))
+		canvas.draw_circle(Vector2(0.0, visual_radius * 0.55), shadow_radius, _with_alpha(VisualGrammar.shadow_color(shadow_alpha), alpha))
 		if takeoff_flap_t > 0.0:
 			var lift_color := _with_alpha(Color(0.78, 0.9, 1.0, 0.24 * takeoff_flap_t), alpha)
 			var lift_radius := visual_radius * (1.05 + (1.0 - takeoff_flap_t) * 0.42)
@@ -298,7 +298,7 @@ static func _draw_open_region_outlines(canvas: CanvasItem, anim: Dictionary, vis
 		canvas.draw_arc(local_center, radius * 0.66, -PI * 0.15, PI * 0.85, 16, Color(region_color.r, region_color.g, region_color.b, region_color.a * 0.55), maxf(1.0, visual_radius * 0.035))
 
 static func _draw_ground_truth_footprint(canvas: CanvasItem, origin: Vector2, radius: float, outline: Color, alpha: float) -> void:
-	var shadow_color := _with_alpha(Color(0.04, 0.05, 0.03, 0.32), alpha)
+	var shadow_color := _with_alpha(VisualGrammar.shadow_color(0.32), alpha)
 	canvas.draw_set_transform(origin + Vector2(radius * 0.14, radius * 0.18), 0.0, Vector2(1.0, 0.58))
 	canvas.draw_circle(Vector2.ZERO, radius, shadow_color)
 	canvas.draw_set_transform(origin, 0.0, Vector2.ONE)

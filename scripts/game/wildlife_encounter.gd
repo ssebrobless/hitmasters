@@ -1,6 +1,7 @@
 extends Node2D
 
 const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
+const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
 
 var arena: Node = null
 var team := -1
@@ -107,7 +108,7 @@ func _draw() -> void:
 	if not alive:
 		return
 	var base := _species_color()
-	var shadow := Color(0.03, 0.035, 0.03, 0.62)
+	var shadow := VisualGrammar.shadow_color(0.62)
 	draw_circle(Vector2(1.5, 2.0), body_radius + 2.0, shadow)
 	if body_capsule_half_len_px > 0.0:
 		_draw_capsule_body(base)
