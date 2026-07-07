@@ -1331,6 +1331,7 @@ static func _base_croc(canvas: CanvasItem, radius: float, forward: Vector2, side
 			var wake_origin := -forward * radius * 0.45 + side * wake_side * radius * 0.58
 			canvas.draw_line(wake_origin, wake_origin - forward * radius * (0.92 + 0.28 * water_cruise_intensity) + side * wake_side * radius * 0.18, cruise_water, maxf(radius * 0.08, 1.3))
 			canvas.draw_arc(wake_origin + forward * radius * 0.18, radius * (0.36 + 0.1 * water_cruise_intensity), -0.35, 0.85, 12, Color(cruise_water.r, cruise_water.g, cruise_water.b, cruise_water.a * 0.82), maxf(radius * 0.055, 1.0))
+			canvas.draw_circle(wake_origin - forward * radius * (0.72 + 0.18 * water_cruise_intensity) + side * wake_side * radius * 0.12, maxf(radius * (0.045 + 0.018 * water_cruise_intensity), 1.0), cruise_water.lightened(0.22))
 		canvas.draw_line(forward * radius * 1.16, -forward * radius * (1.34 + 0.22 * water_cruise_intensity), Color(cruise_water.r, cruise_water.g, cruise_water.b, cruise_water.a * 0.62), maxf(radius * 0.065, 1.1))
 		canvas.draw_arc(forward * radius * 1.0, radius * (0.42 + 0.08 * water_cruise_intensity), -PI * 0.05, PI * 1.05, 16, Color(cruise_water.r, cruise_water.g, cruise_water.b, cruise_water.a * 0.55), maxf(radius * 0.05, 1.0))
 		canvas.draw_circle(forward * radius * 1.22, maxf(radius * (0.07 + 0.025 * water_cruise_intensity), 1.1), Color(cruise_water.r, cruise_water.g, cruise_water.b, cruise_water.a * 0.74))
