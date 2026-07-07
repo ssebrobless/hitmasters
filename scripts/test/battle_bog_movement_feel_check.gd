@@ -414,6 +414,17 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.current_environment_profile = {"surface": "land"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var bullfrog_non_bullfrog_motion_flags: Array[String] = [
+		"chorus_hop_pose", "cane_squat_hop_pose", "shrew_land_skitter_pose", "surface_walk", "submerged_shrew_pose",
+		"slick_crawl_pose", "newt_swim_pose", "leech_inchworm_pose", "leech_undulate_pose",
+		"water_snake_land_slither_pose", "water_slither_pose", "turtle_plod_pose", "turtle_swim_pose",
+		"bog_turtle_creep_pose", "bog_turtle_paddle_pose", "duck_waddle_pose", "duck_paddle_pose",
+		"beaver_lumber_pose", "beaver_swim_pose", "mink_bound_pose", "mink_swim_pose",
+		"otter_land_slide_pose", "otter_swim_pose", "crayfish_scuttle_pose", "crayfish_tail_flick_swim_pose",
+		"spider_skitter_pose", "high_walk_pose", "alligator_water_cruise_pose", "owl_glide_pose",
+		"owl_silent_flight_pose", "kingfisher_dart_pose", "wading_pose", "heron_stalk_pose",
+		"mosquito_swarm_pose", "firefly_hover_pose"
+	]
 	var bullfrog_hop_state: Dictionary = actor.get_render_motion_state()
 	var bullfrog_hop: bool = bool(bullfrog_hop_state.get("bullfrog_heavy_hop_pose", false)) \
 		and float(bullfrog_hop_state.get("bullfrog_heavy_hop_intensity", 0.0)) > 0.25 \
@@ -422,7 +433,8 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(bullfrog_hop_state.get("cane_squat_hop_pose", false)) \
 		and not bool(bullfrog_hop_state.get("bullfrog_coil_pose", false)) \
 		and not bool(bullfrog_hop_state.get("bullfrog_lunge_pose", false)) \
-		and not bool(bullfrog_hop_state.get("camouflage_eye_cue", false))
+		and not bool(bullfrog_hop_state.get("camouflage_eye_cue", false)) \
+		and _none_render_flags(bullfrog_hop_state, bullfrog_non_bullfrog_motion_flags)
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
 	actor.begin_stealth(2.0, "Camouflage")
@@ -433,7 +445,8 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(bullfrog_camouflage_state.get("rooted_pose", false)) \
 		and not bool(bullfrog_camouflage_state.get("chorus_hop_pose", false)) \
 		and not bool(bullfrog_camouflage_state.get("cane_squat_hop_pose", false)) \
-		and not bool(bullfrog_camouflage_state.get("bullfrog_heavy_hop_pose", false))
+		and not bool(bullfrog_camouflage_state.get("bullfrog_heavy_hop_pose", false)) \
+		and _none_render_flags(bullfrog_camouflage_state, bullfrog_non_bullfrog_motion_flags)
 	actor.break_stealth()
 	actor.kit.lunge_active = true
 	actor.dash_timer = 0.18
@@ -447,7 +460,8 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(bullfrog_lunge_state.get("rooted_pose", false)) \
 		and not bool(bullfrog_lunge_state.get("chorus_hop_pose", false)) \
 		and not bool(bullfrog_lunge_state.get("cane_squat_hop_pose", false)) \
-		and not bool(bullfrog_lunge_state.get("bullfrog_heavy_hop_pose", false))
+		and not bool(bullfrog_lunge_state.get("bullfrog_heavy_hop_pose", false)) \
+		and _none_render_flags(bullfrog_lunge_state, bullfrog_non_bullfrog_motion_flags)
 	actor.kit.lunge_active = false
 	actor.dash_timer = 0.0
 	actor.dash_velocity = Vector2.ZERO
@@ -461,9 +475,10 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(bullfrog_idle_state.get("bullfrog_coil_pose", false)) \
 		and not bool(bullfrog_idle_state.get("bullfrog_lunge_pose", false)) \
 		and not bool(bullfrog_idle_state.get("camouflage_eye_cue", false)) \
+		and _none_render_flags(bullfrog_idle_state, bullfrog_non_bullfrog_motion_flags) \
 		and float(bullfrog_idle_state.get("bullfrog_heavy_hop_intensity", 1.0)) <= 0.001
 	if not bullfrog_hop or not bullfrog_camouflage or not bullfrog_lunge or not bullfrog_idle_clear:
-		failures.append("bullfrog should expose heavy body-thump hop without rooted, chorus, or cane overlap, suppress it during camouflage/lunge, and clear when idle; hop=%s camouflage=%s lunge=%s idle=%s state=%s/%s/%s/%s" % [
+		failures.append("bullfrog should expose heavy body-thump hop without rooted, chorus, cane, crawler, swimmer, snake, turtle, duck, mammal, gator, bird, swarm, hover, crustacean, or spider overlap, suppress it during camouflage/lunge, and clear when idle; hop=%s camouflage=%s lunge=%s idle=%s state=%s/%s/%s/%s" % [
 			str(bullfrog_hop),
 			str(bullfrog_camouflage),
 			str(bullfrog_lunge),

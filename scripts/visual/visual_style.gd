@@ -311,6 +311,7 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 			var thump_center := -forward * radius * 0.42 + side * thump_side * radius * 0.42
 			canvas.draw_arc(thump_center, radius * (0.34 + 0.1 * bullfrog_heavy_hop_intensity), PI * 0.08, PI * 0.92, 10, thump_color, maxf(radius * 0.055, 1.0))
 		canvas.draw_arc(-forward * radius * 0.12, radius * (0.74 + 0.1 * bullfrog_heavy_hop_intensity), PI * 0.08, PI * 0.92, 16, Color(thump_color.r, thump_color.g, thump_color.b, thump_color.a * 0.82), maxf(radius * 0.07, 1.2))
+		canvas.draw_circle(-forward * radius * 0.18, maxf(radius * (0.075 + 0.025 * bullfrog_heavy_hop_intensity), 1.2), Color(thump_color.r, thump_color.g, thump_color.b, thump_color.a * 0.88))
 		canvas.draw_line(-forward * radius * 0.7, -forward * radius * (1.16 + 0.18 * bullfrog_heavy_hop_intensity), Color(thump_color.r, thump_color.g, thump_color.b, thump_color.a * 0.72), maxf(radius * 0.06, 1.1))
 	if cane_squat_hop:
 		var squat_scuff := Color(dark.r, dark.g, dark.b, 0.16 + 0.08 * cane_squat_hop_intensity)
