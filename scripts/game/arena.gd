@@ -555,7 +555,8 @@ func get_side_boss_state(team: int) -> Dictionary:
 		"interval": BOSS_BREED_INTERVAL,
 		"activations": int(side_boss_activations.get(team, 0)),
 		"next_family": String(SIDE_BOSS_ORDER[idx % SIDE_BOSS_ORDER.size()]),
-		"active": _team_has_active_side_boss(team)
+		"active": _team_has_active_side_boss(team),
+		"objective_state": String(_team_boss_zone(team).get("objective_state", "dormant"))
 	}
 
 func get_team_breeding_buff_summary(team: int) -> Dictionary:
@@ -606,6 +607,7 @@ func _setup_animal_zones() -> void:
 		var state := zone.duplicate(true)
 		state["id"] = "%s:%s" % [String(zone.get("side", "")), String(zone.get("group", ""))]
 		state["active"] = not is_boss
+		state["objective_state"] = "dormant" if is_boss else "active"
 		state["activation_count"] = 0
 		state["occupants"] = _spawn_zone_occupants(state)
 		state["spawned_count"] = (state["occupants"] as Array).size()
@@ -786,6 +788,13 @@ func _team_has_active_side_boss(team: int) -> bool:
 			return true
 	return false
 
+func _team_boss_zone(team: int) -> Dictionary:
+	var side := _team_side_string(team)
+	for zone: Dictionary in animal_zone_states:
+		if bool(zone.get("boss", false)) and String(zone.get("side", "")) == side:
+			return zone
+	return {}
+
 func _record_bred_animal(team: int, _actor: Node = null) -> void:
 	bred_animal_count += 1
 	if not (team == BLUE or team == RED):
@@ -872,6 +881,7 @@ func _activate_side_boss_for_team(team: int) -> void:
 		zone["cleared_team"] = -1
 		zone["last_bred_count"] = bred_animal_count
 		zone["boss_family"] = family
+		zone["objective_state"] = "active"
 		_spawn_wildlife_for_zone(zone)
 		animal_zone_states[i] = zone
 	add_kill_feed("%s boss stirs: %s" % [_team_name(team), family.capitalize()])
@@ -952,6 +962,8 @@ func on_wildlife_defeated(encounter: Node, source_actor: Node = null) -> void:
 			zone["cleared_team"] = defeat_team
 		if bool(zone.get("boss", false)) and alive_occupants.is_empty():
 			zone["active"] = false
+			zone["objective_state"] = "claimable"
+			add_kill_feed("%s downed - claimable" % String(zone.get("boss_family", "boss")).capitalize())
 		animal_zone_states[zone_index] = zone
 	var reward: Dictionary = _grant_wildlife_reward(encounter, source_actor)
 	var source_name: String = source_actor.get_actor_name() if source_actor != null and is_instance_valid(source_actor) and source_actor.has_method("get_actor_name") else "A creature"
