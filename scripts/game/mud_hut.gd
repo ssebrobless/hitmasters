@@ -45,6 +45,19 @@ func get_actor_name() -> String:
 func get_team_accent_color(alpha := 1.0) -> Color:
 	return VisualGrammar.team_color(team, alpha)
 
+func uses_event_driven_redraw() -> bool:
+	return true
+
+func get_visual_damage_state() -> String:
+	var ratio := clampf(health / max_health, 0.0, 1.0)
+	if ratio <= 0.0:
+		return "destroyed"
+	if ratio < 0.34:
+		return "critical"
+	if ratio < 0.67:
+		return "damaged"
+	return "intact"
+
 func take_damage(amount: float, _source_team: int = -1, _source_actor: Node = null) -> void:
 	if health <= 0.0:
 		return
@@ -110,20 +123,29 @@ func _spawn_defender(kind: String, slot: int) -> void:
 # Static drawing: redraws happen on damage/team events only (perf
 # constitution, decision #31) — never per frame.
 func _draw() -> void:
-	var mud := Color(0.42, 0.3, 0.18)
-	var mud_dark := Color(0.28, 0.2, 0.12)
+	var mud := VisualGrammar.BOG_MUD
+	var mud_dark := VisualGrammar.BOG_MUD_DARK
+	var state := get_visual_damage_state()
 	var accent := get_team_accent_color()
-	# Dome of packed mud with stick reinforcements.
+	var shadow_offset := Vector2(body_radius * 0.2, body_radius * 0.28)
+	draw_circle(shadow_offset, body_radius * 0.92, VisualGrammar.SHADOW)
 	draw_circle(Vector2.ZERO, body_radius + 4.0, mud_dark)
 	draw_circle(Vector2.ZERO, body_radius, mud)
-	draw_circle(Vector2(0.0, -body_radius * 0.25), body_radius * 0.6, mud.lightened(0.1))
-	for i in 7:
-		var stick_angle := TAU * float(i) / 7.0 + 0.3
+	draw_arc(Vector2(body_radius * 0.08, body_radius * 0.05), body_radius * 0.9, -0.05, PI * 0.72, 18, mud_dark.darkened(0.18), 4.0)
+	draw_arc(Vector2(-body_radius * 0.18, -body_radius * 0.18), body_radius * 0.7, PI * 1.05, PI * 1.82, 18, mud.lightened(0.18), 4.0)
+	for i in 5:
+		var arc_radius := body_radius * (0.35 + float(i) * 0.1)
+		draw_arc(Vector2(0.0, body_radius * 0.05), arc_radius, PI * 1.05, PI * 1.92, 14, mud_dark.lightened(0.08), 1.2)
+	for i in 6:
+		var stick_angle := TAU * float(i) / 6.0 + 0.38
 		var stick_out := Vector2(cos(stick_angle), sin(stick_angle))
-		draw_line(stick_out * body_radius * 0.55, stick_out * (body_radius + 6.0), mud_dark.darkened(0.15), 2.5)
+		draw_line(stick_out * body_radius * 0.62, stick_out * (body_radius + 5.0), mud_dark.darkened(0.12), 2.2)
+	_draw_damage_marks(state, mud_dark)
 	# Entrance facing mid.
 	var entrance := Vector2(-1.0 if team == 1 else 1.0, 0.0)
-	draw_circle(entrance * body_radius * 0.62, body_radius * 0.3, Color(0.12, 0.08, 0.05))
+	var entrance_center := entrance * body_radius * 0.58 + Vector2(0.0, body_radius * 0.08)
+	draw_circle(entrance_center, body_radius * 0.28, mud_dark.darkened(0.46))
+	draw_rect(Rect2(entrance_center + Vector2(-body_radius * 0.28, -body_radius * 0.12), Vector2(body_radius * 0.56, body_radius * 0.12)), mud_dark.lightened(0.12))
 	# Team banner.
 	draw_rect(Rect2(Vector2(-2.0, -body_radius - 16.0), Vector2(4.0, 12.0)), mud_dark)
 	draw_rect(Rect2(Vector2(2.0, -body_radius - 16.0), Vector2(10.0, 7.0)), accent)
@@ -131,3 +153,20 @@ func _draw() -> void:
 	var ratio := clampf(health / max_health, 0.0, 1.0)
 	draw_rect(Rect2(Vector2(-body_radius, body_radius + 6.0), Vector2(body_radius * 2.0, 5.0)), Color(0.07, 0.07, 0.08))
 	draw_rect(Rect2(Vector2(-body_radius, body_radius + 6.0), Vector2(body_radius * 2.0 * ratio, 5.0)), accent)
+
+func _draw_damage_marks(state: String, mud_dark: Color) -> void:
+	if state == "intact":
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(Vector2i(int(global_position.x), int(global_position.y)))
+	var crack_count := 4 if state == "damaged" else 8
+	for i in crack_count:
+		var angle := rng.randf_range(PI * 0.15, PI * 1.85)
+		var start := Vector2(cos(angle), sin(angle)) * rng.randf_range(body_radius * 0.25, body_radius * 0.72)
+		var end := start + Vector2(cos(angle + rng.randf_range(-0.8, 0.8)), sin(angle + rng.randf_range(-0.8, 0.8))) * rng.randf_range(5.0, 11.0)
+		draw_line(start, end, mud_dark.darkened(0.38), 1.6)
+	if state == "critical":
+		for i in 4:
+			var clod_angle := TAU * float(i) / 4.0 + 0.45
+			var clod := Vector2(cos(clod_angle), sin(clod_angle)) * body_radius * rng.randf_range(0.7, 0.98)
+			draw_circle(clod, rng.randf_range(3.0, 5.0), mud_dark.darkened(0.18))

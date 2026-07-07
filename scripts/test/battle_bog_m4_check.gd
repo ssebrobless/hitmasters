@@ -68,6 +68,10 @@ func _initialize() -> void:
 	stub.add_child(hut)
 	hut.setup(stub, 1, 0, Vector2.ZERO)
 	var hut_color_ok: bool = _color_matches(hut.get_team_accent_color(0.72), VisualGrammar.team_color(1, 0.72))
+	var hut_visual_ok: bool = hut.has_method("uses_event_driven_redraw") \
+		and hut.has_method("get_visual_damage_state") \
+		and bool(hut.call("uses_event_driven_redraw")) \
+		and String(hut.call("get_visual_damage_state")) == "intact"
 	var kinds := {"tank": 0, "melee": 0, "pebble": 0}
 	for entity in stub.entities:
 		if entity is MinionScript:
@@ -98,6 +102,12 @@ func _initialize() -> void:
 		if entity is MinionScript and entity.kind == "tank":
 			respawned += 1
 	var respawn_ok: bool = queued and respawned == 1 and hut.respawn_queue.is_empty()
+
+	hut.take_damage(hut.max_health * 0.4)
+	var damaged_visual_ok: bool = String(hut.call("get_visual_damage_state")) == "damaged"
+	hut.take_damage(hut.max_health * 0.35)
+	var critical_visual_ok: bool = String(hut.call("get_visual_damage_state")) == "critical"
+	hut_visual_ok = hut_visual_ok and damaged_visual_ok and critical_visual_ok
 
 	# Hut destruction notifies the arena and unregisters it.
 	hut.take_damage(hut.max_health)
@@ -131,9 +141,9 @@ func _initialize() -> void:
 		and float(melee_style.get("visual_radius_px", 99.0)) < float(melee_style.get("combat_radius_px", 0.0)) \
 		and float(lane_style.get("visual_radius_px", 99.0)) < float(lane_style.get("combat_radius_px", 0.0))
 
-	var passed := huts_3v3 and huts_1v1 and waves_3v3 and waves_1v1 and squad_ok and patrol_radius_ok and respawn_ok and destroy_ok and kinds_ok and minion_visual_ok and hut_color_ok
-	print("m4 huts3v3=%s huts1v1=%s waves3v3=%s waves1v1=%s squad=%s patrol=%s respawn=%s destroy=%s kinds=%s visual=%s hut_color=%s" % [
-		str(huts_3v3), str(huts_1v1), str(waves_3v3), str(waves_1v1), str(squad_ok), str(patrol_radius_ok), str(respawn_ok), str(destroy_ok), str(kinds_ok), str(minion_visual_ok), str(hut_color_ok)
+	var passed := huts_3v3 and huts_1v1 and waves_3v3 and waves_1v1 and squad_ok and patrol_radius_ok and respawn_ok and destroy_ok and kinds_ok and minion_visual_ok and hut_color_ok and hut_visual_ok
+	print("m4 huts3v3=%s huts1v1=%s waves3v3=%s waves1v1=%s squad=%s patrol=%s respawn=%s destroy=%s kinds=%s visual=%s hut_color=%s hut_visual=%s" % [
+		str(huts_3v3), str(huts_1v1), str(waves_3v3), str(waves_1v1), str(squad_ok), str(patrol_radius_ok), str(respawn_ok), str(destroy_ok), str(kinds_ok), str(minion_visual_ok), str(hut_color_ok), str(hut_visual_ok)
 	])
 	quit(0 if passed else 1)
 

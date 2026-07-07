@@ -1,5 +1,7 @@
 extends Node2D
 
+const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
+
 # Beaver dam: a placeable wall. Registered as an arena entity so enemy melee
 # and projectiles damage it; its rect blocks body movement (not projectiles
 # or LOS — those stop by hitting it as an entity).
@@ -32,6 +34,9 @@ func get_actor_name() -> String:
 func get_blocker_rect() -> Rect2:
 	return rect
 
+func uses_event_driven_redraw() -> bool:
+	return true
+
 func repair(amount: float) -> void:
 	health = minf(health + amount, max_health)
 	queue_redraw()
@@ -58,8 +63,11 @@ func _collapse() -> void:
 # decision #31) — never per frame.
 func _draw() -> void:
 	var local := Rect2(rect.position - global_position, rect.size)
-	var wood := Color(0.4, 0.28, 0.14)
-	var wood_dark := Color(0.26, 0.18, 0.09)
+	var wood := VisualGrammar.BOG_MUD
+	var wood_dark := VisualGrammar.BOG_MUD_DARK
+	var shadow_rect := local.grow(4.0)
+	shadow_rect.position += Vector2(2.0, 2.0)
+	draw_rect(shadow_rect, VisualGrammar.SHADOW)
 	draw_rect(local.grow(2.0), wood_dark)
 	draw_rect(local, wood)
 	# Cross-laid stick texture.

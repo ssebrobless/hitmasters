@@ -109,7 +109,9 @@ func _initialize() -> void:
 	root.add_child(dam)
 	dam.setup(null, 0, Rect2(Vector2(-24, -8), Vector2(48, 16)), 200.0)
 	dam.take_damage(50.0)
-	var dam_ok: bool = dam.health == 150.0 and dam.rect.size.x == 48.0
+	var dam_ok: bool = dam.health == 150.0 and dam.rect.size.x == 48.0 \
+		and dam.has_method("uses_event_driven_redraw") \
+		and bool(dam.call("uses_event_driven_redraw"))
 
 	# Duckling lives and dies.
 	var duckling := DucklingScript.new()
