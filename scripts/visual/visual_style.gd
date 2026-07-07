@@ -462,10 +462,13 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 			var toe_center := -forward * radius * 0.16 + side * scuff_side * radius * 0.34
 			canvas.draw_line(toe_center, toe_center - forward * radius * (0.16 + 0.06 * bog_creep_intensity), Color(bog_scuff.r, bog_scuff.g, bog_scuff.b, bog_scuff.a * 0.82), 1.0)
 			canvas.draw_line(toe_center, toe_center + side * scuff_side * radius * (0.1 + 0.05 * bog_creep_intensity), Color(bog_scuff.r, bog_scuff.g, bog_scuff.b, bog_scuff.a * 0.72), 1.0)
+			canvas.draw_circle(toe_center - forward * radius * 0.1, maxf(radius * (0.035 + 0.012 * bog_creep_intensity), 1.0), Color(bog_scuff.r, bog_scuff.g, bog_scuff.b, bog_scuff.a * 0.86))
+			canvas.draw_circle(toe_center + side * scuff_side * radius * 0.1, maxf(radius * 0.03, 1.0), Color(bog_scuff.r, bog_scuff.g, bog_scuff.b, bog_scuff.a * 0.68))
 	if bog_paddle:
 		for bubble_side: float in [-1.0, 1.0]:
 			var bubble_center := forward * radius * 0.46 + side * bubble_side * radius * 0.26
 			canvas.draw_circle(bubble_center, maxf(radius * (0.045 + 0.015 * bog_paddle_intensity), 1.0), bog_water.lightened(0.22))
+			canvas.draw_circle(bubble_center - forward * radius * 0.24 + side * bubble_side * radius * 0.08, maxf(radius * 0.03, 1.0), Color(bog_water.r, bog_water.g, bog_water.b, bog_water.a * 0.75))
 		var tiny_paddle := Color(bog_water.r, bog_water.g, bog_water.b, 0.18 + 0.08 * bog_paddle_intensity)
 		for paddle_side: float in [-1.0, 1.0]:
 			var paddle_center := -forward * radius * 0.08 + side * paddle_side * radius * 0.36

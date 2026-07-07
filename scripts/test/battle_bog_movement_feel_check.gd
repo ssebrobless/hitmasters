@@ -923,6 +923,18 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 			str(turtle_land_state)
 		])
 	actor.apply_creature("bog_turtle")
+	var bog_non_bog_motion_flags: Array[String] = [
+		"hop_pose", "chorus_hop_pose", "cane_squat_hop_pose", "rooted_pose",
+		"slick_crawl_pose", "newt_swim_pose", "leech_inchworm_pose", "leech_undulate_pose",
+		"water_snake_land_slither_pose", "water_snake_mud_slither", "water_slither_pose",
+		"turtle_plod_pose", "turtle_swim_pose", "duck_waddle_pose", "duck_paddle_pose",
+		"beaver_lumber_pose", "beaver_swim_pose", "mink_bound_pose", "mink_swim_pose",
+		"otter_land_slide_pose", "otter_swim_pose", "surface_walk", "submerged_shrew_pose",
+		"shrew_land_skitter_pose", "crayfish_scuttle_pose", "crayfish_tail_flick_swim_pose",
+		"spider_skitter_pose", "high_walk_pose", "alligator_water_cruise_pose",
+		"owl_glide_pose", "owl_silent_flight_pose", "kingfisher_dart_pose", "wading_pose",
+		"heron_stalk_pose", "mosquito_swarm_pose", "firefly_hover_pose"
+	]
 	actor.current_environment_profile = {"surface": "land"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
@@ -940,6 +952,7 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(bog_creep_state.get("leech_inchworm_pose", false)) \
 		and not bool(bog_creep_state.get("slick_crawl_pose", false)) \
 		and not bool(bog_creep_state.get("water_snake_land_slither_pose", false)) \
+		and _none_render_flags(bog_creep_state, bog_non_bog_motion_flags) \
 		and float(bog_creep_state.get("bog_turtle_creep_intensity", 0.0)) > 0.25
 	actor.current_environment_profile = {"surface": "water"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
@@ -957,6 +970,7 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(bog_paddle_state.get("newt_swim_pose", false)) \
 		and not bool(bog_paddle_state.get("leech_undulate_pose", false)) \
 		and not bool(bog_paddle_state.get("water_slither_pose", false)) \
+		and _none_render_flags(bog_paddle_state, bog_non_bog_motion_flags) \
 		and float(bog_paddle_state.get("bog_turtle_paddle_intensity", 0.0)) > 0.25
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
@@ -982,10 +996,11 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(bog_idle_state.get("slick_crawl_pose", false)) \
 		and not bool(bog_idle_state.get("water_snake_land_slither_pose", false)) \
 		and not bool(bog_idle_state.get("water_slither_pose", false)) \
+		and _none_render_flags(bog_idle_state, bog_non_bog_motion_flags) \
 		and float(bog_idle_state.get("bog_turtle_creep_intensity", 1.0)) <= 0.001 \
 		and float(bog_idle_state.get("bog_turtle_paddle_intensity", 1.0)) <= 0.001
 	if not bog_creep or not bog_paddle or not bog_idle_clear:
-		failures.append("moving bog turtle should expose tiny orange-patch creep/paddle without snapping turtle, swimmer, crawler, or mammal overlap, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
+		failures.append("moving bog turtle should expose tiny orange-patch creep/paddle without frog, snapping turtle, swimmer, crawler, snake, duck, mammal, shrew, gator, bird, swarm, hover, crustacean, or spider overlap, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
 			str(bog_creep),
 			str(bog_paddle),
 			str(bog_idle_clear),
