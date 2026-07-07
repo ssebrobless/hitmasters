@@ -716,6 +716,9 @@ func get_render_motion_state() -> Dictionary:
 	var air_attack_release_t := clampf(anim_attack_timer / maxf(anim_attack_duration, 0.001), 0.0, 1.0) if is_airborne() and anim_attack_timer > 0.0 else 0.0
 	var air_attack_scale_bonus := float(visual_size_profile.get("air_attack_model_scale_bonus", 0.0)) * air_attack_release_t
 	var visual_model_scale := minf(1.35, base_model_scale + low_window_scale_bonus + air_attack_scale_bonus)
+	var airborne_visual := is_airborne() or state == CreatureStateScript.State.PERCHED
+	var height_shadow_alpha := _height_shadow_alpha(visual_height_units, low_window_t, airborne_visual)
+	var height_shadow_radius_mult := _height_shadow_radius_mult(visual_height_units, low_window_t, airborne_visual)
 	return {
 		"creature_id": creature_id,
 		"terrain_surface": surface,
@@ -727,6 +730,8 @@ func get_render_motion_state() -> Dictionary:
 		"height_units": visual_height_units,
 		"height_class": String(visual_size_profile.get("height_class", "mid")),
 		"height_band": _visual_height_band(visual_height_units),
+		"height_shadow_alpha": height_shadow_alpha,
+		"height_shadow_radius_mult": height_shadow_radius_mult,
 		"low_window_t": low_window_t,
 		"low_window_active": low_window_t > 0.0,
 		"air_attack_readable": air_attack_cue,
@@ -886,6 +891,18 @@ func _visual_height_band(height_units: float) -> String:
 	if height_units >= 0.25:
 		return "body"
 	return "low"
+
+func _height_shadow_alpha(height_units: float, low_window_t: float, airborne_visual: bool) -> float:
+	if not airborne_visual:
+		return 0.0
+	var height_t := clampf(height_units / 1.8, 0.0, 1.0)
+	return clampf(0.34 - height_t * 0.12 + low_window_t * 0.24, 0.12, 0.5)
+
+func _height_shadow_radius_mult(height_units: float, low_window_t: float, airborne_visual: bool) -> float:
+	if not airborne_visual:
+		return 1.0
+	var height_t := clampf(height_units / 1.8, 0.0, 1.0)
+	return clampf(0.82 + height_t * 0.14 + low_window_t * 0.26, 0.75, 1.3)
 
 func get_swim_ratio() -> float:
 	if swim_time_max <= 0.0:

@@ -2108,6 +2108,8 @@ func _check_visual_height_profiles(arena: Node, failures: Array[String]) -> void
 		and bool(owl_low_state.get("air_attack_readable", false)) \
 		and bool(owl_low_state.get("air_attack_cue_pose", false)) \
 		and float(owl_low_state.get("air_attack_cue_intensity", 0.0)) > 0.9 \
+		and float(owl_low_state.get("height_shadow_alpha", 0.0)) > float(owl_air_state.get("height_shadow_alpha", 1.0)) + 0.18 \
+		and float(owl_low_state.get("height_shadow_radius_mult", 0.0)) > float(owl_air_state.get("height_shadow_radius_mult", 1.0)) + 0.16 \
 		and float(owl_low_state.get("model_scale", 1.0)) > float(owl_air_state.get("model_scale", 1.0)) + 0.08 \
 		and float(owl_low_state.get("low_window_model_scale_bonus", 0.0)) > 0.08 \
 		and float(owl_low_state.get("low_window_t", 0.0)) > 0.9 \
@@ -2120,7 +2122,10 @@ func _check_visual_height_profiles(arena: Node, failures: Array[String]) -> void
 		and float(kingfisher_low_state.get("low_window_model_scale_bonus", 0.0)) > 0.08 \
 		and String(kingfisher_low_state.get("height_band", "")) == "body"
 	var tiny_low: bool = float(bog_state.get("model_scale", 1.0)) < 0.9 and float(bog_state.get("height_units", 1.0)) < 0.3
-	var tiny_hover: bool = float(firefly_state.get("model_scale", 1.0)) < 0.85 and float(firefly_state.get("height_units", 0.0)) >= 0.9
+	var tiny_hover: bool = float(firefly_state.get("model_scale", 1.0)) < 0.85 \
+		and float(firefly_state.get("height_units", 0.0)) >= 0.9 \
+		and float(firefly_state.get("height_shadow_alpha", 0.0)) > 0.25 \
+		and float(firefly_state.get("height_shadow_radius_mult", 0.0)) > 0.88
 	var flying_attack_scale: bool = float(mosquito_attack_state.get("model_scale", 1.0)) > float(mosquito_base_state.get("model_scale", 1.0)) + 0.1 \
 		and float(mosquito_attack_state.get("air_attack_model_scale_bonus", 0.0)) > 0.1 \
 		and float(mosquito_attack_state.get("air_attack_release_t", 0.0)) > 0.9 \

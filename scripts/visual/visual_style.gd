@@ -145,8 +145,8 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 			)
 	if airborne:
 		var height_ratio := clampf(air_lift_px / maxf(radius, 1.0), 0.0, 2.4)
-		var shadow_alpha := clampf(0.32 - height_ratio * 0.07 + low_window_t * 0.18, 0.12, 0.46)
-		var shadow_radius := visual_radius * clampf(0.82 + height_ratio * 0.08 + low_window_t * 0.18, 0.75, 1.22)
+		var shadow_alpha := clampf(float(anim.get("height_shadow_alpha", 0.32 - height_ratio * 0.07 + low_window_t * 0.18)), 0.12, 0.5)
+		var shadow_radius := visual_radius * clampf(float(anim.get("height_shadow_radius_mult", 0.82 + height_ratio * 0.08 + low_window_t * 0.18)), 0.75, 1.3)
 		canvas.draw_set_transform(shake_offset, 0.0, Vector2.ONE)
 		canvas.draw_circle(Vector2(0.0, visual_radius * 0.55), shadow_radius, _with_alpha(Color(0.0, 0.0, 0.0, shadow_alpha), alpha))
 		if takeoff_flap_t > 0.0:
