@@ -235,11 +235,19 @@ func _configure_unified_map() -> void:
 	wave_minion_offsets = [Vector2(0.0, -8.0 * unit), Vector2.ZERO, Vector2(0.0, 8.0 * unit)]
 	objective_position = Vector2.ZERO
 	objective_radius = 9.0 * unit
-	hut_positions = {
+	hut_positions = _build_unified_hut_positions(unit)
+	food_spawn_points = _build_unified_food_spawns()
+
+func _build_unified_hut_positions(unit: float) -> Dictionary:
+	if mode == "1v1":
+		return {
+			0: [Vector2(-198.0 * unit, 0.0)],
+			1: [Vector2(198.0 * unit, 0.0)]
+		}
+	return {
 		0: [Vector2(-198.0 * unit, -34.0 * unit), Vector2(-198.0 * unit, 34.0 * unit)],
 		1: [Vector2(198.0 * unit, -34.0 * unit), Vector2(198.0 * unit, 34.0 * unit)]
 	}
-	food_spawn_points = _build_unified_food_spawns()
 
 func _configure_3v3() -> void:
 	var unit := SimConstants.UNIT_PX

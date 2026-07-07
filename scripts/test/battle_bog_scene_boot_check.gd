@@ -11,9 +11,9 @@ func _run() -> void:
 	var failures: Array[String] = []
 	var main_ok: bool = await _check_main_menu(failures)
 	var select_ok: bool = await _check_character_select(failures)
-	var arena_1v1_ok: bool = await _check_arena_mode("1v1", 3, 3, failures)
-	var arena_3v3_ok: bool = await _check_arena_mode("3v3", 0, 5, failures)
-	var hero_lab_ok: bool = await _check_arena_mode("Hero Lab", 0, 1, failures)
+	var arena_1v1_ok: bool = await _check_arena_mode("1v1", 3, 3, 2, failures)
+	var arena_3v3_ok: bool = await _check_arena_mode("3v3", 0, 5, 4, failures)
+	var hero_lab_ok: bool = await _check_arena_mode("Hero Lab", 0, 1, 4, failures)
 	var passed := main_ok and select_ok and arena_1v1_ok and arena_3v3_ok and hero_lab_ok
 
 	print("scene_boot main=%s select=%s arena_1v1=%s arena_3v3=%s hero_lab=%s" % [
@@ -71,7 +71,7 @@ func _check_character_select(failures: Array[String]) -> bool:
 		])
 	return ok
 
-func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_count: int, failures: Array[String]) -> bool:
+func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_count: int, expected_hut_count: int, failures: Array[String]) -> bool:
 	var config := get_root().get_node_or_null("GameConfig")
 	if config != null:
 		config.selected_mode = mode
@@ -92,12 +92,13 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 	var camera: Camera2D = scene.get("camera")
 	var status_label: Label = scene.get("status_label")
 
-	var ok := squad.size() == expected_squad_size and bots.size() == expected_bot_count and cores.size() == 2 and huts.size() > 0 and player != null and camera != null and status_label != null
+	var ok := squad.size() == expected_squad_size and bots.size() == expected_bot_count and cores.size() == 2 and huts.size() == expected_hut_count and player != null and camera != null and status_label != null
 	if not ok:
-		failures.append("Arena %s expected squad=%d bots=%d cores=2 huts>0 player/camera/status; got squad=%d bots=%d cores=%d huts=%d player=%s camera=%s status=%s" % [
+		failures.append("Arena %s expected squad=%d bots=%d cores=2 huts=%d player/camera/status; got squad=%d bots=%d cores=%d huts=%d player=%s camera=%s status=%s" % [
 			mode,
 			expected_squad_size,
 			expected_bot_count,
+			expected_hut_count,
 			squad.size(),
 			bots.size(),
 			cores.size(),

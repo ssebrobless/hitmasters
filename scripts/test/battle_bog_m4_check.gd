@@ -36,13 +36,22 @@ class StubArena extends Node2D:
 		return null
 
 func _initialize() -> void:
-	# Terrain declares shared-map hut anchors: 2/side in both 3v3 and 1v1.
+	# Terrain declares shared-map hut anchors: 2/side in 3v3, 1 centered
+	# lane/side in M8 1v1 tuning.
 	var terrain := TerrainMapScript.new()
 	var unit := SimConstants.UNIT_PX
 	terrain.configure("3v3")
-	var huts_3v3: bool = terrain.hut_positions[0].size() == 2 and terrain.hut_positions[1].size() == 2
+	var huts_3v3: bool = terrain.hut_positions[0].size() == 2 \
+		and terrain.hut_positions[1].size() == 2 \
+		and terrain.hut_positions[0][0] / unit == Vector2(-198.0, -34.0) \
+		and terrain.hut_positions[0][1] / unit == Vector2(-198.0, 34.0) \
+		and terrain.hut_positions[1][0] / unit == Vector2(198.0, -34.0) \
+		and terrain.hut_positions[1][1] / unit == Vector2(198.0, 34.0)
 	terrain.configure("1v1")
-	var huts_1v1: bool = terrain.hut_positions[0].size() == 2 and terrain.hut_positions[1].size() == 2
+	var huts_1v1: bool = terrain.hut_positions[0].size() == 1 \
+		and terrain.hut_positions[1].size() == 1 \
+		and terrain.hut_positions[0][0] / unit == Vector2(-198.0, 0.0) \
+		and terrain.hut_positions[1][0] / unit == Vector2(198.0, 0.0)
 
 	var stub := StubArena.new()
 	get_root().add_child(stub)
