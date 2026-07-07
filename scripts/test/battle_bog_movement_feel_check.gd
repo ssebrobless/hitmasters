@@ -780,7 +780,13 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(turtle_water_state.get("beaver_swim_pose", false)) \
 		and not bool(turtle_water_state.get("mink_swim_pose", false)) \
 		and not bool(turtle_water_state.get("otter_swim_pose", false)) \
+		and not bool(turtle_water_state.get("surface_walk", false)) \
+		and not bool(turtle_water_state.get("submerged_shrew_pose", false)) \
+		and not bool(turtle_water_state.get("newt_swim_pose", false)) \
+		and not bool(turtle_water_state.get("leech_undulate_pose", false)) \
+		and not bool(turtle_water_state.get("water_slither_pose", false)) \
 		and not bool(turtle_water_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and not bool(turtle_water_state.get("alligator_water_cruise_pose", false)) \
 		and float(turtle_water_state.get("turtle_swim_intensity", 0.0)) > 0.25 \
 		and float(turtle_water_state.get("turtle_plod_intensity", 1.0)) <= 0.001
 	actor.velocity = Vector2.ZERO
@@ -798,8 +804,19 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(turtle_idle_state.get("mink_bound_pose", false)) \
 		and not bool(turtle_idle_state.get("otter_swim_pose", false)) \
 		and not bool(turtle_idle_state.get("otter_land_slide_pose", false)) \
+		and not bool(turtle_idle_state.get("surface_walk", false)) \
+		and not bool(turtle_idle_state.get("submerged_shrew_pose", false)) \
+		and not bool(turtle_idle_state.get("shrew_land_skitter_pose", false)) \
+		and not bool(turtle_idle_state.get("slick_crawl_pose", false)) \
+		and not bool(turtle_idle_state.get("newt_swim_pose", false)) \
+		and not bool(turtle_idle_state.get("leech_inchworm_pose", false)) \
+		and not bool(turtle_idle_state.get("leech_undulate_pose", false)) \
+		and not bool(turtle_idle_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(turtle_idle_state.get("water_slither_pose", false)) \
 		and not bool(turtle_idle_state.get("crayfish_scuttle_pose", false)) \
 		and not bool(turtle_idle_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and not bool(turtle_idle_state.get("high_walk_pose", false)) \
+		and not bool(turtle_idle_state.get("alligator_water_cruise_pose", false)) \
 		and float(turtle_idle_state.get("turtle_swim_intensity", 1.0)) <= 0.001 \
 		and float(turtle_idle_state.get("turtle_plod_intensity", 1.0)) <= 0.001
 	actor.current_environment_profile = {"surface": "land"}
@@ -813,11 +830,19 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(turtle_land_state.get("beaver_lumber_pose", false)) \
 		and not bool(turtle_land_state.get("mink_bound_pose", false)) \
 		and not bool(turtle_land_state.get("otter_land_slide_pose", false)) \
+		and not bool(turtle_land_state.get("shrew_land_skitter_pose", false)) \
+		and not bool(turtle_land_state.get("slick_crawl_pose", false)) \
+		and not bool(turtle_land_state.get("newt_swim_pose", false)) \
+		and not bool(turtle_land_state.get("leech_inchworm_pose", false)) \
+		and not bool(turtle_land_state.get("leech_undulate_pose", false)) \
+		and not bool(turtle_land_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(turtle_land_state.get("water_slither_pose", false)) \
 		and not bool(turtle_land_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(turtle_land_state.get("high_walk_pose", false)) \
 		and float(turtle_land_state.get("turtle_plod_intensity", 0.0)) > 0.25 \
 		and float(turtle_land_state.get("turtle_swim_intensity", 1.0)) <= 0.001
 	if not turtle_swim or not turtle_idle_clear or not turtle_plod:
-		failures.append("moving snapping turtle should expose heavy-shell water paddle and land plod without tiny turtle, duck, mammal, or crustacean overlap, then clear when idle; water=%s idle=%s land=%s state=%s/%s/%s" % [
+		failures.append("moving snapping turtle should expose heavy-shell water paddle and land plod without tiny turtle, duck, mammal, shrew, newt, leech, snake, gator, or crustacean overlap, then clear when idle; water=%s idle=%s land=%s state=%s/%s/%s" % [
 			str(turtle_swim),
 			str(turtle_idle_clear),
 			str(turtle_plod),
