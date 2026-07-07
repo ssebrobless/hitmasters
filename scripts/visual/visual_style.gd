@@ -1064,6 +1064,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 			var v_start := -forward * radius * 0.42 + side * wake_side * radius * 0.22
 			canvas.draw_line(v_start, v_start - forward * radius * (0.74 + duck_paddle_intensity * 0.18) + side * wake_side * radius * 0.34, Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.72), maxf(radius * 0.055, 1.0))
 			canvas.draw_arc(v_start + side * wake_side * radius * 0.18, radius * (0.16 + 0.04 * duck_paddle_intensity), -0.25, TAU * 0.62, 10, Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.66), maxf(radius * 0.035, 1.0))
+			canvas.draw_circle(v_start + side * wake_side * radius * 0.14, maxf(radius * (0.04 + 0.014 * duck_paddle_intensity), 1.0), Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.74))
 		canvas.draw_line(-forward * radius * 0.8, -forward * radius * (1.45 + duck_paddle_intensity * 0.16), Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.75), maxf(radius * 0.08, 1.3))
 	if duck_waddle:
 		var dust_color := Color(0.46, 0.36, 0.22, 0.16 + duck_waddle_intensity * 0.08)
@@ -1071,6 +1072,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 			var dust_center := -forward * radius * 0.46 + side * dust_side * radius * (0.42 + 0.08 * duck_waddle_intensity)
 			canvas.draw_arc(dust_center, radius * (0.22 + 0.04 * duck_waddle_intensity), PI * 0.06, PI * 0.9, 8, dust_color, maxf(radius * 0.045, 1.0))
 			canvas.draw_line(dust_center + forward * radius * 0.04, dust_center + forward * radius * 0.22 + side * dust_side * radius * 0.12, Color(dust_color.r, dust_color.g, dust_color.b, dust_color.a * 0.78), maxf(radius * 0.035, 1.0))
+			canvas.draw_circle(dust_center - forward * radius * 0.02 + side * dust_side * radius * 0.12, maxf(radius * 0.035, 1.0), Color(dust_color.r, dust_color.g, dust_color.b, dust_color.a * 0.82))
 	if heron_stalk:
 		var stalk_dust := Color(0.42, 0.36, 0.26, 0.12 + heron_stalk_intensity * 0.07)
 		for dust_side: float in [-1.0, 1.0]:
@@ -1128,6 +1130,8 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 				var foot := -forward * radius * 0.44 + side * leg_side * radius * (0.34 + 0.08 * duck_waddle_intensity) + forward * waddle_step
 				canvas.draw_line(hip, foot, beak.darkened(0.25), 1.5)
 				canvas.draw_line(foot, foot - forward * radius * (0.16 + 0.05 * duck_waddle_intensity), beak.darkened(0.1), 1.2)
+				canvas.draw_line(foot, foot - forward * radius * 0.08 + side * leg_side * radius * 0.12, beak.darkened(0.08), 1.1)
+				canvas.draw_line(foot, foot - forward * radius * 0.08 - side * leg_side * radius * 0.08, beak.darkened(0.08), 1.1)
 				canvas.draw_arc(foot - forward * radius * 0.08, radius * (0.16 + 0.04 * duck_waddle_intensity), PI * 0.08, PI * 0.9, 8, Color(0.46, 0.36, 0.22, 0.18 + 0.08 * duck_waddle_intensity), maxf(radius * 0.045, 1.0))
 			else:
 				canvas.draw_line(side * leg_side * radius * 0.2, side * leg_side * radius * 0.24 + forward * leg_step - forward * radius * 0.05, beak.darkened(0.2), 1.5)
