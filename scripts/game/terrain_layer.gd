@@ -19,6 +19,9 @@ func setup(next_terrain_map: RefCounted) -> void:
 func is_static_cached_layer() -> bool:
 	return terrain_map != null and z_index == -10
 
+func has_shoreline_treatment() -> bool:
+	return true
+
 func _draw() -> void:
 	if terrain_map == null:
 		return
@@ -31,7 +34,8 @@ func _draw() -> void:
 	_draw_land_bridges()
 	_draw_environmental_obstacles()
 	_draw_perch_anchors()
-	draw_rect(arena_rect, Color(0.28, 0.33, 0.24), false, 6.0)
+	draw_rect(arena_rect.grow(2.0), VisualGrammar.BOG_MUD_DARK, false, 5.0)
+	draw_rect(arena_rect, VisualGrammar.BOG_MOSS.darkened(0.14), false, 2.0)
 
 func _draw_zone_detail(zone: String, rect: Rect2) -> void:
 	var rng := RandomNumberGenerator.new()
@@ -91,16 +95,51 @@ func _draw_zone_detail(zone: String, rect: Rect2) -> void:
 func _draw_zone_edge(zone: String, rect: Rect2) -> void:
 	match zone:
 		TerrainMapScript.WATER:
-			draw_rect(rect.grow(1.0), VisualGrammar.WATER_FOAM, false, 2.0)
-			draw_rect(rect.grow(-3.0), Color(VisualGrammar.WATER_DEEP.r * 0.75, VisualGrammar.WATER_DEEP.g * 0.8, VisualGrammar.WATER_DEEP.b * 0.9, 0.5), false, 1.5)
+			_draw_water_shore(rect)
 		TerrainMapScript.SHALLOW:
-			_draw_stippled_rect(rect.grow(-2.0), Color(VisualGrammar.BOG_REED.r, VisualGrammar.BOG_REED.g, VisualGrammar.BOG_REED.b, 0.55), 18.0)
-			draw_rect(rect.grow(-5.0), Color(VisualGrammar.WATER_SHALLOW.r + 0.03, VisualGrammar.WATER_SHALLOW.g + 0.03, VisualGrammar.WATER_SHALLOW.b + 0.02, 0.22), false, 1.5)
+			_draw_shallow_edge(rect)
 		TerrainMapScript.COVER:
 			draw_rect(rect.grow(2.0), VisualGrammar.BOG_LAND_DARK.darkened(0.55), false, 3.0)
 		TerrainMapScript.HABITAT_BLUE, TerrainMapScript.HABITAT_RED:
 			var color := Color(0.38, 0.68, 1.0, 0.65) if zone == TerrainMapScript.HABITAT_BLUE else Color(1.0, 0.48, 0.38, 0.65)
 			draw_rect(rect.grow(-7.0), color, false, 2.0)
+
+func _draw_water_shore(rect: Rect2) -> void:
+	draw_rect(rect.grow(5.0), Color(VisualGrammar.BOG_MUD_DARK.r, VisualGrammar.BOG_MUD_DARK.g, VisualGrammar.BOG_MUD_DARK.b, 0.58), false, 4.0)
+	_draw_wobbled_rect_edge(rect.grow(1.0), VisualGrammar.WATER_FOAM, 1.7, 1.6, 24.0)
+	var dark := Color(VisualGrammar.WATER_DEEP.r * 0.72, VisualGrammar.WATER_DEEP.g * 0.78, VisualGrammar.WATER_DEEP.b * 0.9, 0.42)
+	for inset in [7.0, 15.0, 25.0]:
+		if rect.size.x > inset * 2.0 and rect.size.y > inset * 2.0:
+			draw_rect(rect.grow(-inset), dark, false, 1.2)
+			dark.a *= 0.72
+
+func _draw_shallow_edge(rect: Rect2) -> void:
+	_draw_stippled_rect(rect.grow(-2.0), Color(VisualGrammar.BOG_REED.r, VisualGrammar.BOG_REED.g, VisualGrammar.BOG_REED.b, 0.5), 18.0)
+	draw_rect(rect.grow(-5.0), Color(VisualGrammar.WATER_SHALLOW.r + 0.03, VisualGrammar.WATER_SHALLOW.g + 0.03, VisualGrammar.WATER_SHALLOW.b + 0.02, 0.22), false, 1.5)
+	var corner_radius := minf(rect.size.x, rect.size.y) * 0.18
+	for corner in [rect.position, Vector2(rect.end.x, rect.position.y), rect.end, Vector2(rect.position.x, rect.end.y)]:
+		_draw_reed_clump(corner, maxf(corner_radius, 5.0))
+
+func _draw_reed_clump(origin: Vector2, scale: float) -> void:
+	draw_line(origin, origin + Vector2(-scale * 0.08, -scale * 0.65), VisualGrammar.BOG_REED, 1.6)
+	draw_line(origin + Vector2(scale * 0.15, scale * 0.04), origin + Vector2(scale * 0.2, -scale * 0.52), VisualGrammar.BOG_REED.darkened(0.14), 1.4)
+	draw_line(origin + Vector2(-scale * 0.14, scale * 0.08), origin + Vector2(-scale * 0.26, -scale * 0.4), VisualGrammar.BOG_MOSS.darkened(0.08), 1.2)
+
+func _draw_wobbled_rect_edge(rect: Rect2, color: Color, width: float, amplitude: float, step: float) -> void:
+	_draw_wobbled_edge(rect.position, Vector2(rect.end.x, rect.position.y), Vector2(0.0, -1.0), color, width, amplitude, step, 0.0)
+	_draw_wobbled_edge(Vector2(rect.end.x, rect.position.y), rect.end, Vector2(1.0, 0.0), color, width, amplitude, step, 1.4)
+	_draw_wobbled_edge(rect.end, Vector2(rect.position.x, rect.end.y), Vector2(0.0, 1.0), color, width, amplitude, step, 2.8)
+	_draw_wobbled_edge(Vector2(rect.position.x, rect.end.y), rect.position, Vector2(-1.0, 0.0), color, width, amplitude, step, 4.2)
+
+func _draw_wobbled_edge(start: Vector2, end: Vector2, normal: Vector2, color: Color, width: float, amplitude: float, step: float, phase: float) -> void:
+	var length := start.distance_to(end)
+	var segments := maxi(2, int(ceilf(length / step)))
+	var points := PackedVector2Array()
+	for i in segments + 1:
+		var t := float(i) / float(segments)
+		var wobble := sin(t * TAU * maxf(1.0, length / 96.0) + phase) * amplitude
+		points.append(start.lerp(end, t) + normal * wobble)
+	draw_polyline(points, color, width)
 
 func _draw_stippled_rect(rect: Rect2, color: Color, step: float) -> void:
 	var x := rect.position.x
