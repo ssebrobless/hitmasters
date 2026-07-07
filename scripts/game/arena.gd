@@ -2432,15 +2432,27 @@ func _get_cooldown_text() -> String:
 		return ""
 	if player.has_method("is_alive") and not player.is_alive():
 		return "RESPAWNING IN %.1fs" % maxf(player.respawn_timer, 0.0)
-	var active_line := "Primary %s | Q %s | E %s | Swim %d%% | Flight %d%% | %s" % [
+	var active_line := "Primary %s | Q %s | E %s | Swim %d%% | Flight %d%% | Height %s | %s" % [
 		_format_cooldown(player.primary_timer),
 		_format_cooldown(player.q_timer),
 		_format_cooldown(player.e_timer),
 		int(player.get_swim_ratio() * 100.0),
 		int(player.get_flight_ratio() * 100.0),
+		_format_player_height_read(player),
 		"LATCH" if player.has_latch() else "free"
 	]
 	return active_line
+
+func _format_player_height_read(actor: Node) -> String:
+	if actor == null or not is_instance_valid(actor) or not actor.has_method("get_render_motion_state"):
+		return "--"
+	var state: Dictionary = actor.get_render_motion_state()
+	var band := String(state.get("height_band", "--")).capitalize()
+	if band.is_empty():
+		band = "--"
+	if bool(state.get("air_attack_readable", false)) or bool(state.get("low_window_active", false)):
+		return "%s LOW" % band
+	return band
 
 func _get_squad_rail_text() -> String:
 	var command_text := "FARM/SAFE"

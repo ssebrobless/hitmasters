@@ -41,6 +41,7 @@ func _run() -> void:
 	_check_bird_transition_cues(arena, failures)
 	_check_predator_latch_cues(arena, failures)
 	_check_visual_height_profiles(arena, failures)
+	_check_live_height_hud_read(arena, failures)
 
 	print("movement_feel failures=%d" % failures.size())
 	for failure in failures:
@@ -2182,6 +2183,31 @@ func _check_visual_height_profiles(arena: Node, failures: Array[String]) -> void
 			str(bog_truth_ring),
 			str(roster_truth_ring),
 			str(roster_profiled)
+		])
+
+func _check_live_height_hud_read(arena: Node, failures: Array[String]) -> void:
+	var actor: Node = arena.player
+	actor.apply_creature("snapping_turtle")
+	actor.state = CreatureStateScript.State.NORMAL
+	actor.low_window_timer = 0.0
+	actor.anim_attack_timer = 0.0
+	var grounded_text: String = arena._get_cooldown_text()
+	actor.apply_creature("owl")
+	actor.state = CreatureStateScript.State.AIRBORNE
+	actor.low_window_timer = 0.0
+	actor.anim_attack_timer = 0.0
+	var airborne_text: String = arena._get_cooldown_text()
+	actor.open_low_window(0.7)
+	var low_text: String = arena._get_cooldown_text()
+	var ok := grounded_text.contains("Height Body") \
+		and airborne_text.contains("Height High") \
+		and not airborne_text.contains("Height High LOW") \
+		and low_text.contains("Height Body LOW")
+	if not ok:
+		failures.append("live cooldown HUD should expose active creature height band and low airborne attack window; grounded=%s airborne=%s low=%s" % [
+			grounded_text,
+			airborne_text,
+			low_text
 		])
 
 func _check_bird_transition_cues(arena: Node, failures: Array[String]) -> void:
