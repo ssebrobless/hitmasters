@@ -149,7 +149,9 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and _row_has_stat(player_rows, "Duck", "hut_damage", 799.0) \
 		and _row_has_stat(player_rows, "Red", "breeds_denied", 1) \
 		and _row_has_score_component(player_rows, "Duck", "hut_damage", 79.0) \
-		and _row_has_score_component(player_rows, "Red", "breeds_denied", 80.0)
+		and _row_has_score_component(player_rows, "Red", "breeds_denied", 80.0) \
+		and _row_has_ranks(player_rows, "Duck", 1, 1) \
+		and _row_has_ranks(player_rows, "Red", 2, 1)
 	var scoreboard_ok := scoreboard_text.contains("Flow") \
 		and scoreboard_text.contains("Stocks 8/9") \
 		and scoreboard_text.contains("Lost1") \
@@ -192,6 +194,8 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and int(log_deltas.get("breed_deny_delta", 0)) == -1 \
 		and _row_has_score_component(log_player_rows, "Duck", "hut_damage", 79.0) \
 		and _row_has_score_component(log_player_rows, "Red", "breeds_denied", 80.0) \
+		and _row_has_ranks(log_player_rows, "Duck", 1, 1) \
+		and _row_has_ranks(log_player_rows, "Red", 2, 1) \
 		and log_flags.has("blue_objective_pressure") \
 		and log_flags.has("blue_breeding_tempo") \
 		and log_flags.has("red_raid_pressure") \
@@ -269,6 +273,14 @@ func _row_has_score_component(rows: Array, name_part: String, key: String, minim
 		if float(row.get("summary_score", 0.0)) <= 0.0:
 			return false
 		return _score_breakdown_has(row, key, minimum_score)
+	return false
+
+func _row_has_ranks(rows: Array, name_part: String, summary_rank: int, team_rank: int) -> bool:
+	for row: Dictionary in rows:
+		if not String(row.get("name", "")).contains(name_part):
+			continue
+		return int(row.get("summary_rank", -1)) == summary_rank \
+			and int(row.get("team_summary_rank", -1)) == team_rank
 	return false
 
 func _read_summary_log(path: String) -> Dictionary:

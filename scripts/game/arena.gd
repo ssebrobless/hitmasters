@@ -2885,6 +2885,7 @@ func _player_match_summary_rows() -> Array[Dictionary]:
 	for key in actor_stats.keys():
 		var stats: Dictionary = actor_stats[key]
 		rows.append(_player_match_summary_entry(stats))
+	_rank_player_summary_rows(rows)
 	rows.sort_custom(Callable(self, "_sort_player_summary_rows"))
 	return rows
 
@@ -2893,6 +2894,30 @@ func _player_match_summary_entry(stats: Dictionary) -> Dictionary:
 	entry["summary_score"] = snappedf(_player_summary_score(entry), 0.1)
 	entry["summary_score_breakdown"] = _player_summary_score_breakdown(entry)
 	return entry
+
+func _rank_player_summary_rows(rows: Array[Dictionary]) -> void:
+	var ranked := rows.duplicate()
+	ranked.sort_custom(Callable(self, "_sort_player_summary_rank_rows"))
+	var team_ranks := {}
+	var match_rank := 1
+	for row: Dictionary in ranked:
+		var team := int(row.get("team", -1))
+		var team_rank := int(team_ranks.get(team, 0)) + 1
+		team_ranks[team] = team_rank
+		row["summary_rank"] = match_rank
+		row["team_summary_rank"] = team_rank
+		match_rank += 1
+
+func _sort_player_summary_rank_rows(a: Dictionary, b: Dictionary) -> bool:
+	var score_a := float(a.get("summary_score", 0.0))
+	var score_b := float(b.get("summary_score", 0.0))
+	if absf(score_a - score_b) > 0.001:
+		return score_a > score_b
+	var team_a := int(a.get("team", 0))
+	var team_b := int(b.get("team", 0))
+	if team_a != team_b:
+		return team_a < team_b
+	return String(a.get("name", "")) < String(b.get("name", ""))
 
 func _sort_player_summary_rows(a: Dictionary, b: Dictionary) -> bool:
 	var team_a := int(a.get("team", 0))
