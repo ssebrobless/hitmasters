@@ -645,26 +645,53 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 			str(shrew_idle_state)
 		])
 	actor.apply_creature("newt")
+	var newt_non_newt_motion_flags: Array[String] = [
+		"leech_inchworm_pose",
+		"leech_undulate_pose",
+		"water_snake_land_slither_pose",
+		"water_snake_mud_slither",
+		"water_slither_pose",
+		"crayfish_scuttle_pose",
+		"crayfish_tail_flick_swim_pose",
+		"shrew_land_skitter_pose",
+		"surface_walk",
+		"submerged_shrew_pose",
+		"bog_turtle_creep_pose",
+		"bog_turtle_paddle_pose",
+		"turtle_plod_pose",
+		"turtle_swim_pose",
+		"duck_waddle_pose",
+		"duck_paddle_pose",
+		"beaver_lumber_pose",
+		"beaver_swim_pose",
+		"mink_bound_pose",
+		"mink_swim_pose",
+		"mink_choke_pose",
+		"otter_land_slide_pose",
+		"otter_swim_pose",
+		"otter_pack_latch_pose",
+		"high_walk_pose",
+		"alligator_water_cruise_pose",
+		"hop_pose",
+		"chorus_hop_pose",
+		"cane_squat_hop_pose",
+		"rooted_pose",
+		"owl_glide_pose",
+		"owl_silent_flight_pose",
+		"kingfisher_dart_pose",
+		"wading_pose",
+		"heron_stalk_pose",
+		"mosquito_swarm_pose",
+		"firefly_hover_pose",
+		"spider_skitter_pose"
+	]
 	actor.current_environment_profile = {"surface": "land"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
 	var newt_land_state: Dictionary = actor.get_render_motion_state()
 	var newt_crawl: bool = bool(newt_land_state.get("slick_crawl_pose", false)) \
 		and not bool(newt_land_state.get("newt_swim_pose", false)) \
-		and not bool(newt_land_state.get("leech_inchworm_pose", false)) \
-		and not bool(newt_land_state.get("leech_undulate_pose", false)) \
-		and not bool(newt_land_state.get("water_slither_pose", false)) \
-		and not bool(newt_land_state.get("water_snake_land_slither_pose", false)) \
-		and not bool(newt_land_state.get("crayfish_scuttle_pose", false)) \
-		and not bool(newt_land_state.get("crayfish_tail_flick_swim_pose", false)) \
-		and not bool(newt_land_state.get("shrew_land_skitter_pose", false)) \
-		and not bool(newt_land_state.get("bog_turtle_creep_pose", false)) \
-		and not bool(newt_land_state.get("turtle_plod_pose", false)) \
-		and not bool(newt_land_state.get("duck_waddle_pose", false)) \
-		and not bool(newt_land_state.get("beaver_lumber_pose", false)) \
-		and not bool(newt_land_state.get("mink_bound_pose", false)) \
-		and not bool(newt_land_state.get("otter_land_slide_pose", false)) \
-		and not bool(newt_land_state.get("high_walk_pose", false)) \
+		and _none_render_flags(newt_land_state, newt_non_newt_motion_flags) \
 		and float(newt_land_state.get("slick_crawl_intensity", 0.0)) > 0.25 \
 		and float(newt_land_state.get("newt_swim_intensity", 1.0)) <= 0.001
 	actor.current_environment_profile = {"surface": "water"}
@@ -674,21 +701,7 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var newt_water_state: Dictionary = actor.get_render_motion_state()
 	var newt_swim: bool = bool(newt_water_state.get("newt_swim_pose", false)) \
 		and not bool(newt_water_state.get("slick_crawl_pose", false)) \
-		and not bool(newt_water_state.get("leech_inchworm_pose", false)) \
-		and not bool(newt_water_state.get("leech_undulate_pose", false)) \
-		and not bool(newt_water_state.get("water_slither_pose", false)) \
-		and not bool(newt_water_state.get("water_snake_land_slither_pose", false)) \
-		and not bool(newt_water_state.get("crayfish_scuttle_pose", false)) \
-		and not bool(newt_water_state.get("crayfish_tail_flick_swim_pose", false)) \
-		and not bool(newt_water_state.get("surface_walk", false)) \
-		and not bool(newt_water_state.get("submerged_shrew_pose", false)) \
-		and not bool(newt_water_state.get("bog_turtle_paddle_pose", false)) \
-		and not bool(newt_water_state.get("turtle_swim_pose", false)) \
-		and not bool(newt_water_state.get("duck_paddle_pose", false)) \
-		and not bool(newt_water_state.get("beaver_swim_pose", false)) \
-		and not bool(newt_water_state.get("mink_swim_pose", false)) \
-		and not bool(newt_water_state.get("otter_swim_pose", false)) \
-		and not bool(newt_water_state.get("alligator_water_cruise_pose", false)) \
+		and _none_render_flags(newt_water_state, newt_non_newt_motion_flags) \
 		and float(newt_water_state.get("newt_swim_intensity", 0.0)) > 0.25 \
 		and float(newt_water_state.get("slick_crawl_intensity", 1.0)) <= 0.001 \
 		and bool(newt_water_state.get("tail_lost_pose", false))
@@ -698,34 +711,12 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var newt_idle_state: Dictionary = actor.get_render_motion_state()
 	var newt_idle_clear: bool = not bool(newt_idle_state.get("slick_crawl_pose", false)) \
 		and not bool(newt_idle_state.get("newt_swim_pose", false)) \
-		and not bool(newt_idle_state.get("leech_inchworm_pose", false)) \
-		and not bool(newt_idle_state.get("leech_undulate_pose", false)) \
-		and not bool(newt_idle_state.get("water_slither_pose", false)) \
-		and not bool(newt_idle_state.get("water_snake_land_slither_pose", false)) \
-		and not bool(newt_idle_state.get("crayfish_scuttle_pose", false)) \
-		and not bool(newt_idle_state.get("crayfish_tail_flick_swim_pose", false)) \
-		and not bool(newt_idle_state.get("shrew_land_skitter_pose", false)) \
-		and not bool(newt_idle_state.get("surface_walk", false)) \
-		and not bool(newt_idle_state.get("submerged_shrew_pose", false)) \
-		and not bool(newt_idle_state.get("bog_turtle_creep_pose", false)) \
-		and not bool(newt_idle_state.get("bog_turtle_paddle_pose", false)) \
-		and not bool(newt_idle_state.get("turtle_plod_pose", false)) \
-		and not bool(newt_idle_state.get("turtle_swim_pose", false)) \
-		and not bool(newt_idle_state.get("duck_waddle_pose", false)) \
-		and not bool(newt_idle_state.get("duck_paddle_pose", false)) \
-		and not bool(newt_idle_state.get("beaver_lumber_pose", false)) \
-		and not bool(newt_idle_state.get("beaver_swim_pose", false)) \
-		and not bool(newt_idle_state.get("mink_bound_pose", false)) \
-		and not bool(newt_idle_state.get("mink_swim_pose", false)) \
-		and not bool(newt_idle_state.get("otter_land_slide_pose", false)) \
-		and not bool(newt_idle_state.get("otter_swim_pose", false)) \
-		and not bool(newt_idle_state.get("high_walk_pose", false)) \
-		and not bool(newt_idle_state.get("alligator_water_cruise_pose", false)) \
+		and _none_render_flags(newt_idle_state, newt_non_newt_motion_flags) \
 		and float(newt_idle_state.get("slick_crawl_intensity", 1.0)) <= 0.001 \
 		and float(newt_idle_state.get("newt_swim_intensity", 1.0)) <= 0.001 \
 		and not bool(newt_idle_state.get("tail_lost_pose", false))
 	if not newt_crawl or not newt_swim or not newt_idle_clear:
-		failures.append("moving newt should expose slick land crawl and tail-led water undulation without leech, snake, crayfish, turtle, bird, mammal, shrew, or gator overlap, preserve tail-loss read, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
+		failures.append("moving newt should expose slick land crawl and tail-led water undulation without frog, leech, snake, crayfish, turtle, duck, mammal, shrew, gator, bird, swarm, hover, or spider overlap, preserve tail-loss read, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
 			str(newt_crawl),
 			str(newt_swim),
 			str(newt_idle_clear),

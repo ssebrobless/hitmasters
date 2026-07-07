@@ -705,6 +705,7 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			var wake_start := -forward * radius * 0.5 + side * wake_side * radius * 0.26
 			canvas.draw_line(wake_start, wake_start - forward * radius * (0.62 + 0.2 * newt_swim_intensity) + side * wake_side * radius * 0.14, newt_water, maxf(radius * 0.045, 1.0))
 			canvas.draw_arc(wake_start + forward * radius * 0.08, radius * (0.16 + 0.05 * newt_swim_intensity), -0.28, TAU * 0.62, 10, Color(newt_water.r, newt_water.g, newt_water.b, newt_water.a * 0.72), maxf(radius * 0.035, 1.0))
+			canvas.draw_circle(wake_start - forward * radius * (0.42 + 0.12 * newt_swim_intensity), maxf(radius * (0.032 + 0.014 * newt_swim_intensity), 1.0), newt_water.lightened(0.28))
 	if submerged_shrew and submerged_shrew_intensity > 0.0:
 		canvas.draw_line(-forward * radius * 0.2, -forward * radius * (0.86 + 0.18 * submerged_shrew_intensity), Color(submerged_tint.r, submerged_tint.g, submerged_tint.b, submerged_tint.a * 0.72), maxf(radius * 0.045, 1.0))
 		for dive_side: float in [-1.0, 1.0]:
@@ -783,6 +784,7 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 					for wake_side: float in [-1.0, 1.0]:
 						var wake_start := tail_base + tail_direction * radius * 0.82 + side * wake_side * radius * 0.12
 						canvas.draw_line(wake_start, wake_start + tail_direction * radius * (0.46 + 0.2 * newt_swim_intensity) + side * wake_side * radius * 0.16, newt_water, maxf(radius * 0.05, 1.0))
+						canvas.draw_circle(wake_start + tail_direction * radius * (0.32 + 0.12 * newt_swim_intensity), maxf(radius * (0.035 + 0.014 * newt_swim_intensity), 1.0), newt_water.lightened(0.25))
 				canvas.draw_colored_polygon(PackedVector2Array([
 					tail_base + side * radius * 0.16,
 					tail_base + tail_direction * radius * (1.3 + 0.1 * newt_swim_intensity),
@@ -852,6 +854,7 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			var track_start := -forward * radius * 0.22 + side * crawl_side * radius * 0.5
 			canvas.draw_line(track_start, track_start - forward * radius * (0.52 + 0.14 * slick_crawl_intensity) + side * crawl_side * radius * 0.12, Color(slick_tint.r, slick_tint.g, slick_tint.b, slick_tint.a * 0.72), maxf(radius * 0.045, 1.0))
 			canvas.draw_circle(track_start + forward * radius * 0.12, maxf(radius * (0.045 + 0.018 * slick_crawl_intensity), 1.0), Color(slick_tint.r, slick_tint.g, slick_tint.b, slick_tint.a * 0.66))
+			canvas.draw_circle(track_start - forward * radius * (0.3 + 0.08 * slick_crawl_intensity) + side * crawl_side * radius * 0.08, maxf(radius * (0.032 + 0.014 * slick_crawl_intensity), 1.0), Color(slick_tint.r, slick_tint.g, slick_tint.b, slick_tint.a * 0.58))
 
 	for i in 7:
 		canvas.draw_circle(spine[i], segment_radii[i] + 2.0, fur_dark)
