@@ -69,6 +69,7 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 	var deltas: Dictionary = summary.get("balance_deltas", {})
 	var flags: Array = summary.get("balance_flags", [])
 	var review_priority := int(summary.get("balance_review_priority", -1))
+	var review_focus: Array = summary.get("balance_review_focus", [])
 	var draft: Dictionary = summary.get("draft", {})
 	var selected_squad: Array = summary.get("selected_squad_ids", [])
 	var text: String = arena._get_match_summary("Blue")
@@ -104,7 +105,10 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and flags.has("blue_breeding_tempo") \
 		and flags.has("red_raid_pressure") \
 		and not flags.has("balanced_flow") \
-		and review_priority == 5
+		and review_priority == 5 \
+		and _focus_has(review_focus, "hut_damage_delta", "Blue", 800) \
+		and _focus_has(review_focus, "deposit_delta", "Blue", 2) \
+		and _focus_has(review_focus, "breed_deny_delta", "Red", 1)
 	var text_ok: bool = text.contains("Stocks lost 1/9") \
 		and text.contains("Deposits 2") \
 		and text.contains("Breeds 1/0 denied") \
@@ -120,6 +124,10 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and text.contains("Blue breeding tempo") \
 		and text.contains("Red raid pressure") \
 		and text.contains("Priority 5/5") \
+		and text.contains("Review focus:") \
+		and text.contains("Blue hut damage +800") \
+		and text.contains("Blue deposits +2") \
+		and text.contains("Red denials +1") \
 		and text.contains("Top Blue:") \
 		and text.contains("Top Red:") \
 		and text.contains("Dep 1") \
@@ -144,6 +152,7 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 	var log_deltas: Dictionary = log_data.get("balance_deltas", {})
 	var log_flags: Array = log_data.get("balance_flags", [])
 	var log_review_priority := int(log_data.get("balance_review_priority", -1))
+	var log_review_focus: Array = log_data.get("balance_review_focus", [])
 	var log_draft: Dictionary = log_data.get("draft", {})
 	var log_squad: Array = log_data.get("selected_squad_ids", [])
 	var log_ok := bool(log_state.get("ok", false)) \
@@ -167,7 +176,10 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and log_flags.has("blue_breeding_tempo") \
 		and log_flags.has("red_raid_pressure") \
 		and not log_flags.has("balanced_flow") \
-		and log_review_priority == 5
+		and log_review_priority == 5 \
+		and _focus_has(log_review_focus, "hut_damage_delta", "Blue", 800) \
+		and _focus_has(log_review_focus, "deposit_delta", "Blue", 2) \
+		and _focus_has(log_review_focus, "breed_deny_delta", "Red", 1)
 
 	if not deposited or not denied or not data_ok or not text_ok or not player_rows_ok or not scoreboard_ok or not log_ok:
 		failures.append("M8 summary should report stocks, deposits, breeding, hut damage, core damage, player rows, live scoreboard flow, and a JSON match log; deposited=%s denied=%s data_ok=%s text_ok=%s player_rows_ok=%s scoreboard_ok=%s log_ok=%s summary=%s text=%s scoreboard=%s rows=%s log=%s" % [
@@ -204,6 +216,14 @@ func _row_has_stat(rows: Array, name_part: String, stat: String, minimum: Varian
 		if typeof(minimum) == TYPE_FLOAT:
 			return float(row.get(stat, 0.0)) >= float(minimum)
 		return int(row.get(stat, 0)) >= int(minimum)
+	return false
+
+func _focus_has(focus: Array, key: String, side: String, value: int) -> bool:
+	for entry: Dictionary in focus:
+		if String(entry.get("key", "")) == key \
+			and String(entry.get("side", "")) == side \
+			and int(entry.get("value", -1)) == value:
+			return true
 	return false
 
 func _read_summary_log(path: String) -> Dictionary:

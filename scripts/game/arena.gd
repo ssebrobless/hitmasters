@@ -2590,6 +2590,7 @@ func _get_match_summary(winner: String) -> String:
 	]
 	lines.append(_format_match_context_line())
 	lines.append(_format_balance_flags_line())
+	lines.append(_format_balance_focus_line())
 	var blue_top := _format_top_player_summary_line(BLUE)
 	if not blue_top.is_empty():
 		lines.append(blue_top)
@@ -2616,6 +2617,7 @@ func get_match_summary_data(winner := "", reason := "") -> Dictionary:
 		"balance_deltas": _match_balance_deltas(),
 		"balance_flags": _match_balance_flags(),
 		"balance_review_priority": _match_balance_review_priority(),
+		"balance_review_focus": _match_balance_review_focus(),
 		"players": _player_match_summary_rows()
 	}
 
@@ -2702,6 +2704,12 @@ func _format_balance_flags_line() -> String:
 	for flag in _match_balance_flags():
 		labels.append(_balance_flag_label(flag))
 	return "Review flags: %s | Priority %d/5" % [", ".join(labels), _match_balance_review_priority()]
+
+func _format_balance_focus_line() -> String:
+	var labels: Array[String] = []
+	for entry: Dictionary in _match_balance_review_focus():
+		labels.append(String(entry.get("label", "")))
+	return "Review focus: %s" % ", ".join(labels)
 
 func _balance_flag_label(flag: String) -> String:
 	match flag:
@@ -2829,6 +2837,38 @@ func _match_balance_review_priority() -> int:
 	if buff_stack_delta >= 2:
 		score += 1
 	return mini(score, 5)
+
+func _match_balance_review_focus() -> Array[Dictionary]:
+	var deltas := _match_balance_deltas()
+	var focus: Array[Dictionary] = []
+	_append_delta_focus(focus, "hut_damage_delta", float(deltas.get("hut_damage_delta", 0.0)), 250.0, "hut damage", true)
+	_append_delta_focus(focus, "core_damage_delta", float(deltas.get("core_damage_delta", 0.0)), 250.0, "core damage", true)
+	_append_delta_focus(focus, "stock_remaining_delta", float(deltas.get("stock_remaining_delta", 0)), 2.0, "stocks remaining")
+	_append_delta_focus(focus, "deposit_delta", float(deltas.get("deposit_delta", 0)), 2.0, "deposits")
+	_append_delta_focus(focus, "breed_complete_delta", float(deltas.get("breed_complete_delta", 0)), 2.0, "breeds completed")
+	_append_delta_focus(focus, "breed_deny_delta", float(deltas.get("breed_deny_delta", 0)), 1.0, "denials")
+	_append_delta_focus(focus, "buff_stack_delta", float(deltas.get("buff_stack_delta", 0)), 2.0, "buff stacks")
+	if focus.is_empty():
+		focus.append({
+			"key": "balanced_flow",
+			"side": "Even",
+			"value": 0,
+			"label": "Balanced flow"
+		})
+	return focus
+
+func _append_delta_focus(focus: Array[Dictionary], key: String, delta: float, threshold: float, label: String, whole_value := false) -> void:
+	if absf(delta) < threshold:
+		return
+	var side := "Blue" if delta > 0.0 else "Red"
+	var value := absf(delta)
+	var display_value := int(round(value)) if whole_value else int(value)
+	focus.append({
+		"key": key,
+		"side": side,
+		"value": display_value,
+		"label": "%s %s +%d" % [side, label, display_value]
+	})
 
 func _team_stock_totals(team: int) -> Dictionary:
 	var totals := {"remaining": 0, "max": 0}
