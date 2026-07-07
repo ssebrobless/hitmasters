@@ -116,14 +116,16 @@ func _initialize() -> void:
 	var core_push_ok := _check_push_core_after_hut_open(failures)
 	var objective_score_ok := _check_objective_over_low_value_blocker(failures)
 	var retreat_stability_ok := _check_low_health_retreat_hysteresis(failures)
-	var passed := retreat_ok and defend_ok and hut_push_ok and core_push_ok and objective_score_ok and retreat_stability_ok
-	print("bot_brain retreat=%s defend=%s hut_push=%s core_push=%s objective_score=%s retreat_stability=%s" % [
+	var target_cache_ok := _check_target_query_cache(failures)
+	var passed := retreat_ok and defend_ok and hut_push_ok and core_push_ok and objective_score_ok and retreat_stability_ok and target_cache_ok
+	print("bot_brain retreat=%s defend=%s hut_push=%s core_push=%s objective_score=%s retreat_stability=%s target_cache=%s" % [
 		str(retreat_ok),
 		str(defend_ok),
 		str(hut_push_ok),
 		str(core_push_ok),
 		str(objective_score_ok),
-		str(retreat_stability_ok)
+		str(retreat_stability_ok),
+		str(target_cache_ok)
 	])
 	for failure in failures:
 		push_error(failure)
@@ -231,5 +233,32 @@ func _check_low_health_retreat_hysteresis(failures: Array[String]) -> bool:
 			str(held_frame.move),
 			str(released_frame.move),
 			str(released_frame.aim)
+		])
+	return ok
+
+func _check_target_query_cache(failures: Array[String]) -> bool:
+	var arena := FakeArena.new()
+	get_root().add_child(arena)
+	var bot := arena.add_creature(0, Vector2.ZERO)
+	var first_enemy := arena.add_creature(1, Vector2(120.0, 0.0))
+	var second_enemy := arena.add_creature(1, Vector2(260.0, 0.0))
+	var brain := BotBrainScript.new()
+	var first_frame := brain.build_frame(bot)
+	first_enemy.global_position = Vector2(170.0, 0.0)
+	var cached_frame := brain.build_frame(bot)
+	first_enemy.health = 0.0
+	var refreshed_frame := brain.build_frame(bot)
+	var picked_first: bool = first_frame.aim.distance_to(Vector2(120.0, 0.0)) < 0.001
+	var tracked_live_position: bool = cached_frame.aim.distance_to(first_enemy.global_position) < 0.001
+	var refreshed_dead_target: bool = refreshed_frame.aim.distance_to(second_enemy.global_position) < 0.001
+	var cache_recorded: bool = brain.intent_cache.size() == 1 and brain.intent_cache_frames.size() == 1
+	var ok: bool = picked_first and tracked_live_position and refreshed_dead_target and cache_recorded
+	if not ok:
+		failures.append("target_query_cache expected cached live target to update aim position, then refresh immediately when dead; first=%s cached=%s refreshed=%s cache=%d/%d" % [
+			str(first_frame.aim),
+			str(cached_frame.aim),
+			str(refreshed_frame.aim),
+			brain.intent_cache.size(),
+			brain.intent_cache_frames.size()
 		])
 	return ok

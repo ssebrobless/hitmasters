@@ -31,10 +31,13 @@ const RETREAT_THREAT_RANGE := 360.0
 const DEFEND_HUT_RADIUS := 430.0
 const DEFEND_ACTOR_RANGE := 980.0
 const TARGET_STICKINESS_BONUS := 60.0
+const TARGET_QUERY_REFRESH_FRAMES := 8
 
 var hooks := {}
 var sticky_targets := {}
 var retreating_actors := {}
+var intent_cache := {}
+var intent_cache_frames := {}
 
 func build_frame(actor: Node) -> Resource:
 	var frame := InputFrameScript.new()
@@ -42,7 +45,7 @@ func build_frame(actor: Node) -> Resource:
 		frame.move = Vector2.ZERO
 		return frame
 
-	var intent := _choose_intent(actor)
+	var intent := _cached_intent(actor)
 	var target: Node = intent.get("target", null)
 	var point: Vector2 = intent.get("point", actor.global_position + Vector2.RIGHT)
 	var mode := String(intent.get("mode", "idle"))
@@ -67,6 +70,28 @@ func build_frame(actor: Node) -> Resource:
 		frame.set_button(InputFrameScript.BUTTON_PRIMARY, distance <= _primary_range(actor, target))
 		_hook(actor).apply(actor, target, frame, distance)
 	return frame
+
+func _cached_intent(actor: Node) -> Dictionary:
+	var key := int(actor.get_instance_id())
+	var frame_index := Engine.get_physics_frames()
+	var cached: Dictionary = intent_cache.get(key, {})
+	var cached_frame := int(intent_cache_frames.get(key, -TARGET_QUERY_REFRESH_FRAMES * 2))
+	if _cached_intent_valid(actor, cached, frame_index - cached_frame):
+		return cached
+	var intent := _choose_intent(actor)
+	intent_cache[key] = intent
+	intent_cache_frames[key] = frame_index
+	return intent
+
+func _cached_intent_valid(actor: Node, intent: Dictionary, age_frames: int) -> bool:
+	if intent.is_empty() or age_frames >= TARGET_QUERY_REFRESH_FRAMES:
+		return false
+	var target: Node = intent.get("target", null)
+	if target != null and not TargetFilter.is_live_damage_target(actor, target, {"require_damage_api": false}):
+		return false
+	if String(intent.get("mode", "")) == "retreat" and _health_ratio(actor) > RETREAT_EXIT_HEALTH_RATIO:
+		return false
+	return true
 
 func _choose_intent(actor: Node) -> Dictionary:
 	var close_threat: Node = _closest_live_enemy(actor, RETREAT_THREAT_RANGE)
