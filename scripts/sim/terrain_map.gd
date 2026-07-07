@@ -232,11 +232,16 @@ func _configure_unified_map() -> void:
 		"Red Chorus": Vector2(218.0 * unit, 10.0 * unit),
 		"Red Rival": Vector2(218.0 * unit, -10.0 * unit)
 	}
-	wave_minion_offsets = [Vector2(0.0, -8.0 * unit), Vector2.ZERO, Vector2(0.0, 8.0 * unit)]
+	wave_minion_offsets = _build_unified_wave_minion_offsets(unit)
 	objective_position = Vector2.ZERO
 	objective_radius = 9.0 * unit
 	hut_positions = _build_unified_hut_positions(unit)
 	food_spawn_points = _build_unified_food_spawns()
+
+func _build_unified_wave_minion_offsets(unit: float) -> Array[Vector2]:
+	if mode == "1v1":
+		return [Vector2(0.0, -5.0 * unit), Vector2(0.0, 5.0 * unit)]
+	return [Vector2(0.0, -8.0 * unit), Vector2.ZERO, Vector2(0.0, 8.0 * unit)]
 
 func _build_unified_hut_positions(unit: float) -> Dictionary:
 	if mode == "1v1":

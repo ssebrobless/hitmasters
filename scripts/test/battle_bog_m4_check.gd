@@ -47,11 +47,18 @@ func _initialize() -> void:
 		and terrain.hut_positions[0][1] / unit == Vector2(-198.0, 34.0) \
 		and terrain.hut_positions[1][0] / unit == Vector2(198.0, -34.0) \
 		and terrain.hut_positions[1][1] / unit == Vector2(198.0, 34.0)
+	var waves_3v3: bool = terrain.wave_minion_offsets.size() == 3 \
+		and terrain.wave_minion_offsets[0] / unit == Vector2(0.0, -8.0) \
+		and terrain.wave_minion_offsets[1] == Vector2.ZERO \
+		and terrain.wave_minion_offsets[2] / unit == Vector2(0.0, 8.0)
 	terrain.configure("1v1")
 	var huts_1v1: bool = terrain.hut_positions[0].size() == 1 \
 		and terrain.hut_positions[1].size() == 1 \
 		and terrain.hut_positions[0][0] / unit == Vector2(-198.0, 0.0) \
 		and terrain.hut_positions[1][0] / unit == Vector2(198.0, 0.0)
+	var waves_1v1: bool = terrain.wave_minion_offsets.size() == 2 \
+		and terrain.wave_minion_offsets[0] / unit == Vector2(0.0, -5.0) \
+		and terrain.wave_minion_offsets[1] / unit == Vector2(0.0, 5.0)
 
 	var stub := StubArena.new()
 	get_root().add_child(stub)
@@ -124,9 +131,9 @@ func _initialize() -> void:
 		and float(melee_style.get("visual_radius_px", 99.0)) < float(melee_style.get("combat_radius_px", 0.0)) \
 		and float(lane_style.get("visual_radius_px", 99.0)) < float(lane_style.get("combat_radius_px", 0.0))
 
-	var passed := huts_3v3 and huts_1v1 and squad_ok and patrol_radius_ok and respawn_ok and destroy_ok and kinds_ok and minion_visual_ok and hut_color_ok
-	print("m4 huts3v3=%s huts1v1=%s squad=%s patrol=%s respawn=%s destroy=%s kinds=%s visual=%s hut_color=%s" % [
-		str(huts_3v3), str(huts_1v1), str(squad_ok), str(patrol_radius_ok), str(respawn_ok), str(destroy_ok), str(kinds_ok), str(minion_visual_ok), str(hut_color_ok)
+	var passed := huts_3v3 and huts_1v1 and waves_3v3 and waves_1v1 and squad_ok and patrol_radius_ok and respawn_ok and destroy_ok and kinds_ok and minion_visual_ok and hut_color_ok
+	print("m4 huts3v3=%s huts1v1=%s waves3v3=%s waves1v1=%s squad=%s patrol=%s respawn=%s destroy=%s kinds=%s visual=%s hut_color=%s" % [
+		str(huts_3v3), str(huts_1v1), str(waves_3v3), str(waves_1v1), str(squad_ok), str(patrol_radius_ok), str(respawn_ok), str(destroy_ok), str(kinds_ok), str(minion_visual_ok), str(hut_color_ok)
 	])
 	quit(0 if passed else 1)
 
