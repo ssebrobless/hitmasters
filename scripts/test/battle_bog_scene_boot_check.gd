@@ -11,9 +11,9 @@ func _run() -> void:
 	var failures: Array[String] = []
 	var main_ok: bool = await _check_main_menu(failures)
 	var select_ok: bool = await _check_character_select(failures)
-	var arena_1v1_ok: bool = await _check_arena_mode("1v1", 3, 3, 2, 4, failures)
-	var arena_3v3_ok: bool = await _check_arena_mode("3v3", 0, 5, 4, 12, failures)
-	var hero_lab_ok: bool = await _check_arena_mode("Hero Lab", 0, 1, 4, 12, failures)
+	var arena_1v1_ok: bool = await _check_arena_mode("1v1", 3, 3, 2, 4, 18.0, 90.0, failures)
+	var arena_3v3_ok: bool = await _check_arena_mode("3v3", 0, 5, 4, 12, 20.0, 105.0, failures)
+	var hero_lab_ok: bool = await _check_arena_mode("Hero Lab", 0, 1, 4, 12, 18.0, 105.0, failures)
 	var passed := main_ok and select_ok and arena_1v1_ok and arena_3v3_ok and hero_lab_ok
 
 	print("scene_boot main=%s select=%s arena_1v1=%s arena_3v3=%s hero_lab=%s" % [
@@ -71,7 +71,7 @@ func _check_character_select(failures: Array[String]) -> bool:
 		])
 	return ok
 
-func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_count: int, expected_hut_count: int, expected_lane_minions: int, failures: Array[String]) -> bool:
+func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_count: int, expected_hut_count: int, expected_lane_minions: int, expected_wave_interval: float, expected_hunger_sec: float, failures: Array[String]) -> bool:
 	var config := get_root().get_node_or_null("GameConfig")
 	if config != null:
 		config.selected_mode = mode
@@ -93,20 +93,35 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 	var camera: Camera2D = scene.get("camera")
 	var status_label: Label = scene.get("status_label")
 	var lane_minions := _count_lane_minions(minions)
+	var wave_interval := float(scene.get("wave_interval"))
+	var hunger_sec := float(scene.get_hunger_full_to_empty_sec()) if scene.has_method("get_hunger_full_to_empty_sec") else -1.0
 
-	var ok := squad.size() == expected_squad_size and bots.size() == expected_bot_count and cores.size() == 2 and huts.size() == expected_hut_count and lane_minions == expected_lane_minions and player != null and camera != null and status_label != null
+	var ok := squad.size() == expected_squad_size \
+		and bots.size() == expected_bot_count \
+		and cores.size() == 2 \
+		and huts.size() == expected_hut_count \
+		and lane_minions == expected_lane_minions \
+		and absf(wave_interval - expected_wave_interval) < 0.001 \
+		and absf(hunger_sec - expected_hunger_sec) < 0.001 \
+		and player != null \
+		and camera != null \
+		and status_label != null
 	if not ok:
-		failures.append("Arena %s expected squad=%d bots=%d cores=2 huts=%d lane_minions=%d player/camera/status; got squad=%d bots=%d cores=%d huts=%d lane_minions=%d player=%s camera=%s status=%s" % [
+		failures.append("Arena %s expected squad=%d bots=%d cores=2 huts=%d lane_minions=%d wave=%.1f hunger=%.1f player/camera/status; got squad=%d bots=%d cores=%d huts=%d lane_minions=%d wave=%.1f hunger=%.1f player=%s camera=%s status=%s" % [
 			mode,
 			expected_squad_size,
 			expected_bot_count,
 			expected_hut_count,
 			expected_lane_minions,
+			expected_wave_interval,
+			expected_hunger_sec,
 			squad.size(),
 			bots.size(),
 			cores.size(),
 			huts.size(),
 			lane_minions,
+			wave_interval,
+			hunger_sec,
 			str(player != null),
 			str(camera != null),
 			str(status_label != null)
