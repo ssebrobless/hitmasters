@@ -101,7 +101,8 @@ into 5. Authority order unchanged: DECISIONS > BUILD_PLAN > this doc.
   inherit it because they all route through those overlap functions.
 - **(b) M5 economy**: blood meter is independent of hunger (#13). With the
   generic meter widget built in wave 1, **no roster wave hard-blocks on M5**.
-  Two TODO hooks (mosquito hunger-fill clauses) land when M5 does.
+  Mosquito blood gain, ally deposit, and contact hunger-fill are live in wave 3
+  coverage.
 
 ## 4. Wave plan
 

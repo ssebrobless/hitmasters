@@ -10,17 +10,16 @@ lands in the build plan.
    Heat; overheating damages you and leaves you vulnerable. Taking ANY damage
    while gliding stuns you and smashes you down (their Smash-Bros-style
    "spike"). Vertical mobility is powerful BECAUSE it is interruptible.
-   - *Battle Bog:* our flight meter is the Heat analog — good. But our birds
-     currently dodge ground melee with zero counterplay while airborne except
-     the swoop low-window. PROPOSAL (needs design ruling): heavy ranged hits
-     (≥30 dmg) on a flying bird force a grounding ("spiked"), triggering the
-     3s no-takeoff lockout. Gives every roster a bird answer. → decision #20?
+   - *Battle Bog:* our flight meter is the Heat analog. IMPLEMENTED
+     (decision #20): heavy ranged hits (>=30 dmg) on a flying bird force a
+     grounding ("spiked"), triggering the 3s no-takeoff lockout. Gives every
+     roster a bird answer while always-flying bugs keep their unique rules.
 2. **Every hunter has a movement ability; momentum is preserved and
    chainable** (glide + dash + jump pads). Movement mastery is the skill
    ceiling.
-   - *Battle Bog:* our kits mostly have one mobility tool — fine — but dashes
-     currently kill momentum on end. When tuning M8, let dash momentum bleed
-     out over ~0.2s instead of stopping dead.
+   - *Battle Bog:* our kits mostly have one mobility tool. IMPLEMENTED:
+     dash end velocity bleeds into a short render/sim drift instead of
+     stopping dead.
 3. **Feathering (glider e-brake tricks) emerged from physics, not scripts.**
    Depth-based mechanics breed technique.
    - *Battle Bog:* keep flight/swim as continuous meters (already true), never
@@ -33,8 +32,9 @@ lands in the build plan.
      deadzone and clamp (arena camera).
 5. **Elevation reads through shadows and two-stage motion** (impulse up, then
    decelerate).
-   - *Battle Bog:* airborne shadow exists; when birds take off/land, add a
-     two-stage ease (M8 polish list).
+   - *Battle Bog:* IMPLEMENTED: airborne shadows scale by height/low-window,
+     and bird transitions expose charge, lift flap, landing flare, and
+     grounded-lockout cues.
 
 ## Battlerite (closest relative: the combat feel target)
 
@@ -52,8 +52,8 @@ lands in the build plan.
 9. **No downtime: rounds are pure teamfight.** Battlerite cut everything
    between fights.
    - *Battle Bog:* we intentionally keep macro (lanes/food), but 1v1 mode
-     should lean Battlerite: shorter walks, faster hunger, quicker fights —
-     tune 1v1 as "the Battlerite mode" in M8.
+     leans Battlerite through faster hunger, quicker waves, one hut per side,
+     and compact pressure on the shared expanded map.
 
 ## League of Legends (macro + readability standards)
 
@@ -74,20 +74,20 @@ lands in the build plan.
       spines) before particles. Screen shake stays reserved for ≥50 dmg hits.
 13. **Hit-stop (2-4 frame freeze on heavy hits)** is the cheapest weight tool
     after animation.
-    - *Battle Bog:* M8 candidate — freeze attacker+victim render 3 frames on
-      hits ≥50 (render-only, sim unaffected).
+    - *Battle Bog:* IMPLEMENTED (decision #26): freeze attacker+victim render
+      3 frames on hits >=50 (render-only, sim unaffected).
 
 ## Priority actions
 
 | # | Action | When |
 | --- | --- | --- |
-| 1 | Cursor-led camera with deadzone | DONE (this commit) |
-| 2 | "Spiked" rule for flying birds hit by heavy ranged | needs user ruling |
-| 3 | 1v1 tuned as the Battlerite-pace mode | M8 |
+| 1 | Cursor-led camera with deadzone | DONE |
+| 2 | "Spiked" rule for flying birds hit by heavy ranged | DONE (decision #20) |
+| 3 | 1v1 tuned as the Battlerite-pace mode | DONE (M8 tuning) |
 | 4 | Per-ability move_mult_while_casting field | M7 kit waves |
-| 5 | Two-stage takeoff/landing ease + shadow scale | M8 |
-| 6 | Hit-stop on ≥50 dmg | M8 |
-| 7 | Dash momentum bleed-out | M8 |
+| 5 | Two-stage takeoff/landing ease + shadow scale | DONE (M8) |
+| 6 | Hit-stop on >=50 dmg | DONE (decision #26) |
+| 7 | Dash momentum bleed-out | DONE (M8) |
 
 Sources: SUPERVIVE Wiki (Gliding, Getting Started), Deltia's camera/controls
 guides, Rolling Stone and GameRant Supervive previews, Dignitas intro guide,

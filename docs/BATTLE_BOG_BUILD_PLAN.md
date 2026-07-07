@@ -218,12 +218,16 @@ no regression in the M2/M3 six (quick pass each wave).
 
 ## M8 — Competitive polish
 
-- 1v1 map final tuning (1 hut/side, tighter zones), draft/ban stub for ranked
-  feel, match summary screen upgraded (stocks lost, deposits, hut damage).
-- Sprite passes replace silhouettes for creatures whose kits survived M7
-  unchanged; 16 px sheets, states: idle/move/attack/special per creature.
-- Balance sweep driven by the family-buff and stock telemetry printed to a
-  per-match log file.
+- 1v1 final tuning is live on the unified expanded map: one hut per side, two
+  minions per hut wave, 18s waves, 90s hunger pace, and mode tuning logged in
+  match summaries.
+- Draft/ban stub and match summary telemetry are live for ranked-feel review:
+  stocks lost, deposits, hut damage, core damage, balance deltas, review
+  priority, and compact scoreboard review lines.
+- Sprite passes remain the art-side follow-up for creatures whose kits survived
+  M7 unchanged; 16 px sheets, states: idle/move/attack/special per creature.
+- Balance sweep is driven by family-buff, stock, mode-tuning, and review
+  telemetry printed to per-match log files.
 
 Complete = M8 done: full loop 1v1 and 3v3 vs bots, all 21 creatures, stocks/
 food/breeding/huts live, local only. Online is Phase 5, enabled by the M0
