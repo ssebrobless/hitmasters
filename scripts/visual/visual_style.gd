@@ -1706,6 +1706,7 @@ static func _base_bug(canvas: CanvasItem, radius: float, forward: Vector2, side:
 		for drift_side: float in [-1.0, 1.0]:
 			var shimmer := -forward * radius * 0.22 + side * drift_side * radius * (0.62 + 0.08 * hover_intensity) + hover_drift
 			canvas.draw_line(shimmer, shimmer - forward * radius * (0.44 + 0.12 * hover_intensity) + side * drift_side * radius * 0.16, Color(glow.r, glow.g, glow.b, 0.16 + 0.08 * hover_intensity), maxf(radius * 0.045, 1.0))
+			canvas.draw_circle(shimmer - forward * radius * (0.26 + 0.08 * hover_intensity) + side * drift_side * radius * 0.08, maxf(radius * (0.04 + 0.015 * hover_intensity), 1.0), Color(glow.r, glow.g, glow.b, 0.24 + 0.08 * pulse))
 		var lantern_drop := -forward * radius * (0.62 + 0.1 * pulse) + hover_drift
 		canvas.draw_circle(lantern_drop, maxf(radius * (0.18 + 0.04 * hover_intensity), 1.4), Color(glow.r, glow.g, glow.b, 0.42 + 0.14 * pulse))
 		canvas.draw_line(lantern_drop + side * radius * 0.12, lantern_drop - side * radius * 0.12, Color(glow.r, glow.g, glow.b, 0.44 + 0.16 * pulse), maxf(radius * 0.04, 1.0))
