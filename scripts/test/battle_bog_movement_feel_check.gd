@@ -1386,6 +1386,18 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	if not bool(actor.get_render_motion_state().get("ambush_pose", false)):
 		failures.append("Ambush should expose low ambush render pose")
 	actor.remove_modifiers_from_source("Ambush")
+	var gator_non_gator_motion_flags: Array[String] = [
+		"hop_pose", "chorus_hop_pose", "cane_squat_hop_pose", "rooted_pose",
+		"leech_inchworm_pose", "leech_undulate_pose", "slick_crawl_pose", "newt_swim_pose",
+		"water_snake_land_slither_pose", "water_snake_mud_slither", "water_slither_pose",
+		"turtle_plod_pose", "turtle_swim_pose", "bog_turtle_creep_pose", "bog_turtle_paddle_pose",
+		"duck_waddle_pose", "duck_paddle_pose", "beaver_lumber_pose", "beaver_swim_pose",
+		"mink_bound_pose", "mink_swim_pose", "otter_land_slide_pose", "otter_swim_pose",
+		"surface_walk", "submerged_shrew_pose", "shrew_land_skitter_pose",
+		"crayfish_scuttle_pose", "crayfish_tail_flick_swim_pose", "spider_skitter_pose",
+		"owl_glide_pose", "owl_silent_flight_pose", "kingfisher_dart_pose", "wading_pose",
+		"heron_stalk_pose", "mosquito_swarm_pose", "firefly_hover_pose"
+	]
 	actor.current_environment_profile = {"surface": "land"}
 	actor.velocity = Vector2.RIGHT * 80.0
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
@@ -1403,7 +1415,8 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(gator_walk_state.get("duck_waddle_pose", false)) \
 		and not bool(gator_walk_state.get("beaver_lumber_pose", false)) \
 		and not bool(gator_walk_state.get("mink_bound_pose", false)) \
-		and not bool(gator_walk_state.get("otter_land_slide_pose", false))
+		and not bool(gator_walk_state.get("otter_land_slide_pose", false)) \
+		and _none_render_flags(gator_walk_state, gator_non_gator_motion_flags)
 	actor.current_environment_profile = {"surface": "water"}
 	actor.velocity = Vector2.RIGHT * 80.0
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
@@ -1422,6 +1435,7 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(gator_water_state.get("beaver_swim_pose", false)) \
 		and not bool(gator_water_state.get("mink_swim_pose", false)) \
 		and not bool(gator_water_state.get("otter_swim_pose", false)) \
+		and _none_render_flags(gator_water_state, gator_non_gator_motion_flags) \
 		and float(gator_water_state.get("alligator_water_cruise_intensity", 0.0)) > 0.25
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
@@ -1449,9 +1463,10 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(gator_idle_state.get("mink_swim_pose", false)) \
 		and not bool(gator_idle_state.get("otter_land_slide_pose", false)) \
 		and not bool(gator_idle_state.get("otter_swim_pose", false)) \
+		and _none_render_flags(gator_idle_state, gator_non_gator_motion_flags) \
 		and float(gator_idle_state.get("alligator_water_cruise_intensity", 1.0)) <= 0.001
 	if not gator_walk or not gator_cruise or not gator_idle_clear:
-		failures.append("moving alligator should expose heavy land high-walk and armored water cruise outside Ambush without low-crawler, turtle, bird, mammal, snake, leech, or crustacean overlap, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
+		failures.append("moving alligator should expose heavy land high-walk and armored water cruise outside Ambush without frog, crawler, swimmer, snake, turtle, duck, mammal, shrew, bird, swarm, hover, crustacean, or spider overlap, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
 			str(gator_walk),
 			str(gator_cruise),
 			str(gator_idle_clear),
