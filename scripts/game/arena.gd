@@ -74,6 +74,7 @@ const BREEDING_BUFF_LABEL_BY_FAMILY := {
 }
 const MATCH_SUMMARY_SCHEMA := "battle_bog_match_summary_v1"
 const MATCH_LOG_DIR := "user://battle_bog_match_logs"
+const ONE_V_ONE_HUNGER_FULL_TO_EMPTY_SEC := 90.0
 
 var entities: Array[Node] = []
 var minions: Array[Node] = []
@@ -134,6 +135,7 @@ var red_minion_spawn := Vector2(760.0, 0.0)
 var team_spawns := {}
 var bot_spawns := {}
 var camera_zoom := Vector2(0.9, 0.9)
+var hunger_full_to_empty_sec := CreatureScript.HUNGER_FULL_TO_EMPTY_SEC
 
 var status_label: Label
 var core_label: Label
@@ -180,6 +182,7 @@ func _configure_mode() -> void:
 	else:
 		wave_interval = WAVE_INTERVAL
 		camera_zoom = Vector2(2.4, 2.4)
+	hunger_full_to_empty_sec = ONE_V_ONE_HUNGER_FULL_TO_EMPTY_SEC if GameConfig.selected_mode == "1v1" else CreatureScript.HUNGER_FULL_TO_EMPTY_SEC
 
 	wave_timer = 2.0
 
@@ -434,6 +437,9 @@ func _spawn_bots_for_mode() -> void:
 
 func _is_1v1_trio_mode() -> bool:
 	return GameConfig.selected_mode == "1v1"
+
+func get_hunger_full_to_empty_sec() -> float:
+	return hunger_full_to_empty_sec
 
 func get_squad_follow_radius() -> float:
 	return SQUAD_FOLLOW_RADIUS

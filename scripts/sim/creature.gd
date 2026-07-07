@@ -1348,9 +1348,15 @@ func _tick_breeding_regen(delta: float) -> void:
 func _tick_hunger(delta: float) -> void:
 	if hunger_satiated:
 		return
-	hunger = maxf(hunger - (HUNGER_MAX / HUNGER_FULL_TO_EMPTY_SEC) * delta, 0.0)
+	var full_to_empty_sec := _hunger_full_to_empty_sec()
+	hunger = maxf(hunger - (HUNGER_MAX / full_to_empty_sec) * delta, 0.0)
 	if hunger <= 0.0 and alive:
 		take_area_damage(max_health * 10.0, "Starvation")
+
+func _hunger_full_to_empty_sec() -> float:
+	if arena != null and arena.has_method("get_hunger_full_to_empty_sec"):
+		return maxf(float(arena.get_hunger_full_to_empty_sec()), 1.0)
+	return HUNGER_FULL_TO_EMPTY_SEC
 
 func _try_auto_eat() -> void:
 	if arena != null and arena.has_method("try_eat_nearby_food"):
