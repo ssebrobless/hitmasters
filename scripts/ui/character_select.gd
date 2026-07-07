@@ -112,18 +112,23 @@ func _build_creature_buttons() -> void:
 		for creature in grouped[family]:
 			var index: int = creatures.find(creature)
 			var selectable := _is_selectable(creature)
+			var banned := _is_banned(creature)
 			var selectable_number := selectable_indices.size() + 1
-			if selectable:
+			if selectable and not banned:
 				selectable_indices.append(index)
 
 			var button := Button.new()
-			button.text = "%d  %s" % [selectable_number, creature.get("name", "Unknown")] if selectable else "%s  coming soon" % creature.get("name", "Unknown")
+			if banned:
+				button.text = "%s  banned" % creature.get("name", "Unknown")
+			else:
+				button.text = "%d  %s" % [selectable_number, creature.get("name", "Unknown")] if selectable else "%s  coming soon" % creature.get("name", "Unknown")
 			button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			button.custom_minimum_size = Vector2(260.0, 34.0)
 			button.set_meta("creature_index", index)
 			button.set_meta("selectable", selectable)
-			button.disabled = not selectable
-			button.modulate = Color(1.0, 1.0, 1.0, 1.0) if selectable else Color(0.48, 0.52, 0.54, 0.78)
+			button.set_meta("banned", banned)
+			button.disabled = not selectable or banned
+			button.modulate = Color(0.55, 0.42, 0.4, 0.78) if banned else (Color(1.0, 1.0, 1.0, 1.0) if selectable else Color(0.48, 0.52, 0.54, 0.78))
 			button.pressed.connect(_select_creature.bind(index))
 			hero_list.add_child(button)
 
@@ -133,7 +138,7 @@ func _select_creature(index: int) -> void:
 
 	selected_index = clampi(index, 0, creatures.size() - 1)
 	var creature: Dictionary = creatures[selected_index]
-	if not _is_selectable(creature):
+	if not _is_selectable(creature) or _is_banned(creature):
 		return
 
 	var creature_id := String(creature.get("id", "snapping_turtle"))
@@ -186,7 +191,9 @@ func _setup_mode_ui() -> void:
 	start_button.text = "Start Trio Match" if _is_trio_mode() else "Start Match"
 	if _is_trio_mode():
 		selected_squad_ids = GameConfig.get_selected_squad_ids()
-		squad_hint.text = "Pick a slot, then pick a playable creature. Slot 1 starts active; 1/2/3 swap during the match."
+		var draft_state: Dictionary = GameConfig.get_draft_stub_state()
+		var ban_text := _format_ban_text(draft_state)
+		squad_hint.text = "Pick a slot, then pick a playable creature. Slot 1 starts active; 1/2/3 swap during the match.%s" % ban_text
 	else:
 		selected_squad_ids.clear()
 
@@ -262,10 +269,17 @@ func _group_by_family() -> Dictionary:
 func _is_selectable(creature: Dictionary) -> bool:
 	return SLICE_CREATURE_IDS.has(creature.get("id", ""))
 
+func _is_banned(creature: Dictionary) -> bool:
+	return GameConfig.is_creature_banned(String(creature.get("id", "")))
+
 func _refresh_button_states() -> void:
 	for child in hero_list.get_children():
 		var button := child as Button
 		if button == null or not bool(button.get_meta("selectable", false)):
+			continue
+		if bool(button.get_meta("banned", false)):
+			button.disabled = true
+			button.modulate = Color(0.55, 0.42, 0.4, 0.78)
 			continue
 		if _is_trio_mode():
 			button.disabled = false
@@ -301,6 +315,26 @@ func _format_short_list(value: Variant) -> String:
 		return ", ".join(parts) if not parts.is_empty() else "TBD"
 	var text := String(value)
 	return text if not text.is_empty() else "TBD"
+
+func _format_ban_text(draft_state: Dictionary) -> String:
+	if not bool(draft_state.get("enabled", false)):
+		return ""
+	var blue_bans: Array = draft_state.get("blue_bans", [])
+	var red_bans: Array = draft_state.get("red_bans", [])
+	if blue_bans.is_empty() and red_bans.is_empty():
+		return " Draft bans: open."
+	return " Draft bans: Blue %s / Red %s." % [
+		_format_ban_names(blue_bans),
+		_format_ban_names(red_bans)
+	]
+
+func _format_ban_names(bans: Array) -> String:
+	if bans.is_empty():
+		return "none"
+	var names := PackedStringArray()
+	for creature_id in bans:
+		names.append(_get_creature_name(String(creature_id)))
+	return ", ".join(names)
 
 func _start_match() -> void:
 	get_tree().change_scene_to_file(ARENA_SCENE)
