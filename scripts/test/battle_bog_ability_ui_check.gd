@@ -59,6 +59,6 @@ func _check_info_panel(arena: Node, failures: Array[String]) -> void:
 	if arena.info_panel.visible:
 		failures.append("info panel should start hidden (shown only while P is held)")
 	var text := "\n".join(arena.info_panel.get_info_lines())
-	for expected in ["Snapping Turtle", "Grab", "Lingual Lure", "Protective Shell", "Controls:"]:
+	for expected in ["Snapping Turtle", "Footprint circle", "Height Body Heavy Low", "Grab", "Lingual Lure", "Protective Shell", "Controls:"]:
 		if not text.contains(expected):
 			failures.append("info panel text missing '%s'" % expected)
