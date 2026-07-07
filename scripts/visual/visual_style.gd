@@ -455,6 +455,7 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 		for push_side: float in [-1.0, 1.0]:
 			var push_start := -forward * radius * 0.12 + side * push_side * radius * 0.58
 			canvas.draw_line(push_start, push_start - forward * radius * (0.56 + 0.18 * turtle_swim_intensity) + side * push_side * radius * 0.18, shell_push, maxf(radius * 0.06, 1.0))
+			canvas.draw_circle(push_start - forward * radius * (0.42 + 0.12 * turtle_swim_intensity) + side * push_side * radius * 0.1, maxf(radius * (0.045 + 0.018 * turtle_swim_intensity), 1.0), turtle_water.lightened(0.22))
 	if bog_creep:
 		for scuff_side: float in [-1.0, 1.0]:
 			var scuff_center := -forward * radius * 0.55 + side * scuff_side * radius * 0.48
@@ -477,6 +478,7 @@ static func _base_turtle(canvas: CanvasItem, radius: float, forward: Vector2, si
 		for scuff_side: float in [-1.0, 1.0]:
 			var scuff_center := -forward * radius * 0.46 + side * scuff_side * radius * 0.62
 			canvas.draw_arc(scuff_center, radius * (0.24 + 0.05 * turtle_plod_intensity), PI * 0.08, PI * 0.92, 10, turtle_scuff, maxf(radius * 0.055, 1.0))
+			canvas.draw_circle(scuff_center - forward * radius * (0.18 + 0.06 * turtle_plod_intensity), maxf(radius * (0.045 + 0.018 * turtle_plod_intensity), 1.0), Color(turtle_scuff.r, turtle_scuff.g, turtle_scuff.b, turtle_scuff.a * 0.86))
 		canvas.draw_line(-forward * radius * 0.62, -forward * radius * (1.0 + 0.18 * turtle_plod_intensity), Color(turtle_scuff.r, turtle_scuff.g, turtle_scuff.b, turtle_scuff.a * 0.82), maxf(radius * 0.075, 1.1))
 	canvas.draw_line(tail_direction * radius * 0.9, tail_direction * radius * 1.45, skin_dark, maxf(radius * 0.16, 3.0))
 
