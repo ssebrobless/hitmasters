@@ -86,7 +86,11 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and text.contains("Breeds 0/1 denied") \
 		and text.contains("HutDmg") \
 		and text.contains("CoreDmg 123") \
-		and text.contains("Buffs")
+		and text.contains("Buffs") \
+		and text.contains("Top Blue:") \
+		and text.contains("Top Red:") \
+		and text.contains("Dep 1") \
+		and text.contains("deny")
 	var player_rows_ok := _row_has_stat(player_rows, "Duck", "deposits", 1) \
 		and _row_has_stat(player_rows, "Duck", "stock_losses", 1) \
 		and _row_has_stat(player_rows, "Duck", "hut_damage", 799.0) \

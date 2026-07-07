@@ -2567,11 +2567,18 @@ func _format_breeding_buff_line(team: int) -> String:
 	return " ".join(chunks)
 
 func _get_match_summary(winner: String) -> String:
-	return "\n".join([
+	var lines := [
 		"Match Summary: %s victory at %s" % [winner, _format_match_time(elapsed)],
 		_format_team_match_summary_line(BLUE),
 		_format_team_match_summary_line(RED)
-	])
+	]
+	var blue_top := _format_top_player_summary_line(BLUE)
+	if not blue_top.is_empty():
+		lines.append(blue_top)
+	var red_top := _format_top_player_summary_line(RED)
+	if not red_top.is_empty():
+		lines.append(red_top)
+	return "\n".join(lines)
 
 func get_match_summary_data(winner := "", reason := "") -> Dictionary:
 	return {
@@ -2672,6 +2679,46 @@ func _sort_player_summary_rows(a: Dictionary, b: Dictionary) -> bool:
 	if team_a != team_b:
 		return team_a < team_b
 	return String(a.get("name", "")) < String(b.get("name", ""))
+
+func _format_top_player_summary_line(team: int) -> String:
+	var top := _top_player_summary_row(team)
+	if top.is_empty():
+		return ""
+	return "Top %s: %s %dK/%dD | StockLost %d | Dep %d | Breed %d/%d deny | HutDmg %d | CoreDmg %d" % [
+		_team_name(team),
+		String(top.get("name", "Actor")),
+		int(top.get("kills", 0)),
+		int(top.get("deaths", 0)),
+		int(top.get("stock_losses", 0)),
+		int(top.get("deposits", 0)),
+		int(top.get("breeds_completed", 0)),
+		int(top.get("breeds_denied", 0)),
+		int(top.get("hut_damage", 0)),
+		int(top.get("core_damage", 0))
+	]
+
+func _top_player_summary_row(team: int) -> Dictionary:
+	var best: Dictionary = {}
+	var best_score := -1.0
+	for row: Dictionary in _player_match_summary_rows():
+		if int(row.get("team", -1)) != team:
+			continue
+		var score := _player_summary_score(row)
+		if score > best_score:
+			best_score = score
+			best = row
+	return best
+
+func _player_summary_score(row: Dictionary) -> float:
+	return float(row.get("kills", 0)) * 120.0 \
+		+ float(row.get("breeds_completed", 0)) * 90.0 \
+		+ float(row.get("breeds_denied", 0)) * 80.0 \
+		+ float(row.get("deposits", 0)) * 50.0 \
+		+ float(row.get("wildlife_defeats", 0)) * 30.0 \
+		+ float(row.get("stock_losses", 0)) * 20.0 \
+		+ float(row.get("hut_damage", 0.0)) * 0.1 \
+		+ float(row.get("core_damage", 0.0)) * 0.1 \
+		- float(row.get("deaths", 0)) * 5.0
 
 func _format_match_time(seconds: float) -> String:
 	var total_seconds := int(floor(seconds))
