@@ -9,15 +9,15 @@ const ICON_HUT := "hut"
 const ICON_CORE := "core"
 const ICON_OBJECT := "object"
 
-const BOG_LAND_DARK := Color(0.16, 0.18, 0.12)
-const BOG_LAND := Color(0.22, 0.25, 0.17)
-const BOG_MOSS := Color(0.30, 0.35, 0.22)
+const BOG_LAND_DARK := Color(0.16, 0.19, 0.11)
+const BOG_LAND := Color(0.22, 0.26, 0.15)
+const BOG_MOSS := Color(0.33, 0.38, 0.21)
 const BOG_MUD_DARK := Color(0.19, 0.14, 0.09)
 const BOG_MUD := Color(0.33, 0.24, 0.14)
-const BOG_REED := Color(0.38, 0.40, 0.25)
-const WATER_DEEP := Color(0.10, 0.16, 0.18)
-const WATER_SHALLOW := Color(0.20, 0.29, 0.27)
-const WATER_FOAM := Color(0.62, 0.68, 0.62, 0.7)
+const BOG_REED := Color(0.42, 0.44, 0.24)
+const WATER_DEEP := Color(0.07, 0.17, 0.22)
+const WATER_SHALLOW := Color(0.16, 0.30, 0.28)
+const WATER_FOAM := Color(0.62, 0.70, 0.62, 0.7)
 const SHADOW := Color(0.04, 0.05, 0.03, 0.35)
 
 static func team_color(team: int, alpha := 1.0) -> Color:

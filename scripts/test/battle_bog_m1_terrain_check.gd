@@ -98,6 +98,8 @@ func _visual_palette_ok() -> bool:
 	for key: String in required_keys:
 		if not palette.has(key):
 			return false
+	if not _visual_constitution_palette_matches(palette):
+		return false
 	var land: Color = VisualGrammar.terrain_color(TerrainMapScript.LAND)
 	var shallow: Color = VisualGrammar.terrain_color(TerrainMapScript.SHALLOW)
 	var water: Color = VisualGrammar.terrain_color(TerrainMapScript.WATER)
@@ -106,19 +108,35 @@ func _visual_palette_ok() -> bool:
 	var hierarchy_ok: bool = _luminance(water) < _luminance(land) \
 		and _luminance(land) <= _luminance(shallow) \
 		and _luminance(foam) > _luminance(shallow)
-	var muted_ok: bool = _saturation(land) <= 0.36 \
-		and _saturation(shallow) <= 0.36 \
-		and _saturation(water) <= 0.45 \
-		and _saturation(cover) <= 0.5
-	return hierarchy_ok and muted_ok and foam.a < 1.0
+	var value_band_ok: bool = _max_channel(land) <= 0.55 \
+		and _max_channel(shallow) <= 0.55 \
+		and _max_channel(water) <= 0.55 \
+		and _max_channel(cover) <= 0.55
+	return hierarchy_ok and value_band_ok and foam.a < 1.0
+
+func _visual_constitution_palette_matches(palette: Dictionary) -> bool:
+	return _color_matches(palette["land_dark"], Color(0.16, 0.19, 0.11)) \
+		and _color_matches(palette["land"], Color(0.22, 0.26, 0.15)) \
+		and _color_matches(palette["moss"], Color(0.33, 0.38, 0.21)) \
+		and _color_matches(palette["mud_dark"], Color(0.19, 0.14, 0.09)) \
+		and _color_matches(palette["mud"], Color(0.33, 0.24, 0.14)) \
+		and _color_matches(palette["reed"], Color(0.42, 0.44, 0.24)) \
+		and _color_matches(palette["water_deep"], Color(0.07, 0.17, 0.22)) \
+		and _color_matches(palette["water_shallow"], Color(0.16, 0.30, 0.28)) \
+		and _color_matches(palette["water_foam"], Color(0.62, 0.70, 0.62, 0.7)) \
+		and _color_matches(palette["shadow"], Color(0.04, 0.05, 0.03, 0.35))
+
+func _color_matches(actual: Color, expected: Color) -> bool:
+	return absf(actual.r - expected.r) < 0.001 \
+		and absf(actual.g - expected.g) < 0.001 \
+		and absf(actual.b - expected.b) < 0.001 \
+		and absf(actual.a - expected.a) < 0.001
 
 func _luminance(color: Color) -> float:
 	return color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722
 
-func _saturation(color: Color) -> float:
-	var high: float = maxf(maxf(color.r, color.g), color.b)
-	var low: float = minf(minf(color.r, color.g), color.b)
-	return 0.0 if high <= 0.0 else (high - low) / high
+func _max_channel(color: Color) -> float:
+	return maxf(maxf(color.r, color.g), color.b)
 
 func _animal_zones_ok(terrain: RefCounted, zones: Array) -> bool:
 	if zones.size() != 10:
