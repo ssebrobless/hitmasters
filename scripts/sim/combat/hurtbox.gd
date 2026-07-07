@@ -69,6 +69,38 @@ static func region_at(actor: Node, hit_point: Vector2) -> Dictionary:
 			}
 	return best
 
+static func open_regions(actor: Node) -> Array[Dictionary]:
+	var output: Array[Dictionary] = []
+	if actor == null or not is_instance_valid(actor):
+		return output
+	var data_value: Variant = actor.get("creature_data")
+	if typeof(data_value) != TYPE_DICTIONARY:
+		return output
+	var creature_data: Dictionary = data_value
+	var regions_value: Variant = creature_data.get("hurtbox_regions", [])
+	if typeof(regions_value) != TYPE_ARRAY:
+		return output
+	var axis := body_axis(actor)
+	var center: Vector2 = (actor as Node2D).global_position if actor is Node2D else Vector2.ZERO
+	for region_value: Variant in regions_value:
+		if typeof(region_value) != TYPE_DICTIONARY:
+			continue
+		var region: Dictionary = region_value
+		if not _region_open(actor, String(region.get("open_when", "always"))):
+			continue
+		var radius := maxf(0.0, _float_or(region.get("radius_units", 0.0), 0.0) * SimConstants.UNIT_PX)
+		if radius <= 0.0:
+			continue
+		var local_center := _region_offset_px(region.get("offset_units", [0.0, 0.0]), axis)
+		output.append({
+			"region": String(region.get("name", "hull")),
+			"region_mult": clampf(_float_or(region.get("mult", 1.0), 1.0), 0.75, 1.35),
+			"center": center + local_center,
+			"local_center": local_center,
+			"radius": radius
+		})
+	return output
+
 # Closest point on the hull's core segment (circle => center). Facing checks
 # and distance math both route through this so circles keep exact legacy
 # behavior while capsules gain length.

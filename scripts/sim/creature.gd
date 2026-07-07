@@ -730,6 +730,7 @@ func get_render_motion_state() -> Dictionary:
 	var visual_model_scale := minf(1.35, base_model_scale + low_window_scale_bonus + air_attack_scale_bonus)
 	var visual_radius_px := body_radius * visual_model_scale
 	var silhouette_contract := VisualStyle.creature_silhouette_contract(creature_id, body_radius, visual_model_scale, body_capsule_half_len_px)
+	var open_hurtbox_regions := HurtboxScript.open_regions(self)
 	var air_attack_cue_radius_px := visual_radius_px * (1.12 + air_attack_cue_t * 0.22) if air_attack_cue else 0.0
 	var airborne_visual := is_airborne() or state == CreatureStateScript.State.PERCHED
 	var height_shadow_alpha := _height_shadow_alpha(visual_height_units, low_window_t, airborne_visual)
@@ -753,6 +754,8 @@ func get_render_motion_state() -> Dictionary:
 		"footprint_length_px": float(silhouette_contract.get("footprint_length_px", body_radius * 2.0)),
 		"long_body_visual_length_px": float(silhouette_contract.get("long_body_visual_length_px", visual_radius_px * 2.0)),
 		"contact_shadow_ellipse": bool(silhouette_contract.get("contact_shadow_ellipse", false)),
+		"open_hurtbox_regions": open_hurtbox_regions,
+		"open_region_visuals": not open_hurtbox_regions.is_empty(),
 		"low_window_model_scale_bonus": low_window_scale_bonus,
 		"air_attack_model_scale_bonus": air_attack_scale_bonus,
 		"air_attack_release_t": air_attack_release_t,
@@ -1716,10 +1719,20 @@ func _render_signature() -> String:
 	parts.append(str(_walk_phase_bucket()))
 	parts.append(str(_quantized_ratio(render_landing_impact, 1.5, RENDER_TIMER_BUCKETS)))
 	parts.append(str(_quantized_ratio(render_flash_region_mult, 2.0, RENDER_TIMER_BUCKETS)))
+	parts.append(_open_hurtbox_region_signature())
 	parts.append(render_terrain_from_surface)
 	parts.append(render_terrain_to_surface)
 	parts.append(String(current_environment_profile.get("surface", "")))
 	return "|".join(parts)
+
+func _open_hurtbox_region_signature() -> String:
+	var parts: Array[String] = []
+	for region: Dictionary in HurtboxScript.open_regions(self):
+		parts.append("%s:%d" % [
+			String(region.get("region", "")),
+			_quantized_ratio(float(region.get("region_mult", 1.0)), 2.0, RENDER_TIMER_BUCKETS)
+		])
+	return ",".join(parts)
 
 func _timer_bucket(value: float, duration: float) -> int:
 	if value <= 0.0 or duration <= 0.0:

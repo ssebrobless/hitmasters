@@ -40,6 +40,7 @@ func _initialize() -> void:
 	_check_metadata_from_line(failures)
 	_check_region_multiplier(failures)
 	_check_authored_region_from_line(failures)
+	_check_open_region_visual_contract(failures)
 	_check_render_hitstop(failures)
 	_check_counter_hit(failures)
 	print("damage_meta failures=%d" % failures.size())
@@ -104,6 +105,40 @@ func _check_authored_region_from_line(failures: Array[String]) -> void:
 	var loss: float = before - target.health
 	if String(event.get("region", "")) != "head" or absf(float(event.get("region_mult", 0.0)) - 1.35) > 0.001 or absf(loss - 13.5) > 0.01:
 		failures.append("line hit should resolve authored snake head region; loss=%.2f event=%s" % [loss, str(event)])
+	arena.queue_free()
+
+func _check_open_region_visual_contract(failures: Array[String]) -> void:
+	var arena := FakeArena.new()
+	get_root().add_child(arena)
+	var snake := _creature(arena, "water_snake", 1, Vector2.RIGHT * 60.0)
+	snake.last_aim_direction = Vector2.LEFT
+	snake.body_heading = Vector2.LEFT
+	var snake_state: Dictionary = snake.get_render_motion_state()
+	var snake_regions: Array = snake_state.get("open_hurtbox_regions", [])
+	var snake_region: Dictionary = snake_regions[0] if not snake_regions.is_empty() else {}
+	var snake_ok := bool(snake_state.get("open_region_visuals", false)) \
+		and String(snake_region.get("region", "")) == "head" \
+		and absf(float(snake_region.get("region_mult", 0.0)) - 1.35) < 0.001 \
+		and (snake_region.get("local_center", Vector2.ZERO) as Vector2).distance_to(Vector2.LEFT * 20.0) < 0.01 \
+		and absf(float(snake_region.get("radius", 0.0)) - 7.2) < 0.01
+	var turtle := _creature(arena, "snapping_turtle", 0, Vector2.ZERO)
+	turtle.last_aim_direction = Vector2.RIGHT
+	turtle.body_heading = Vector2.RIGHT
+	var turtle_state: Dictionary = turtle.get_render_motion_state()
+	var turtle_regions: Array = turtle_state.get("open_hurtbox_regions", [])
+	var turtle_region: Dictionary = turtle_regions[0] if not turtle_regions.is_empty() else {}
+	var turtle_ok := bool(turtle_state.get("open_region_visuals", false)) \
+		and String(turtle_region.get("region", "")) == "shell_rear" \
+		and absf(float(turtle_region.get("region_mult", 0.0)) - 0.75) < 0.001 \
+		and (turtle_region.get("local_center", Vector2.ZERO) as Vector2).distance_to(Vector2.LEFT * 12.0) < 0.01 \
+		and absf(float(turtle_region.get("radius", 0.0)) - 8.8) < 0.01
+	if not snake_ok or not turtle_ok:
+		failures.append("open hurtbox regions should expose visual anchors from authored region offsets; snake=%s state=%s turtle=%s state=%s" % [
+			str(snake_region),
+			str(snake_state),
+			str(turtle_region),
+			str(turtle_state)
+		])
 	arena.queue_free()
 
 func _check_render_hitstop(failures: Array[String]) -> void:

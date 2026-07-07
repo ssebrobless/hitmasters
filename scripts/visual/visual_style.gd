@@ -274,6 +274,7 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		match String(skin.get("strike", "")):
 			"tongue":
 				_strike_tongue(canvas, visual_radius, attack_aim.normalized(), attack_reach, strike)
+	_draw_open_region_outlines(canvas, anim, visual_radius, alpha)
 
 	if flash_alpha > 0.0:
 		var flash_mult := clampf(float(anim.get("flash_region_mult", 1.0)), 0.75, 1.35)
@@ -281,6 +282,23 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		flash_color.a = clampf(flash_alpha, 0.0, 1.0) * 0.85
 		canvas.draw_circle(Vector2.ZERO, visual_radius + 3.0, flash_color)
 	canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+static func _draw_open_region_outlines(canvas: CanvasItem, anim: Dictionary, visual_radius: float, alpha: float) -> void:
+	var regions: Array = anim.get("open_hurtbox_regions", [])
+	if regions.is_empty():
+		return
+	var pulse := 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.006)
+	for region_value in regions:
+		if typeof(region_value) != TYPE_DICTIONARY:
+			continue
+		var region: Dictionary = region_value
+		var local_center: Vector2 = region.get("local_center", Vector2.ZERO)
+		var radius := maxf(float(region.get("radius", 0.0)), visual_radius * 0.18)
+		var mult := clampf(float(region.get("region_mult", 1.0)), 0.75, 1.35)
+		var region_color := _region_flash_color(mult)
+		region_color.a = (0.18 + pulse * 0.1) * alpha
+		canvas.draw_arc(local_center, radius, 0.0, TAU, 28, region_color, maxf(1.2, visual_radius * 0.055))
+		canvas.draw_arc(local_center, radius * 0.66, -PI * 0.15, PI * 0.85, 16, Color(region_color.r, region_color.g, region_color.b, region_color.a * 0.55), maxf(1.0, visual_radius * 0.035))
 
 static func _draw_ground_truth_footprint(canvas: CanvasItem, origin: Vector2, radius: float, outline: Color, alpha: float) -> void:
 	var shadow_color := _with_alpha(Color(0.04, 0.05, 0.03, 0.32), alpha)
