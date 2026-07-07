@@ -29,10 +29,12 @@ var food_spawn_points: Array = []
 var animal_zones: Array = []
 var environmental_obstacles: Array = []
 var land_bridge_rects: Array[Rect2] = []
+var water_body_rect_groups: Array = []
 
 func configure(next_mode: String) -> void:
 	mode = next_mode
 	_configure_unified_map()
+	_rebuild_water_body_groups()
 	_rebuild_perch_anchors()
 
 func get_zone_at(point: Vector2) -> String:
@@ -54,6 +56,17 @@ func get_rects(zone: String) -> Array:
 		if String(layer["zone"]) == zone:
 			return layer["rects"].duplicate()
 	return []
+
+func get_water_body_id_at(point: Vector2) -> int:
+	for i in water_body_rect_groups.size():
+		for rect: Rect2 in water_body_rect_groups[i]:
+			if rect.has_point(point):
+				return i
+	return -1
+
+func water_points_share_body(a: Vector2, b: Vector2) -> bool:
+	var a_body: int = get_water_body_id_at(a)
+	return a_body >= 0 and a_body == get_water_body_id_at(b)
 
 func get_cover_rects() -> Array:
 	return get_rects(COVER)
@@ -98,6 +111,33 @@ func _rebuild_perch_anchors() -> void:
 	perch_anchors.clear()
 	for rect: Rect2 in get_cover_rects():
 		perch_anchors.append(rect.get_center())
+
+func _rebuild_water_body_groups() -> void:
+	water_body_rect_groups.clear()
+	var water_rects: Array = get_rects(WATER)
+	var assigned: Array[bool] = []
+	for _rect: Rect2 in water_rects:
+		assigned.append(false)
+	for i in water_rects.size():
+		if assigned[i]:
+			continue
+		var group: Array[Rect2] = []
+		var stack: Array[int] = [i]
+		assigned[i] = true
+		while not stack.is_empty():
+			var rect_index: int = stack.pop_back()
+			var rect: Rect2 = water_rects[rect_index]
+			group.append(rect)
+			for j in water_rects.size():
+				if assigned[j]:
+					continue
+				if _water_rects_connect(rect, water_rects[j]):
+					assigned[j] = true
+					stack.append(j)
+		water_body_rect_groups.append(group)
+
+func _water_rects_connect(a: Rect2, b: Rect2) -> bool:
+	return a.grow(0.5).intersects(b.grow(0.5))
 
 func _configure_unified_map() -> void:
 	var unit := SimConstants.UNIT_PX

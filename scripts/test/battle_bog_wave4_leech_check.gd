@@ -118,17 +118,20 @@ func _check_sensory_crypt(arena: Node, failures: Array[String]) -> void:
 	var actor: Node = arena.player
 	var first: Node = arena.bots[0]
 	var second: Node = arena.bots[1]
-	var dry: Node = arena.bots[2]
+	var other_body: Node = arena.bots[2]
 	actor.apply_creature("leech")
 	first.apply_creature("mink")
 	second.apply_creature("beaver")
-	dry.apply_creature("cane_toad")
+	other_body.apply_creature("cane_toad")
 	var water_point: Vector2 = arena.terrain_map.get_rects("water")[0].get_center()
+	var water_body: int = arena.terrain_map.get_water_body_id_at(water_point)
+	var other_body_point: Vector2 = _different_water_body_point(arena, water_body)
+	var found_other_body: bool = arena.terrain_map.get_water_body_id_at(other_body_point) >= 0
 	actor.global_position = water_point
 	first.global_position = water_point + Vector2(24.0, 0.0)
 	second.global_position = water_point + Vector2(-24.0, 0.0)
-	dry.global_position = Vector2(-1000.0, -1000.0)
-	for target in [first, second, dry]:
+	other_body.global_position = other_body_point
+	for target in [first, second, other_body]:
 		target.damage_ticks.clear()
 		target.modifiers.clear()
 	actor.health = actor.max_health
@@ -138,19 +141,27 @@ func _check_sensory_crypt(arena: Node, failures: Array[String]) -> void:
 	actor.set_input_frame(crypt)
 	actor.kit.tick(actor, 0.016)
 	var hit_water: bool = _has_damage_tick(first, "Sensory Crypt") and _has_damage_tick(second, "Sensory Crypt")
-	var skipped_dry: bool = not _has_damage_tick(dry, "Sensory Crypt")
+	var skipped_other_body: bool = not _has_damage_tick(other_body, "Sensory Crypt")
 	var spent_and_cooled: bool = actor.health == actor.max_health - 2.0 and actor.e_timer > 13.0
-	if not hit_water or not skipped_dry or not spent_and_cooled:
-		failures.append("Leech Sensory Crypt should water-gate, spend one body-leech per water target, and reveal/attach; water=%s dry=%s spent=%s health=%.2f e=%.2f ticks=%s/%s/%s" % [
+	if not found_other_body or not hit_water or not skipped_other_body or not spent_and_cooled:
+		failures.append("Leech Sensory Crypt should stay within one connected water body, spend one body-leech per valid target, and reveal/attach; found_other_body=%s water=%s other_body=%s spent=%s health=%.2f e=%.2f ticks=%s/%s/%s" % [
+			str(found_other_body),
 			str(hit_water),
-			str(skipped_dry),
+			str(skipped_other_body),
 			str(spent_and_cooled),
 			actor.health,
 			actor.e_timer,
 			str(first.damage_ticks),
 			str(second.damage_ticks),
-			str(dry.damage_ticks)
+			str(other_body.damage_ticks)
 		])
+
+func _different_water_body_point(arena: Node, current_body: int) -> Vector2:
+	for rect: Rect2 in arena.terrain_map.get_rects("water"):
+		var center: Vector2 = rect.get_center()
+		if arena.terrain_map.get_water_body_id_at(center) != current_body:
+			return center
+	return Vector2(-1000.0, -1000.0)
 
 func _check_bot_hook(arena: Node, failures: Array[String]) -> void:
 	var actor: Node = arena.bots[0]

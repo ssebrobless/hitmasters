@@ -116,11 +116,14 @@ func _finish_copulation(actor: Node) -> void:
 func _sensory_crypt(actor: Node) -> void:
 	if actor.arena == null or not _is_in_water(actor):
 		return
+	var actor_water_body: int = _water_body_id(actor)
+	if actor_water_body < 0:
+		return
 	var hits := 0
 	for entity in actor.arena.entities:
 		if not TargetFilter.is_live_damage_target(actor, entity, {"allow_stealthed": true, "require_damage_api": true}):
 			continue
-		if not _is_in_water(entity):
+		if _water_body_id(entity) != actor_water_body:
 			continue
 		if not _spend_leeches(actor, 1.0):
 			break
@@ -130,12 +133,17 @@ func _sensory_crypt(actor: Node) -> void:
 		actor.e_timer = KitHelpers.cooldown_seconds(KitHelpers.ability(actor.creature_data, "E"))
 
 func _is_in_water(actor: Node) -> bool:
+	return _water_body_id(actor) >= 0
+
+func _water_body_id(actor: Node) -> int:
 	if actor == null or actor.get("terrain_map") == null:
-		return false
+		return -1
 	var terrain_map: RefCounted = actor.get("terrain_map")
-	if not terrain_map.has_method("get_zone_at"):
-		return false
-	return terrain_map.get_zone_at(actor.global_position) == TerrainMapScript.WATER
+	if terrain_map.has_method("get_water_body_id_at"):
+		return int(terrain_map.get_water_body_id_at(actor.global_position))
+	if terrain_map.has_method("get_zone_at") and terrain_map.get_zone_at(actor.global_position) == TerrainMapScript.WATER:
+		return 0
+	return -1
 
 func _spend_leeches(actor: Node, amount: float) -> bool:
 	if actor.health <= amount:
