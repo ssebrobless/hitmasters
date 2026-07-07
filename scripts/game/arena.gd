@@ -36,7 +36,7 @@ const FoodSourceScript := preload("res://scripts/game/food_source.gd")
 const WildlifeEncounterScript := preload("res://scripts/game/wildlife_encounter.gd")
 const BreedingActorScript := preload("res://scripts/game/breeding_actor.gd")
 
-const PLAYABLE_CREATURE_POOL := ["snapping_turtle", "chorus_frog", "mink", "beaver", "otter", "owl", "duck", "bullfrog", "cane_toad", "crayfish", "water_shrew", "newt", "great_blue_heron", "kingfisher", "water_snake", "alligator", "wolf_spider", "firefly", "mosquito_swarm"]
+const PLAYABLE_CREATURE_POOL := ["snapping_turtle", "chorus_frog", "mink", "beaver", "otter", "leech", "owl", "duck", "bullfrog", "cane_toad", "crayfish", "water_shrew", "newt", "great_blue_heron", "kingfisher", "water_snake", "alligator", "wolf_spider", "firefly", "mosquito_swarm"]
 const SQUAD_COMMAND_FARM := "farm"
 const SQUAD_COMMAND_FOLLOW := "follow"
 const SQUAD_COMMAND_AGGRO := "aggro"

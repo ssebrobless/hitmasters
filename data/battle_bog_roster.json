@@ -317,7 +317,7 @@
       "role": ["resource_swarm", "water_artillery"],
       "diet": "carnivore",
       "footprint": {"shape": "circle", "radius_units": 0.3, "note": "per leech; cluster visual scales with count"},
-      "stats": {"health": "20 leeches", "ground_speed": 0.7, "swim_speed": 1.8, "swim_time_sec": "unlimited", "regen": "1 leech per 4s", "primary_damage": "10 DPS while attached", "attack_interval_sec": 0.7, "range": "0.8 unit projectile travels 7 units"},
+      "stats": {"health": 20, "ground_speed": 0.7, "swim_speed": 1.8, "swim_time_sec": "unlimited", "regen": "1 leech per 4s", "primary_damage": "10 DPS while attached", "attack_interval_sec": 0.7, "range": "0.8 unit projectile travels 7 units"},
       "primary": "Fire a leech projectile that sticks for 3 seconds. Multiple leeches stack.",
       "abilities": [
         {"slot": "Q", "name": "Copulation", "summary": "Idle up to 5 seconds and spawn 1 leech per second unless max count is reached.", "cooldown_after_sec": 7},
