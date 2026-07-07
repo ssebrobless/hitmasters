@@ -5,9 +5,10 @@ extends RefCounted
 # can adjust silhouettes for readability without changing collision.
 
 const SimConstants := preload("res://scripts/sim/sim_constants.gd")
+const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
 
 static func team_color(team: int) -> Color:
-	return Color(0.25, 0.65, 1.0) if team == 0 else Color(1.0, 0.28, 0.25)
+	return VisualGrammar.team_color(team)
 
 # base: which body archetype draws this creature.
 # main/dark/accent/belly: real-life palette. Extra keys tune the base.
@@ -189,11 +190,11 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		canvas.draw_set_transform(shake_offset, 0.0, Vector2.ONE)
 		canvas.draw_arc(Vector2.ZERO, thump_radius, 0.0, TAU, 40, thump_color, maxf(2.0, visual_radius * 0.12))
 		canvas.draw_arc(Vector2.ZERO, thump_radius * 0.72, 0.0, TAU, 32, Color(thump_color.r, thump_color.g, thump_color.b, thump_color.a * 0.6), maxf(1.5, visual_radius * 0.08))
+	if not airborne:
+		_draw_ground_truth_footprint(canvas, shake_offset, radius, outline, alpha)
 	canvas.draw_set_transform(shake_offset + body_offset + movement_bob + (Vector2(0.0, -air_lift_px) if airborne else Vector2.ZERO), 0.0, Vector2.ONE)
-
-	if absf(visual_radius - radius) > 1.0:
-		canvas.draw_arc(Vector2.ZERO, radius + 2.0, 0.0, TAU, 40, Color(outline.r, outline.g, outline.b, outline.a * 0.45), 1.5)
-	canvas.draw_arc(Vector2.ZERO, visual_radius + 3.0, 0.0, TAU, 40, outline, 2.5)
+	if airborne:
+		canvas.draw_arc(Vector2.ZERO, visual_radius + 3.0, 0.0, TAU, 40, outline, 2.5)
 
 	match String(skin.get("base", "blob")):
 		"frog":
@@ -233,6 +234,13 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 		flash_color.a = clampf(flash_alpha, 0.0, 1.0) * 0.85
 		canvas.draw_circle(Vector2.ZERO, visual_radius + 3.0, flash_color)
 	canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+static func _draw_ground_truth_footprint(canvas: CanvasItem, origin: Vector2, radius: float, outline: Color, alpha: float) -> void:
+	var shadow_color := _with_alpha(Color(0.04, 0.05, 0.03, 0.32), alpha)
+	canvas.draw_set_transform(origin + Vector2(radius * 0.14, radius * 0.18), 0.0, Vector2(1.0, 0.58))
+	canvas.draw_circle(Vector2.ZERO, radius, shadow_color)
+	canvas.draw_set_transform(origin, 0.0, Vector2.ONE)
+	canvas.draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, outline, 2.2)
 
 static func _region_flash_color(region_mult: float) -> Color:
 	if region_mult > 1.05:

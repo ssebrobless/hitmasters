@@ -2155,9 +2155,14 @@ func _check_visual_height_profiles(arena: Node, failures: Array[String]) -> void
 		and float(firefly_attack_state.get("air_attack_model_scale_bonus", 0.0)) > 0.16 \
 		and float(firefly_attack_state.get("air_attack_release_t", 0.0)) > 0.9 \
 		and float(firefly_attack_state.get("model_scale", 1.0)) < float(mosquito_attack_state.get("model_scale", 1.0))
+	var heron_truth_ring: bool = _truth_ring_matches_combat_radius(heron_state) \
+		and float(heron_state.get("visual_radius_px", 0.0)) > float(heron_state.get("combat_radius_px", 0.0)) * 1.15
+	var bog_truth_ring: bool = _truth_ring_matches_combat_radius(bog_state) \
+		and float(bog_state.get("visual_radius_px", 999.0)) < float(bog_state.get("combat_radius_px", 0.0)) * 0.9
 	var roster_profiled := _all_roster_creatures_have_height_profile(arena)
-	if not tall_heron or not owl_lift or not owl_low_read or not kingfisher_low_read or not tiny_low or not tiny_hover or not flying_attack_scale or not roster_profiled:
-		failures.append("visual height profiles should distinguish tall, airborne, hittable low-window, low, tiny hover, and airborne attack readability scales; heron=%s owl=%s/%s/%s kingfisher=%s/%s bog=%s mosquito=%s/%s firefly=%s/%s roster_profiled=%s" % [
+	var roster_truth_ring := _all_roster_creatures_have_truth_ring(arena)
+	if not tall_heron or not owl_lift or not owl_low_read or not kingfisher_low_read or not tiny_low or not tiny_hover or not flying_attack_scale or not heron_truth_ring or not bog_truth_ring or not roster_profiled or not roster_truth_ring:
+		failures.append("visual height profiles should distinguish tall, airborne, hittable low-window, low, tiny hover, airborne attack readability scales, and combat-radius truth rings; heron=%s owl=%s/%s/%s kingfisher=%s/%s bog=%s mosquito=%s/%s firefly=%s/%s rings=%s/%s/%s roster_profiled=%s" % [
 			str(heron_state),
 			str(owl_air_state),
 			str(owl_low_state),
@@ -2169,6 +2174,9 @@ func _check_visual_height_profiles(arena: Node, failures: Array[String]) -> void
 			str(mosquito_attack_state),
 			str(firefly_state),
 			str(firefly_attack_state),
+			str(heron_truth_ring),
+			str(bog_truth_ring),
+			str(roster_truth_ring),
 			str(roster_profiled)
 		])
 
@@ -2262,6 +2270,24 @@ func _all_roster_creatures_have_height_profile(arena: Node) -> bool:
 		if String(state.get("height_class", "mid")) == "mid" or String(state.get("height_band", "")) == "" or float(state.get("height_units", 0.0)) <= 0.0:
 			return false
 	return true
+
+func _all_roster_creatures_have_truth_ring(arena: Node) -> bool:
+	var actor: Node = arena.player
+	var roster := [
+		"bullfrog", "chorus_frog", "newt", "cane_toad", "snapping_turtle", "water_snake", "bog_turtle", "alligator", "owl", "great_blue_heron", "kingfisher", "duck", "water_shrew", "beaver", "otter", "mink", "leech", "crayfish", "mosquito_swarm", "wolf_spider", "firefly"
+	]
+	for creature_id: String in roster:
+		actor.apply_creature(creature_id)
+		var state: Dictionary = actor.get_render_motion_state()
+		if not _truth_ring_matches_combat_radius(state):
+			return false
+	return true
+
+func _truth_ring_matches_combat_radius(state: Dictionary) -> bool:
+	var combat_radius := float(state.get("combat_radius_px", -1.0))
+	var visual_radius := float(state.get("visual_radius_px", -1.0))
+	var truth_radius := float(state.get("truth_ring_radius_px", -2.0))
+	return combat_radius > 0.0 and visual_radius > 0.0 and absf(truth_radius - combat_radius) < 0.001
 
 func _none_render_flags(state: Dictionary, flags: Array[String]) -> bool:
 	for flag: String in flags:
