@@ -27,6 +27,11 @@ through food, hunger, and breeding.
 | `docs/BATTLE_BOG_DECISIONS.md` | Locked design rulings; overrides other docs on conflict. |
 | `docs/BATTLE_BOG_BUILD_PLAN.md` | Hardened milestone plan (M0-M8) with file layout and acceptance checks. |
 | `docs/CODEX_HANDOFF_PROMPT.md` | Ready-to-paste implementation prompt for the coding agent, one milestone at a time. |
+| `docs/RESEARCH_MOVEMENT_FEEL.md` | Movement-feel research source; context unless ratified in decisions/build/systems docs. |
+| `docs/RESEARCH_COMBAT_DEPTH.md` | Combat-depth research source; context unless ratified in decisions/build/systems docs. |
+| `docs/RESEARCH_VISUAL_OVERHAUL.md` | Visual/readability research source; context unless ratified in decisions/build/systems docs. |
+| `docs/RESEARCH_VISION_SUPERVIVE_AND_BATTLE_BOG.md` | Vision/information-ecology research source; context unless ratified in decisions/build/systems docs. |
+| `docs/RESEARCH_SUPERVIVE_MECHANICS_FOR_BATTLE_BOG.md` | SUPERVIVE mechanics translation source; context unless ratified in decisions/build/systems docs. |
 | `data/battle_bog_roster.json` | Structured roster data for future character select/gameplay wiring. |
 
 ## Current Prototype Goals

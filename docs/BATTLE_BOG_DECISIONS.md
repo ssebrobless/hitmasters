@@ -2,6 +2,17 @@
 
 Resolved 2026-07-03. These override ambiguity in the systems/roster docs.
 
+## Research Integration Decisions
+
+| # | Decision | Ruling |
+| --- | --- | --- |
+| 35 | Information ecology | Research handoff integration: Battle Bog information is layered, not global truth. Systems should distinguish directly visible, revealed, heard/pulsed, last-known, suspected, and hidden states. Exact radii/timings are tuning variables, but new visibility, minimap, AI, terrain clue, and objective work must plug into shared information states instead of ad hoc omniscience. |
+| 36 | Minimap truth | The minimap is a readability tool, not enemy GPS. Exact enemy icons require current team visibility or reveal; otherwise future work should use faded last-known markers or uncertain sound/ripple/rustle pulses. Neutral animal-zone progress may be shown as coarse public ecology information because it already exists as world-state objective pressure. |
+| 37 | Public objective events | Future non-core objectives should announce readable state transitions such as dormant, active, contesting, claimable, claimed, and stolen. Ownership should be earned through contest/claim/interrupt windows rather than pure last-hit. Boss-family-specific rewards and timings remain out of main-thread scope until the boss work is handed off. |
+| 38 | Match-contained power | Do not import persistent out-of-match stat progression from reference games. Food, hunger, breeding, stocks, and future objectives stay match-contained unless a later decision explicitly changes the ranked progression model. |
+
+## Original Locked Decisions
+
 | # | Decision | Ruling |
 | --- | --- | --- |
 | 1 | Damage taxonomy | Two orthogonal tags: delivery (`melee` vs `ranged`) and plane (`ground` vs `air`). Airborne birds dodge ground-melee only; ranged hits fliers normally. Mosquito's 9% miss is its unique passive, not a global rule. "Physical attacker" passives (Bufotoxin, Toxic Skin, Toxic Secretion, Rib Exudation) trigger on melee contact only. |

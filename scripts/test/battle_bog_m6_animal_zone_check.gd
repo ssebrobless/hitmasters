@@ -5,6 +5,7 @@ const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
 const MeleeHit := preload("res://scripts/sim/abilities/melee_hit.gd")
 const TargetFilter := preload("res://scripts/sim/combat/target_filter.gd")
 const StockManagerScript := preload("res://scripts/game/stock_manager.gd")
+const MinimapScript := preload("res://scripts/ui/minimap.gd")
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -69,6 +70,7 @@ func _check_zone_spawn_state(arena: Node, failures: Array[String]) -> void:
 func _check_wildlife_encounters(arena: Node, failures: Array[String]) -> void:
 	var before_count: int = arena.wildlife_encounters.size()
 	var blue_a := _zone(arena.get_animal_zone_state(), "blue", "A")
+	var before_minimap_state: Dictionary = MinimapScript.animal_zone_minimap_state(blue_a)
 	var wildlife: Node = _wildlife_for_zone(arena, "blue:A")
 	var actor: Node = arena.player
 	if before_count != 40 or wildlife == null or actor == null:
@@ -88,6 +90,7 @@ func _check_wildlife_encounters(arena: Node, failures: Array[String]) -> void:
 	actor.last_aim_direction = Vector2.RIGHT
 	var hits := MeleeHit.hit(actor, 42.0, float(wildlife.get("health")) + 10.0, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "Wildlife Probe")
 	var after_zone := _zone(arena.get_animal_zone_state(), "blue", "A")
+	var after_minimap_state: Dictionary = MinimapScript.animal_zone_minimap_state(after_zone)
 	var defeated: bool = not arena.wildlife_encounters.has(wildlife)
 	var state_updated: bool = int(after_zone.get("alive_count", -1)) == int(blue_a.get("alive_count", 0)) - 1 \
 		and int(after_zone.get("defeated_count", 0)) == 1 \
@@ -101,18 +104,32 @@ func _check_wildlife_encounters(arena: Node, failures: Array[String]) -> void:
 			break
 		next_wildlife.take_damage(float(next_wildlife.get("health")) + 10.0, actor.team, actor)
 	var clear_zone := _zone(arena.get_animal_zone_state(), "blue", "A")
+	var clear_minimap_state: Dictionary = MinimapScript.animal_zone_minimap_state(clear_zone)
+	var boss_minimap_state: Dictionary = MinimapScript.animal_zone_minimap_state(_zone(arena.get_animal_zone_state(), "blue", "Boss"))
 	var cleared: bool = int(clear_zone.get("alive_count", -1)) == 0 \
 		and int(clear_zone.get("cleared_team", -1)) == 0 \
 		and int(clear_zone.get("blue_defeats", 0)) == 5 \
 		and int(clear_zone.get("defeated_count", 0)) == 5
-	if not filtered_by_default or not targetable_by_attack or hits.is_empty() or not defeated or not state_updated or not rewarded or not cleared:
-		failures.append("wildlife should be attack-interactable, reward compatible diets, and track team clears; filtered=%s targetable=%s hits=%d defeated=%s rewarded=%s cleared=%s before=%s after=%s clear=%s hunger %.2f->%.2f" % [
+	var minimap_progress: bool = bool(before_minimap_state.get("visible", false)) \
+		and int(before_minimap_state.get("progress_mark_count", -1)) == 5 \
+		and int(before_minimap_state.get("progress_mark_total", -1)) == 5 \
+		and int(after_minimap_state.get("progress_mark_count", -1)) == 4 \
+		and int(after_minimap_state.get("progress_mark_total", -1)) == 5 \
+		and int(clear_minimap_state.get("progress_mark_count", -1)) == 0 \
+		and int(clear_minimap_state.get("progress_mark_total", -1)) == 5 \
+		and not bool(boss_minimap_state.get("visible", true))
+	if not filtered_by_default or not targetable_by_attack or hits.is_empty() or not defeated or not state_updated or not rewarded or not cleared or not minimap_progress:
+		failures.append("wildlife should be attack-interactable, reward compatible diets, track team clears, and expose coarse non-boss minimap progress; filtered=%s targetable=%s hits=%d defeated=%s rewarded=%s cleared=%s minimap=%s/%s/%s boss=%s before=%s after=%s clear=%s hunger %.2f->%.2f" % [
 			str(filtered_by_default),
 			str(targetable_by_attack),
 			hits.size(),
 			str(defeated),
 			str(rewarded),
 			str(cleared),
+			str(before_minimap_state),
+			str(after_minimap_state),
+			str(clear_minimap_state),
+			str(boss_minimap_state),
 			str(blue_a),
 			str(after_zone),
 			str(clear_zone),

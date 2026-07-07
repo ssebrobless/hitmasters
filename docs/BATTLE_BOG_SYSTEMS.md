@@ -83,6 +83,37 @@ terrain knowledge, and team composition.
 - Mosquitos and fireflies are always airborne, but unlike birds they can still
   be hit by physical attacks.
 
+## Information Ecology
+
+Battle Bog information is a gameplay resource. The map, minimap, AI, terrain
+clues, and future objective events should share the same truth ladder instead of
+showing every enemy or objective as exact global knowledge.
+
+```text
+direct sight -> revealed -> heard/pulsed -> last-known -> suspected -> hidden
+```
+
+| Layer | System Meaning |
+| --- | --- |
+| Direct sight | Current allied vision can show exact enemy position and normal minimap icon. |
+| Revealed | Ability/objective/terrain reveal grants temporary exact information. |
+| Heard or pulsed | Movement, attacks, harvesting, splashes, or rustles create uncertain rings/arcs. |
+| Last-known | Recently seen enemies leave faded, decaying markers instead of live GPS. |
+| Suspected | Terrain clues suggest activity without a precise unit marker. |
+| Hidden | No targeting, no exact minimap icon, and AI should not engage omnisciently. |
+
+- Day/night is an information phase layered over decision #34's 120 second day:
+  day favors direct scouting, dusk transitions toward clue reading, and night
+  should emphasize pulses, rustles, ripples, and reveal tools.
+- Terrain should communicate information through mechanics and visuals: reeds
+  rustle, water ripples, mud drags, rocks/trees block sight, and cover hides
+  slow/idle creatures until an action gives them away.
+- Neutral animal-zone progress is public ecology pressure. The world and
+  minimap may show coarse remaining wildlife/contest/control state, while exact
+  enemy positions still follow the visibility rules above.
+- Future objective states should be public events: dormant, active, contesting,
+  claimable, claimed, and stolen.
+
 ## Food, Hunger, And Breeding
 
 ```text
@@ -166,4 +197,3 @@ Wild flora/fauna ── harvest/kill ──▶ food ──▶ heal slightly
 | Airborne bird | Passes over obstacles/enemies and dodges ground physical attacks. |
 | Low attack window | Bird dive/peck impact windows can be hit by ground attacks. |
 | Always-flying bugs | Mosquitos/fireflies fly over water/objects but can still be hit physically. |
-

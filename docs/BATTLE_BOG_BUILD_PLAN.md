@@ -41,6 +41,9 @@ Standing rules (every milestone):
 5. The game must launch and play 3v3 vs bots at the end of every milestone.
 6. `data/battle_bog_roster.json` is design-owned: code reads it; refactors never
    rewrite it. Schema additions require a note in BATTLE_BOG_DECISIONS.md.
+7. Information systems obey decisions #35-#36: minimap, AI targeting, terrain
+   clues, and future objective UI must distinguish visible/revealed/heard/
+   last-known/hidden state instead of adding new omniscient shortcuts.
 
 ---
 

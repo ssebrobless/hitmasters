@@ -106,9 +106,13 @@ func _draw_animal_zone_overlays(world: Rect2, map_scale: float) -> void:
 		var boss := bool(zone.get("boss", false))
 		var contested := bool(zone.get("contested", false))
 		var color := _minimap_zone_color(zone, active, boss, contested)
-		_draw_minimap_ellipse(center, radius, Color(color.r, color.g, color.b, 0.06 if active else 0.025), color, 1.2 if active else 0.8)
+		var control_team := int(zone.get("control_team", -1))
+		var zone_width := 1.6 if contested or control_team >= 0 else 1.2 if active else 0.8
+		_draw_minimap_ellipse(center, radius, Color(color.r, color.g, color.b, 0.06 if active else 0.025), color, zone_width)
 		if boss:
 			_draw_minimap_ellipse(center, radius * 0.66, Color(0.0, 0.0, 0.0, 0.0), Color(color.r, color.g, color.b, color.a * 0.72), 0.9)
+		else:
+			_draw_animal_zone_progress_marks(zone, center, radius, color)
 
 func _draw_food_overlays(world: Rect2, map_scale: float) -> void:
 	if arena == null or arena.get("food_sources") == null:
@@ -142,9 +146,53 @@ func _minimap_zone_color(zone: Dictionary, active: bool, boss: bool, contested: 
 		return VisualGrammar.ecology_zone_color("contested", 0.78)
 	if boss:
 		return VisualGrammar.ecology_zone_color("boss_active", 0.76) if active else VisualGrammar.ecology_zone_color("boss_dormant", 0.42)
+	var control_team := int(zone.get("control_team", -1))
+	if control_team == 0:
+		return VisualGrammar.ecology_zone_color("blue_control", 0.7)
+	if control_team == 1:
+		return VisualGrammar.ecology_zone_color("red_control", 0.7)
 	if String(zone.get("side", "")) == "blue":
 		return VisualGrammar.ecology_zone_color("blue_side", 0.62)
 	return VisualGrammar.ecology_zone_color("red_side", 0.62)
+
+static func animal_zone_minimap_state(zone: Dictionary) -> Dictionary:
+	if bool(zone.get("boss", false)):
+		return {
+			"visible": false,
+			"progress_mark_count": 0,
+			"progress_mark_total": 0,
+			"contested": false,
+			"control_team": -1
+		}
+	var active := bool(zone.get("active", false))
+	var spawned_count := maxi(int(zone.get("spawned_count", 0)), int((zone.get("occupants", []) as Array).size()))
+	var alive_count := int(zone.get("alive_count", spawned_count if active else 0))
+	if spawned_count <= 0:
+		spawned_count = alive_count
+	return {
+		"visible": active or spawned_count > 0,
+		"progress_mark_count": clampi(alive_count, 0, spawned_count),
+		"progress_mark_total": maxi(spawned_count, 0),
+		"contested": bool(zone.get("contested", false)),
+		"control_team": int(zone.get("control_team", -1))
+	}
+
+func _draw_animal_zone_progress_marks(zone: Dictionary, center: Vector2, radius: Vector2, color: Color) -> void:
+	var state := animal_zone_minimap_state(zone)
+	if not bool(state.get("visible", false)):
+		return
+	var total := int(state.get("progress_mark_total", 0))
+	var alive := int(state.get("progress_mark_count", 0))
+	if total <= 0:
+		return
+	var count := mini(total, 8)
+	var defeated_color := VisualGrammar.shadow_color(0.58)
+	for i in count:
+		var t := 0.5 if count == 1 else float(i) / float(count - 1)
+		var point := center + Vector2(lerpf(-radius.x * 0.5, radius.x * 0.5, t), radius.y * 0.54)
+		var occupant_index := int(floor(float(i) * float(total) / float(count)))
+		var mark_color := Color(color.r, color.g, color.b, 0.82) if occupant_index < alive else defeated_color
+		draw_circle(point, 1.25, mark_color)
 
 func _draw_minimap_ellipse(center: Vector2, radius: Vector2, fill: Color, outline: Color, width: float) -> void:
 	var points := PackedVector2Array()
