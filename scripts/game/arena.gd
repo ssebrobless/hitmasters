@@ -2225,12 +2225,22 @@ func _draw_animal_zones() -> void:
 		var fill := Color(base_color.r, base_color.g, base_color.b, 0.035 if active else 0.014)
 		var outline := Color(base_color.r, base_color.g, base_color.b, 0.3 if active else 0.12)
 		_draw_ellipse(center, radius, fill, outline, 2.0 if active else 1.0)
+		_draw_animal_zone_water_source(zone, active)
 		if contested:
 			_draw_ellipse(center, radius * 0.92, Color(1.0, 0.85, 0.25, 0.025), Color(1.0, 0.82, 0.25, 0.46), 3.0)
 		elif control_team >= 0:
 			var team_tint := Color(0.4, 0.72, 1.0, 0.34) if control_team == BLUE else Color(1.0, 0.42, 0.35, 0.34)
 			_draw_ellipse(center, radius * 0.86, Color(team_tint.r, team_tint.g, team_tint.b, 0.018), team_tint, 2.0)
 		_draw_animal_zone_occupant_marks(zone, center, radius, base_color)
+
+func _draw_animal_zone_water_source(zone: Dictionary, active: bool) -> void:
+	var water_center: Vector2 = zone.get("water_center", zone.get("center", Vector2.ZERO))
+	var water_radius: Vector2 = zone.get("water_radius", Vector2.ZERO)
+	if water_radius.x <= 0.0 or water_radius.y <= 0.0:
+		return
+	var alpha := 0.24 if active else 0.09
+	_draw_ellipse(water_center, water_radius, Color(0.18, 0.46, 0.56, alpha * 0.34), Color(0.48, 0.78, 0.86, alpha), 1.3 if active else 0.8)
+	_draw_ellipse(water_center, water_radius * 0.58, Color(0.0, 0.0, 0.0, 0.0), Color(0.58, 0.86, 0.92, alpha * 0.72), 0.9)
 
 func _animal_zone_color(zone: Dictionary, active: bool, boss: bool, control_team: int) -> Color:
 	if boss:

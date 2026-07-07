@@ -55,13 +55,15 @@ func _check_zone_spawn_state(arena: Node, failures: Array[String]) -> void:
 		and not bool(red_boss.get("active", true)) \
 		and (blue_boss.get("occupants", []) as Array).is_empty() \
 		and (red_boss.get("occupants", []) as Array).is_empty()
-	if zones.size() != 10 or nonboss_active != 8 or not blue_a_ok or not boss_dormant:
-		failures.append("animal zones should spawn 8 active side zones and 2 dormant boss zones; count=%d active=%d blue_a=%s boss=%s/%s" % [
+	var water_sources_ok := _zone_water_sources_ok(arena, zones)
+	if zones.size() != 10 or nonboss_active != 8 or not blue_a_ok or not boss_dormant or not water_sources_ok:
+		failures.append("animal zones should spawn 8 active side zones, 2 dormant boss zones, and water-source metadata inside each zone; count=%d active=%d blue_a=%s boss=%s/%s water=%s" % [
 			zones.size(),
 			nonboss_active,
 			str(blue_a),
 			str(blue_boss),
-			str(red_boss)
+			str(red_boss),
+			str(water_sources_ok)
 		])
 
 func _check_wildlife_encounters(arena: Node, failures: Array[String]) -> void:
@@ -186,6 +188,21 @@ func _zone(zones: Array, side: String, group: String) -> Dictionary:
 		if String(zone.get("side", "")) == side and String(zone.get("group", "")) == group:
 			return zone
 	return {}
+
+func _zone_water_sources_ok(arena: Node, zones: Array) -> bool:
+	for zone: Dictionary in zones:
+		var center: Vector2 = zone.get("center", Vector2.ZERO)
+		var radius: Vector2 = zone.get("radius", Vector2.ZERO)
+		var water_center: Vector2 = zone.get("water_center", Vector2(1.0e20, 1.0e20))
+		var water_radius: Vector2 = zone.get("water_radius", Vector2.ZERO)
+		if water_radius.x <= 0.0 or water_radius.y <= 0.0:
+			return false
+		var normalized := Vector2((water_center.x - center.x) / maxf(radius.x, 1.0), (water_center.y - center.y) / maxf(radius.y, 1.0))
+		if normalized.length() > 1.0:
+			return false
+		if arena.terrain_map.get_zone_at(water_center) != arena.terrain_map.WATER:
+			return false
+	return true
 
 func _wildlife_for_zone(arena: Node, zone_id: String) -> Node:
 	for encounter in arena.wildlife_encounters:

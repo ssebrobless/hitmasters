@@ -358,6 +358,10 @@ func _animal_zone(side: String, group: String, x: float, y: float, rx: float, ry
 		"center": Vector2(x * unit, y * unit),
 		"radius_units": Vector2(rx, ry),
 		"radius": Vector2(rx * unit, ry * unit),
+		"water_center_units": Vector2(x, y),
+		"water_center": Vector2(x * unit, y * unit),
+		"water_radius_units": Vector2(8.0, 5.0),
+		"water_radius": Vector2(8.0 * unit, 5.0 * unit),
 		"creatures": creatures.duplicate(),
 		"boss": boss,
 		"breed_activation_count": 5 if boss else 0

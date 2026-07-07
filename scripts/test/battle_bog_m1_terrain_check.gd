@@ -50,7 +50,7 @@ func _initialize() -> void:
 		and float(shallow_comfort_profile["speed_mult"]) > 1.0 \
 		and deep_land_dragged \
 		and String(habitat_profile["danger"]) == EnvironmentProfileScript.DANGER_SAFE
-	var animal_zones_ok: bool = _animal_zones_ok(terrain.get_animal_zones())
+	var animal_zones_ok: bool = _animal_zones_ok(terrain, terrain.get_animal_zones())
 	var zones_clear_huts_ok: bool = _animal_zones_clear_hut_patrols(terrain)
 	var food_resources_ok: bool = _food_resources_ok(terrain.get_food_spawn_points())
 	var obstacles_ok: bool = _environmental_obstacles_ok(terrain.get_environmental_obstacles())
@@ -86,7 +86,7 @@ func _initialize() -> void:
 	])
 	quit(0 if passed else 1)
 
-func _animal_zones_ok(zones: Array) -> bool:
+func _animal_zones_ok(terrain: RefCounted, zones: Array) -> bool:
 	if zones.size() != 10:
 		return false
 	var expected := {
@@ -108,6 +108,8 @@ func _animal_zones_ok(zones: Array) -> bool:
 			return false
 		if blue_zone.get("radius_units", Vector2.ZERO) != radius or red_zone.get("radius_units", Vector2.ZERO) != radius:
 			return false
+		if not _zone_water_source_ok(terrain, blue_zone) or not _zone_water_source_ok(terrain, red_zone):
+			return false
 		if bool(blue_zone.get("boss", false)) != bool(spec["boss"]) or bool(red_zone.get("boss", false)) != bool(spec["boss"]):
 			return false
 		if bool(spec["boss"]) and (int(blue_zone.get("breed_activation_count", 0)) != 5 or int(red_zone.get("breed_activation_count", 0)) != 5):
@@ -115,6 +117,18 @@ func _animal_zones_ok(zones: Array) -> bool:
 		if not _arrays_equal(blue_zone.get("creatures", []), spec["creatures"]) or not _arrays_equal(red_zone.get("creatures", []), spec["creatures"]):
 			return false
 	return true
+
+func _zone_water_source_ok(terrain: RefCounted, zone: Dictionary) -> bool:
+	var center: Vector2 = zone.get("center_units", Vector2.ZERO)
+	var radius: Vector2 = zone.get("radius_units", Vector2.ZERO)
+	var water_center: Vector2 = zone.get("water_center_units", Vector2(1.0e20, 1.0e20))
+	var water_radius: Vector2 = zone.get("water_radius_units", Vector2.ZERO)
+	if water_radius.x < 6.0 or water_radius.y < 4.0:
+		return false
+	var normalized := Vector2((water_center.x - center.x) / radius.x, (water_center.y - center.y) / radius.y)
+	if normalized.length() > 1.0:
+		return false
+	return terrain.get_zone_at(zone.get("water_center", Vector2.ZERO)) == TerrainMapScript.WATER
 
 func _bridge_rects_ok(terrain: RefCounted, bridge_rects: Array) -> bool:
 	var unit := SimConstants.UNIT_PX
