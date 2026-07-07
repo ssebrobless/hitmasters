@@ -2618,6 +2618,7 @@ func get_match_summary_data(winner := "", reason := "") -> Dictionary:
 		"balance_flags": _match_balance_flags(),
 		"balance_review_priority": _match_balance_review_priority(),
 		"balance_review_focus": _match_balance_review_focus(),
+		"balance_review_summary": _match_balance_review_summary(),
 		"top_players": _top_match_summary_rows(),
 		"players": _player_match_summary_rows()
 	}
@@ -2711,6 +2712,12 @@ func _format_balance_focus_line() -> String:
 	for entry: Dictionary in _match_balance_review_focus():
 		labels.append(String(entry.get("label", "")))
 	return "Review focus: %s" % ", ".join(labels)
+
+func _match_balance_review_summary() -> String:
+	var labels: Array[String] = []
+	for entry: Dictionary in _match_balance_review_focus():
+		labels.append(String(entry.get("label", "")))
+	return "P%d: %s" % [_match_balance_review_priority(), ", ".join(labels)]
 
 func _balance_flag_label(flag: String) -> String:
 	match flag:

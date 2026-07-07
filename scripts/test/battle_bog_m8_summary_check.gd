@@ -70,6 +70,7 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 	var flags: Array = summary.get("balance_flags", [])
 	var review_priority := int(summary.get("balance_review_priority", -1))
 	var review_focus: Array = summary.get("balance_review_focus", [])
+	var review_summary := String(summary.get("balance_review_summary", ""))
 	var draft: Dictionary = summary.get("draft", {})
 	var selected_squad: Array = summary.get("selected_squad_ids", [])
 	var text: String = arena._get_match_summary("Blue")
@@ -112,6 +113,9 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and _focus_has(review_focus, "hut_damage_delta", "Blue", 800) \
 		and _focus_has(review_focus, "deposit_delta", "Blue", 2) \
 		and _focus_has(review_focus, "breed_deny_delta", "Red", 1) \
+		and review_summary.contains("P5:") \
+		and review_summary.contains("Blue hut damage +800") \
+		and review_summary.contains("Red denials +1") \
 		and String(top_blue.get("name", "")).contains("Duck") \
 		and int(top_blue.get("hut_damage", 0)) >= 799 \
 		and float(top_blue.get("summary_score", 0.0)) > 140.0 \
@@ -169,6 +173,7 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 	var log_flags: Array = log_data.get("balance_flags", [])
 	var log_review_priority := int(log_data.get("balance_review_priority", -1))
 	var log_review_focus: Array = log_data.get("balance_review_focus", [])
+	var log_review_summary := String(log_data.get("balance_review_summary", ""))
 	var log_draft: Dictionary = log_data.get("draft", {})
 	var log_squad: Array = log_data.get("selected_squad_ids", [])
 	var log_top_players: Dictionary = log_data.get("top_players", {})
@@ -204,6 +209,9 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and _focus_has(log_review_focus, "hut_damage_delta", "Blue", 800) \
 		and _focus_has(log_review_focus, "deposit_delta", "Blue", 2) \
 		and _focus_has(log_review_focus, "breed_deny_delta", "Red", 1) \
+		and log_review_summary.contains("P5:") \
+		and log_review_summary.contains("Blue hut damage +800") \
+		and log_review_summary.contains("Red denials +1") \
 		and String(log_top_blue.get("name", "")).contains("Duck") \
 		and int(log_top_blue.get("hut_damage", 0)) >= 799 \
 		and float(log_top_blue.get("summary_score", 0.0)) > 140.0 \
