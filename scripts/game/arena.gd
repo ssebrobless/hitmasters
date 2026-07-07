@@ -2588,6 +2588,7 @@ func _get_match_summary(winner: String) -> String:
 		_format_team_match_summary_line(BLUE),
 		_format_team_match_summary_line(RED)
 	]
+	lines.append(_format_match_context_line())
 	lines.append(_format_balance_flags_line())
 	var blue_top := _format_top_player_summary_line(BLUE)
 	if not blue_top.is_empty():
@@ -2657,6 +2658,42 @@ func _format_team_match_summary_line(team: int) -> String:
 		int(data.get("wildlife_defeats", 0)),
 		String(data.get("buffs", "none"))
 	]
+
+func _format_match_context_line() -> String:
+	var squad_labels: Array[String] = []
+	var squad_ids: Array = GameConfig.get_selected_squad_ids() if GameConfig.has_method("get_selected_squad_ids") else [GameConfig.selected_creature_id]
+	for creature_id in squad_ids:
+		squad_labels.append(_creature_label(String(creature_id)))
+	var squad_text := " / ".join(squad_labels) if not squad_labels.is_empty() else _creature_label(GameConfig.selected_creature_id)
+	var draft_state: Dictionary = GameConfig.get_draft_stub_state() if GameConfig.has_method("get_draft_stub_state") else {}
+	var draft_text := "Draft: off"
+	if bool(draft_state.get("enabled", false)):
+		draft_text = "Draft: pick %d, ban %d/team" % [
+			int(draft_state.get("pick_slots_per_team", 0)),
+			int(draft_state.get("ban_slots_per_team", 0))
+		]
+		var ban_text := _format_draft_bans(draft_state)
+		if not ban_text.is_empty():
+			draft_text += " (%s)" % ban_text
+	return "Mode: %s | Squad: %s | %s" % [String(GameConfig.selected_mode), squad_text, draft_text]
+
+func _format_draft_bans(draft_state: Dictionary) -> String:
+	var chunks: Array[String] = []
+	var blue_bans: Array = draft_state.get("blue_bans", [])
+	var red_bans: Array = draft_state.get("red_bans", [])
+	if not blue_bans.is_empty():
+		chunks.append("Blue bans %s" % _creature_label(String(blue_bans[0])))
+	if not red_bans.is_empty():
+		chunks.append("Red bans %s" % _creature_label(String(red_bans[0])))
+	return ", ".join(chunks)
+
+func _creature_label(creature_id: String) -> String:
+	var catalog := get_node_or_null("/root/CreatureCatalog")
+	if catalog != null and catalog.has_method("get_creature"):
+		var creature_data: Dictionary = catalog.get_creature(creature_id)
+		if not creature_data.is_empty():
+			return String(creature_data.get("name", creature_id))
+	return creature_id.replace("_", " ").capitalize()
 
 func _format_balance_flags_line() -> String:
 	var labels: Array[String] = []
