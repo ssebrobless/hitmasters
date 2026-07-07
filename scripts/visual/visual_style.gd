@@ -1631,6 +1631,7 @@ static func _base_cluster(canvas: CanvasItem, radius: float, forward: Vector2, s
 		for wake_side: float in [-1.0, 1.0]:
 			var wake_start := -forward * radius * 0.45 + side * wake_side * radius * 0.4
 			canvas.draw_line(wake_start, wake_start - forward * radius * (0.82 + 0.24 * leech_motion_intensity) + side * wake_side * radius * 0.18, water_color, maxf(radius * 0.06, 1.0))
+			canvas.draw_circle(wake_start - forward * radius * (0.7 + 0.16 * leech_motion_intensity) + side * wake_side * radius * 0.14, maxf(radius * (0.032 + 0.016 * leech_motion_intensity), 1.0), water_color.lightened(0.28))
 		for ripple_index in 3:
 			var t := float(ripple_index) / 2.0
 			var ripple_center := -forward * radius * (0.18 + t * 0.72) + side * sin(walk_phase * 1.25 + t * 2.4) * radius * 0.22
@@ -1646,6 +1647,7 @@ static func _base_cluster(canvas: CanvasItem, radius: float, forward: Vector2, s
 			canvas.draw_arc(anchor_center, radius * (0.18 + 0.04 * leech_motion_intensity), 0.0, TAU, 14, Color(dark.r, dark.g, dark.b, 0.28 + 0.08 * leech_motion_intensity), maxf(radius * 0.045, 1.0))
 			canvas.draw_line(anchor_center - forward * radius * 0.12, anchor_center - forward * radius * (0.36 + 0.12 * leech_motion_intensity), Color(dark.r, dark.g, dark.b, 0.18 + 0.06 * leech_motion_intensity), maxf(radius * 0.04, 1.0))
 			canvas.draw_circle(anchor_center + forward * radius * 0.08, maxf(radius * (0.045 + 0.02 * leech_motion_intensity), 1.0), Color(dark.r, dark.g, dark.b, 0.24 + 0.08 * leech_motion_intensity))
+			canvas.draw_circle(anchor_center - forward * radius * (0.2 + 0.06 * leech_motion_intensity), maxf(radius * (0.034 + 0.016 * leech_motion_intensity), 1.0), Color(dark.r, dark.g, dark.b, 0.18 + 0.08 * leech_motion_intensity))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 11
 	var wriggle := Time.get_ticks_msec() * 0.002 * tail_wave
