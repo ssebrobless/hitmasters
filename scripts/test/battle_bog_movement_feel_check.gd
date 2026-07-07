@@ -1636,7 +1636,33 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(firefly_hover_state.get("owl_silent_flight_pose", false)) \
 		and not bool(firefly_hover_state.get("kingfisher_dart_pose", false)) \
 		and not bool(firefly_hover_state.get("wading_pose", false)) \
-		and not bool(firefly_hover_state.get("duck_paddle_pose", false))
+		and not bool(firefly_hover_state.get("heron_stalk_pose", false)) \
+		and not bool(firefly_hover_state.get("duck_paddle_pose", false)) \
+		and not bool(firefly_hover_state.get("duck_waddle_pose", false)) \
+		and not bool(firefly_hover_state.get("surface_walk", false)) \
+		and not bool(firefly_hover_state.get("submerged_shrew_pose", false)) \
+		and not bool(firefly_hover_state.get("shrew_land_skitter_pose", false)) \
+		and not bool(firefly_hover_state.get("slick_crawl_pose", false)) \
+		and not bool(firefly_hover_state.get("newt_swim_pose", false)) \
+		and not bool(firefly_hover_state.get("leech_inchworm_pose", false)) \
+		and not bool(firefly_hover_state.get("leech_undulate_pose", false)) \
+		and not bool(firefly_hover_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(firefly_hover_state.get("water_slither_pose", false)) \
+		and not bool(firefly_hover_state.get("turtle_plod_pose", false)) \
+		and not bool(firefly_hover_state.get("turtle_swim_pose", false)) \
+		and not bool(firefly_hover_state.get("bog_turtle_creep_pose", false)) \
+		and not bool(firefly_hover_state.get("bog_turtle_paddle_pose", false)) \
+		and not bool(firefly_hover_state.get("beaver_lumber_pose", false)) \
+		and not bool(firefly_hover_state.get("beaver_swim_pose", false)) \
+		and not bool(firefly_hover_state.get("mink_bound_pose", false)) \
+		and not bool(firefly_hover_state.get("mink_swim_pose", false)) \
+		and not bool(firefly_hover_state.get("otter_land_slide_pose", false)) \
+		and not bool(firefly_hover_state.get("otter_swim_pose", false)) \
+		and not bool(firefly_hover_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(firefly_hover_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and not bool(firefly_hover_state.get("spider_skitter_pose", false)) \
+		and not bool(firefly_hover_state.get("high_walk_pose", false)) \
+		and not bool(firefly_hover_state.get("alligator_water_cruise_pose", false))
 	actor.kit.flash_timer = 0.0
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
@@ -1647,11 +1673,38 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(firefly_idle_state.get("mosquito_swarm_pose", false)) \
 		and not bool(firefly_idle_state.get("mosquito_trail_pose", false)) \
 		and not bool(firefly_idle_state.get("owl_glide_pose", false)) \
+		and not bool(firefly_idle_state.get("owl_silent_flight_pose", false)) \
 		and not bool(firefly_idle_state.get("kingfisher_dart_pose", false)) \
 		and not bool(firefly_idle_state.get("wading_pose", false)) \
-		and not bool(firefly_idle_state.get("duck_paddle_pose", false))
+		and not bool(firefly_idle_state.get("heron_stalk_pose", false)) \
+		and not bool(firefly_idle_state.get("duck_paddle_pose", false)) \
+		and not bool(firefly_idle_state.get("duck_waddle_pose", false)) \
+		and not bool(firefly_idle_state.get("surface_walk", false)) \
+		and not bool(firefly_idle_state.get("submerged_shrew_pose", false)) \
+		and not bool(firefly_idle_state.get("shrew_land_skitter_pose", false)) \
+		and not bool(firefly_idle_state.get("slick_crawl_pose", false)) \
+		and not bool(firefly_idle_state.get("newt_swim_pose", false)) \
+		and not bool(firefly_idle_state.get("leech_inchworm_pose", false)) \
+		and not bool(firefly_idle_state.get("leech_undulate_pose", false)) \
+		and not bool(firefly_idle_state.get("water_snake_land_slither_pose", false)) \
+		and not bool(firefly_idle_state.get("water_slither_pose", false)) \
+		and not bool(firefly_idle_state.get("turtle_plod_pose", false)) \
+		and not bool(firefly_idle_state.get("turtle_swim_pose", false)) \
+		and not bool(firefly_idle_state.get("bog_turtle_creep_pose", false)) \
+		and not bool(firefly_idle_state.get("bog_turtle_paddle_pose", false)) \
+		and not bool(firefly_idle_state.get("beaver_lumber_pose", false)) \
+		and not bool(firefly_idle_state.get("beaver_swim_pose", false)) \
+		and not bool(firefly_idle_state.get("mink_bound_pose", false)) \
+		and not bool(firefly_idle_state.get("mink_swim_pose", false)) \
+		and not bool(firefly_idle_state.get("otter_land_slide_pose", false)) \
+		and not bool(firefly_idle_state.get("otter_swim_pose", false)) \
+		and not bool(firefly_idle_state.get("crayfish_scuttle_pose", false)) \
+		and not bool(firefly_idle_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and not bool(firefly_idle_state.get("spider_skitter_pose", false)) \
+		and not bool(firefly_idle_state.get("high_walk_pose", false)) \
+		and not bool(firefly_idle_state.get("alligator_water_cruise_pose", false))
 	if not firefly_hover or not firefly_idle_clear:
-		failures.append("moving firefly should expose single-hover lantern drift and flash cues without mosquito, bird, heron, or duck overlap, then clear when idle; moving=%s idle=%s state=%s/%s" % [
+		failures.append("moving firefly should expose single-hover lantern drift and flash cues without mosquito, bird, heron, duck, crawler, swimmer, shrew, turtle, mammal, snake, gator, crustacean, or spider overlap, then clear when idle; moving=%s idle=%s state=%s/%s" % [
 			str(firefly_hover),
 			str(firefly_idle_clear),
 			str(firefly_hover_state),
