@@ -26,6 +26,7 @@ func _draw() -> void:
 			_draw_zone_detail(zone, rect)
 			_draw_zone_edge(zone, rect)
 	_draw_land_bridges()
+	_draw_environmental_obstacles()
 	_draw_perch_anchors()
 	draw_rect(arena_rect, Color(0.28, 0.33, 0.24), false, 6.0)
 
@@ -129,6 +130,57 @@ func _draw_land_bridges() -> void:
 				Color(0.2, 0.18, 0.1, 0.42),
 				2.0
 			)
+
+func _draw_environmental_obstacles() -> void:
+	if terrain_map == null or not terrain_map.has_method("get_environmental_obstacles"):
+		return
+	for obstacle: Dictionary in terrain_map.get_environmental_obstacles():
+		var rect: Rect2 = obstacle.get("rect", Rect2())
+		var center := rect.get_center()
+		match String(obstacle.get("type", "")):
+			"tree":
+				_draw_tree_obstacle(center, rect.size)
+			"rock":
+				_draw_rock_obstacle(center, rect.size)
+			_:
+				_draw_bush_obstacle(center, rect.size)
+
+func _draw_tree_obstacle(center: Vector2, size: Vector2) -> void:
+	var radius := maxf(maxf(size.x, size.y) * 0.58, 16.0)
+	draw_rect(Rect2(center + Vector2(-3.0, radius * 0.05), Vector2(6.0, radius * 0.58)), Color(0.3, 0.2, 0.11))
+	draw_circle(center + Vector2(0.0, -radius * 0.18), radius * 0.72, Color(0.08, 0.2, 0.08))
+	draw_circle(center + Vector2(-radius * 0.32, -radius * 0.02), radius * 0.46, Color(0.12, 0.28, 0.11))
+	draw_circle(center + Vector2(radius * 0.34, 0.0), radius * 0.42, Color(0.07, 0.17, 0.07))
+	draw_circle(center + Vector2(0.0, -radius * 0.42), radius * 0.36, Color(0.16, 0.34, 0.13))
+	draw_circle(center + Vector2(radius * 0.18, -radius * 0.18), radius * 0.12, Color(0.42, 0.5, 0.18, 0.45))
+
+func _draw_rock_obstacle(center: Vector2, size: Vector2) -> void:
+	var half := size * 0.55
+	var points := PackedVector2Array([
+		center + Vector2(-half.x, half.y * 0.2),
+		center + Vector2(-half.x * 0.62, -half.y * 0.58),
+		center + Vector2(half.x * 0.12, -half.y * 0.82),
+		center + Vector2(half.x * 0.86, -half.y * 0.28),
+		center + Vector2(half.x * 0.72, half.y * 0.56),
+		center + Vector2(-half.x * 0.15, half.y * 0.82)
+	])
+	draw_colored_polygon(points, Color(0.3, 0.32, 0.28))
+	draw_polyline(points, Color(0.12, 0.13, 0.11), 2.0, true)
+	draw_line(points[points.size() - 1], points[0], Color(0.12, 0.13, 0.11), 2.0)
+	draw_line(center + Vector2(-half.x * 0.32, -half.y * 0.22), center + Vector2(half.x * 0.34, -half.y * 0.34), Color(0.46, 0.48, 0.42, 0.5), 1.5)
+	draw_line(center + Vector2(-half.x * 0.06, half.y * 0.1), center + Vector2(half.x * 0.48, half.y * 0.24), Color(0.14, 0.15, 0.13, 0.52), 1.4)
+
+func _draw_bush_obstacle(center: Vector2, size: Vector2) -> void:
+	var radius := maxf(maxf(size.x, size.y) * 0.5, 12.0)
+	for offset in [
+		Vector2(-0.42, 0.04),
+		Vector2(0.0, -0.2),
+		Vector2(0.38, 0.0),
+		Vector2(-0.08, 0.28)
+	]:
+		draw_circle(center + offset * radius, radius * 0.46, Color(0.1, 0.24, 0.1))
+	draw_circle(center + Vector2(-radius * 0.18, -radius * 0.06), radius * 0.22, Color(0.18, 0.34, 0.14))
+	draw_circle(center + Vector2(radius * 0.22, radius * 0.08), radius * 0.18, Color(0.16, 0.3, 0.12))
 
 func _draw_perch_anchors() -> void:
 	if terrain_map == null or not terrain_map.has_method("get_perch_anchors"):

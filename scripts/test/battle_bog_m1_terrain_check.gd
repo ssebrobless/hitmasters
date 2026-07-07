@@ -200,7 +200,7 @@ func _environmental_obstacles_ok(obstacles: Array) -> bool:
 		if side == "blue":
 			blue_obstacles.append(obstacle)
 	for obstacle_type in ["tree", "rock", "bush"]:
-		if int(type_counts.get(obstacle_type, 0)) <= 0:
+		if int(type_counts.get(obstacle_type, 0)) != 10:
 			return false
 	for blue_obstacle: Dictionary in blue_obstacles:
 		if not _has_mirrored_obstacle(obstacles, blue_obstacle):
