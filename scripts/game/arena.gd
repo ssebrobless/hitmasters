@@ -2628,9 +2628,11 @@ func _write_match_summary_log(winner: String, reason: String) -> void:
 	if dir_error != OK:
 		push_warning("Could not create match log directory: %s error=%d" % [MATCH_LOG_DIR, dir_error])
 		return
-	var filename := "match_%d_%s_%s.json" % [
+	var data := get_match_summary_data(winner, reason)
+	var filename := "match_%d_%s_p%d_%s.json" % [
 		Time.get_unix_time_from_system(),
 		String(GameConfig.selected_mode).replace(" ", "_").to_lower(),
+		int(data.get("balance_review_priority", 0)),
 		reason
 	]
 	var path := "%s/%s" % [MATCH_LOG_DIR, filename]
@@ -2638,7 +2640,6 @@ func _write_match_summary_log(winner: String, reason: String) -> void:
 	if file == null:
 		push_warning("Could not write match summary log: %s error=%d" % [path, FileAccess.get_open_error()])
 		return
-	var data := get_match_summary_data(winner, reason)
 	file.store_string(JSON.stringify(data))
 	file.close()
 	match_summary_log_path = path

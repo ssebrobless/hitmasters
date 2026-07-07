@@ -135,7 +135,8 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and scoreboard_text.contains("Hut800") \
 		and scoreboard_text.contains("Dep1")
 	arena._finish_match("Blue", "test_summary", "Blue wins test")
-	var log_state: Dictionary = _read_summary_log(arena.get_last_match_summary_log_path())
+	var log_path: String = arena.get_last_match_summary_log_path()
+	var log_state: Dictionary = _read_summary_log(log_path)
 	var log_data: Dictionary = log_state.get("data", {})
 	var log_teams: Dictionary = log_data.get("teams", {})
 	var log_blue: Dictionary = log_teams.get("blue", {})
@@ -150,6 +151,7 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and String(log_data.get("schema", "")) == "battle_bog_match_summary_v1" \
 		and String(log_data.get("winner", "")) == "Blue" \
 		and String(log_data.get("reason", "")) == "test_summary" \
+		and log_path.contains("_p5_test_summary.json") \
 		and String(log_data.get("selected_creature_id", "")) == "duck" \
 		and log_squad.has("snapping_turtle") \
 		and bool(log_draft.get("enabled", false)) \
