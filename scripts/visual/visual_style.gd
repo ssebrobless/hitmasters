@@ -876,6 +876,7 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			var snap_start := spine[4] + side * snap_side * radius * 0.5 - forward * radius * 0.1
 			canvas.draw_line(snap_start, snap_start - forward * radius * (0.55 + 0.16 * mink_bound_intensity) + side * snap_side * radius * 0.16, Color(mink_dust.r, mink_dust.g, mink_dust.b, 0.22 + 0.08 * mink_bound_intensity), maxf(radius * 0.045, 1.0))
 			canvas.draw_circle(snap_start + forward * radius * 0.18, maxf(radius * (0.055 + 0.02 * mink_bound_intensity), 1.0), Color(mink_dust.r, mink_dust.g, mink_dust.b, 0.22 + 0.08 * mink_bound_intensity))
+			canvas.draw_line(snap_start + forward * radius * 0.08, snap_start + forward * radius * 0.36 + side * snap_side * radius * 0.08, Color(mink_dust.r, mink_dust.g, mink_dust.b, 0.2 + 0.08 * mink_bound_intensity), maxf(radius * 0.035, 1.0))
 	if bool(skin.get("spots", false)):
 		var accent: Color = skin.get("accent", Color(0.9, 0.5, 0.15))
 		for i in 6:
@@ -906,6 +907,7 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			var bubble := -forward * radius * (0.32 + t * 0.95) + side * sin(walk_phase * 1.25 + t * 2.4) * radius * (0.16 + 0.14 * mink_swim_intensity)
 			canvas.draw_circle(bubble, maxf(radius * (0.035 + t * 0.03), 1.0), mink_water.lightened(0.25))
 		canvas.draw_line(-forward * radius * 0.28, -forward * radius * (1.18 + 0.18 * mink_swim_intensity), Color(mink_water.r, mink_water.g, mink_water.b, 0.18 + 0.08 * mink_swim_intensity), maxf(radius * 0.04, 1.0))
+		canvas.draw_circle(-forward * radius * 0.64, maxf(radius * (0.045 + 0.02 * mink_swim_intensity), 1.0), Color(mink_water.r, mink_water.g, mink_water.b, 0.24 + 0.08 * mink_swim_intensity))
 	elif otter_swim:
 		for bubble_index in 5:
 			var t := float(bubble_index) / 4.0
