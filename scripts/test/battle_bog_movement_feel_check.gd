@@ -1508,6 +1508,16 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		])
 	actor.apply_creature("great_blue_heron")
 	actor.state = CreatureStateScript.State.NORMAL
+	var heron_non_heron_motion_flags: Array[String] = [
+		"owl_glide_pose", "owl_silent_flight_pose", "kingfisher_dart_pose", "duck_paddle_pose", "duck_waddle_pose",
+		"mosquito_swarm_pose", "firefly_hover_pose", "surface_walk", "submerged_shrew_pose", "shrew_land_skitter_pose",
+		"slick_crawl_pose", "newt_swim_pose", "leech_inchworm_pose", "leech_undulate_pose",
+		"water_snake_land_slither_pose", "water_slither_pose", "turtle_plod_pose", "turtle_swim_pose",
+		"bog_turtle_creep_pose", "bog_turtle_paddle_pose", "beaver_lumber_pose", "beaver_swim_pose",
+		"mink_bound_pose", "mink_swim_pose", "otter_land_slide_pose", "otter_swim_pose",
+		"crayfish_scuttle_pose", "crayfish_tail_flick_swim_pose", "spider_skitter_pose", "high_walk_pose",
+		"alligator_water_cruise_pose"
+	]
 	actor.current_environment_profile = {"surface": "water"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
@@ -1521,6 +1531,7 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(heron_water_state.get("kingfisher_dart_pose", false)) \
 		and not bool(heron_water_state.get("mosquito_swarm_pose", false)) \
 		and not bool(heron_water_state.get("firefly_hover_pose", false)) \
+		and _none_render_flags(heron_water_state, heron_non_heron_motion_flags) \
 		and float(heron_water_state.get("wading_stride", 0.0)) > 0.25 \
 		and float(heron_water_state.get("heron_stalk_intensity", 1.0)) <= 0.001
 	actor.current_environment_profile = {"surface": "land"}
@@ -1536,6 +1547,7 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(heron_land_state.get("kingfisher_dart_pose", false)) \
 		and not bool(heron_land_state.get("mosquito_swarm_pose", false)) \
 		and not bool(heron_land_state.get("firefly_hover_pose", false)) \
+		and _none_render_flags(heron_land_state, heron_non_heron_motion_flags) \
 		and float(heron_land_state.get("heron_stalk_intensity", 0.0)) > 0.25 \
 		and float(heron_land_state.get("wading_stride", 1.0)) <= 0.001
 	actor.state = CreatureStateScript.State.PERCHED
@@ -1548,9 +1560,10 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(heron_perched_state.get("owl_glide_pose", false)) \
 		and not bool(heron_perched_state.get("kingfisher_dart_pose", false)) \
 		and not bool(heron_perched_state.get("mosquito_swarm_pose", false)) \
-		and not bool(heron_perched_state.get("firefly_hover_pose", false))
+		and not bool(heron_perched_state.get("firefly_hover_pose", false)) \
+		and _none_render_flags(heron_perched_state, heron_non_heron_motion_flags)
 	if not heron_wade or not heron_stalk or not heron_perch_suppresses:
-		failures.append("great blue heron should expose tall water wading and careful land stalking without duck, owl, kingfisher, swarm, or hover overlap, then suppress both when perched; water=%s land=%s perched=%s state=%s/%s/%s" % [
+		failures.append("great blue heron should expose tall water wading and careful land stalking without duck, owl, kingfisher, swarm, hover, crawler, swimmer, shrew, turtle, mammal, snake, gator, crustacean, or spider overlap, then suppress both when perched; water=%s land=%s perched=%s state=%s/%s/%s" % [
 			str(heron_wade),
 			str(heron_stalk),
 			str(heron_perch_suppresses),

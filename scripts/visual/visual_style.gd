@@ -1090,6 +1090,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 				canvas.draw_arc(foot, radius * (0.22 + 0.08 * wading_stride), -0.2, TAU * 0.72, 16, water_color, 1.2 + wading_stride)
 				canvas.draw_line(foot - forward * radius * 0.16, foot - forward * radius * (0.46 + 0.12 * wading_stride), Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.66), maxf(radius * 0.045, 1.0))
 				canvas.draw_arc(foot - forward * radius * 0.22, radius * (0.34 + 0.08 * wading_stride), PI * 0.05, PI * 0.95, 12, Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.62), maxf(radius * 0.04, 1.0))
+				canvas.draw_circle(foot + forward * radius * 0.12, maxf(radius * (0.045 + 0.018 * wading_stride), 1.0), water_color.lightened(0.2))
 				canvas.draw_line(hip, knee, beak.darkened(0.22), 1.6)
 				canvas.draw_line(knee, foot, beak.darkened(0.18), 1.6)
 			elif heron_stalk:
@@ -1100,6 +1101,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 				canvas.draw_line(hip, knee, beak.darkened(0.25), 1.6)
 				canvas.draw_line(knee, foot, beak.darkened(0.18), 1.6)
 				canvas.draw_arc(foot - forward * radius * 0.08, radius * (0.16 + 0.04 * heron_stalk_intensity), PI * 0.08, PI * 0.9, 8, Color(0.42, 0.36, 0.26, 0.16 + 0.08 * heron_stalk_intensity), maxf(radius * 0.04, 1.0))
+				canvas.draw_line(foot, foot + forward * radius * (0.18 + 0.06 * heron_stalk_intensity), Color(0.42, 0.36, 0.26, 0.18 + 0.08 * heron_stalk_intensity), maxf(radius * 0.035, 1.0))
 			elif duck_paddle:
 				var paddle_step := sin(walk_phase * 1.8 + (PI if leg_side > 0.0 else 0.0)) * radius * (0.16 + 0.08 * duck_paddle_intensity)
 				var hip := -forward * radius * 0.12 + side * leg_side * radius * 0.18
