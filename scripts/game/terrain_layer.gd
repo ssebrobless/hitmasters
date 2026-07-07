@@ -25,6 +25,9 @@ func has_shoreline_treatment() -> bool:
 func uses_edge_detail_budget() -> bool:
 	return true
 
+func has_environmental_prop_treatment() -> bool:
+	return true
+
 func _draw() -> void:
 	if terrain_map == null:
 		return
@@ -229,12 +232,13 @@ func _draw_environmental_obstacles() -> void:
 
 func _draw_tree_obstacle(center: Vector2, size: Vector2) -> void:
 	var radius := maxf(maxf(size.x, size.y) * 0.58, 16.0)
-	draw_rect(Rect2(center + Vector2(-3.0, radius * 0.05), Vector2(6.0, radius * 0.58)), Color(0.3, 0.2, 0.11))
-	draw_circle(center + Vector2(0.0, -radius * 0.18), radius * 0.72, Color(0.08, 0.2, 0.08))
-	draw_circle(center + Vector2(-radius * 0.32, -radius * 0.02), radius * 0.46, Color(0.12, 0.28, 0.11))
-	draw_circle(center + Vector2(radius * 0.34, 0.0), radius * 0.42, Color(0.07, 0.17, 0.07))
-	draw_circle(center + Vector2(0.0, -radius * 0.42), radius * 0.36, Color(0.16, 0.34, 0.13))
-	draw_circle(center + Vector2(radius * 0.18, -radius * 0.18), radius * 0.12, Color(0.42, 0.5, 0.18, 0.45))
+	draw_circle(center + Vector2(radius * 0.16, radius * 0.22), radius * 0.72, VisualGrammar.SHADOW)
+	draw_rect(Rect2(center + Vector2(-3.0, radius * 0.05), Vector2(6.0, radius * 0.58)), VisualGrammar.BOG_MUD_DARK.lightened(0.12))
+	draw_circle(center + Vector2(0.0, -radius * 0.18), radius * 0.72, VisualGrammar.BOG_LAND_DARK.darkened(0.18))
+	draw_circle(center + Vector2(-radius * 0.32, -radius * 0.02), radius * 0.46, VisualGrammar.BOG_MOSS.darkened(0.1))
+	draw_circle(center + Vector2(radius * 0.34, 0.0), radius * 0.42, VisualGrammar.BOG_LAND_DARK.darkened(0.05))
+	draw_circle(center + Vector2(0.0, -radius * 0.42), radius * 0.36, VisualGrammar.BOG_MOSS.lightened(0.02))
+	draw_circle(center + Vector2(radius * 0.18, -radius * 0.18), radius * 0.12, Color(VisualGrammar.BOG_REED.r, VisualGrammar.BOG_REED.g, VisualGrammar.BOG_REED.b, 0.42))
 
 func _draw_rock_obstacle(center: Vector2, size: Vector2) -> void:
 	var half := size * 0.55
@@ -246,28 +250,37 @@ func _draw_rock_obstacle(center: Vector2, size: Vector2) -> void:
 		center + Vector2(half.x * 0.72, half.y * 0.56),
 		center + Vector2(-half.x * 0.15, half.y * 0.82)
 	])
+	draw_circle(center + Vector2(half.x * 0.16, half.y * 0.28), maxf(half.x, half.y) * 0.82, VisualGrammar.SHADOW)
 	draw_colored_polygon(points, Color(0.3, 0.32, 0.28))
-	draw_polyline(points, Color(0.12, 0.13, 0.11), 2.0, true)
-	draw_line(points[points.size() - 1], points[0], Color(0.12, 0.13, 0.11), 2.0)
-	draw_line(center + Vector2(-half.x * 0.32, -half.y * 0.22), center + Vector2(half.x * 0.34, -half.y * 0.34), Color(0.46, 0.48, 0.42, 0.5), 1.5)
-	draw_line(center + Vector2(-half.x * 0.06, half.y * 0.1), center + Vector2(half.x * 0.48, half.y * 0.24), Color(0.14, 0.15, 0.13, 0.52), 1.4)
+	draw_polyline(points, Color(0.12, 0.13, 0.11, 0.72), 2.0, true)
+	draw_line(points[points.size() - 1], points[0], Color(0.12, 0.13, 0.11, 0.72), 2.0)
+	draw_line(center + Vector2(-half.x * 0.32, -half.y * 0.22), center + Vector2(half.x * 0.34, -half.y * 0.34), Color(0.46, 0.48, 0.42, 0.46), 1.5)
+	draw_line(center + Vector2(-half.x * 0.06, half.y * 0.1), center + Vector2(half.x * 0.48, half.y * 0.24), Color(0.14, 0.15, 0.13, 0.46), 1.4)
 
 func _draw_bush_obstacle(center: Vector2, size: Vector2) -> void:
 	var radius := maxf(maxf(size.x, size.y) * 0.5, 12.0)
+	draw_circle(center + Vector2(radius * 0.12, radius * 0.2), radius * 0.72, VisualGrammar.SHADOW)
 	for offset in [
 		Vector2(-0.42, 0.04),
 		Vector2(0.0, -0.2),
 		Vector2(0.38, 0.0),
 		Vector2(-0.08, 0.28)
 	]:
-		draw_circle(center + offset * radius, radius * 0.46, Color(0.1, 0.24, 0.1))
-	draw_circle(center + Vector2(-radius * 0.18, -radius * 0.06), radius * 0.22, Color(0.18, 0.34, 0.14))
-	draw_circle(center + Vector2(radius * 0.22, radius * 0.08), radius * 0.18, Color(0.16, 0.3, 0.12))
+		draw_circle(center + offset * radius, radius * 0.46, VisualGrammar.BOG_MOSS.darkened(0.18))
+	draw_circle(center + Vector2(-radius * 0.18, -radius * 0.06), radius * 0.22, VisualGrammar.BOG_MOSS.lightened(0.04))
+	draw_circle(center + Vector2(radius * 0.22, radius * 0.08), radius * 0.18, VisualGrammar.BOG_MOSS.darkened(0.04))
 
 func _draw_perch_anchors() -> void:
 	if terrain_map == null or not terrain_map.has_method("get_perch_anchors"):
 		return
 	for anchor: Vector2 in terrain_map.get_perch_anchors():
-		draw_circle(anchor, 5.5, Color(0.7, 0.82, 0.48, 0.16))
-		draw_line(anchor + Vector2(-5.0, 0.0), anchor + Vector2(5.0, 0.0), Color(0.78, 0.92, 0.58, 0.28), 1.2)
-		draw_line(anchor + Vector2(0.0, -5.0), anchor + Vector2(0.0, 5.0), Color(0.78, 0.92, 0.58, 0.28), 1.2)
+		_draw_perch_snag(anchor)
+
+func _draw_perch_snag(anchor: Vector2) -> void:
+	draw_circle(anchor + Vector2(2.0, 3.0), 9.0, VisualGrammar.SHADOW)
+	draw_circle(anchor, 7.0, Color(VisualGrammar.BOG_MUD.r, VisualGrammar.BOG_MUD.g, VisualGrammar.BOG_MUD.b, 0.9))
+	draw_circle(anchor + Vector2(-1.5, -1.0), 4.6, VisualGrammar.BOG_MUD_DARK.lightened(0.1))
+	draw_arc(anchor, 9.5, 0.0, TAU, 24, Color(VisualGrammar.BOG_REED.r, VisualGrammar.BOG_REED.g, VisualGrammar.BOG_REED.b, 0.2), 1.2)
+	draw_line(anchor + Vector2(-1.0, -4.0), anchor + Vector2(4.0, -15.0), VisualGrammar.BOG_MUD_DARK, 2.2)
+	draw_line(anchor + Vector2(3.0, -10.0), anchor + Vector2(10.0, -15.0), VisualGrammar.BOG_MUD_DARK.lightened(0.08), 1.6)
+	draw_line(anchor + Vector2(1.0, -8.0), anchor + Vector2(-6.0, -13.0), VisualGrammar.BOG_MUD_DARK.lightened(0.04), 1.4)
