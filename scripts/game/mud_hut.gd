@@ -8,6 +8,7 @@ extends Node2D
 signal hut_destroyed(hut)
 
 const MinionScript := preload("res://scripts/game/minion.gd")
+const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
 
 const DEFENDER_RESPAWN_SEC := 5.0
 const DEFENDER_KINDS := ["tank", "melee", "melee", "pebble", "pebble"]
@@ -38,6 +39,9 @@ func is_scored_actor() -> bool:
 
 func get_actor_name() -> String:
 	return "%s Hut" % ("Blue" if team == 0 else "Red")
+
+func get_team_accent_color(alpha := 1.0) -> Color:
+	return VisualGrammar.team_color(team, alpha)
 
 func take_damage(amount: float, _source_team: int = -1, _source_actor: Node = null) -> void:
 	if health <= 0.0:
@@ -99,7 +103,7 @@ func _spawn_defender(kind: String, slot: int) -> void:
 func _draw() -> void:
 	var mud := Color(0.42, 0.3, 0.18)
 	var mud_dark := Color(0.28, 0.2, 0.12)
-	var accent := Color(0.25, 0.65, 1.0) if team == 0 else Color(1.0, 0.28, 0.25)
+	var accent := get_team_accent_color()
 	# Dome of packed mud with stick reinforcements.
 	draw_circle(Vector2.ZERO, body_radius + 4.0, mud_dark)
 	draw_circle(Vector2.ZERO, body_radius, mud)

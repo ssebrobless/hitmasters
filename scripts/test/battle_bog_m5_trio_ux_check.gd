@@ -3,6 +3,7 @@ extends SceneTree
 const ARENA_SCENE := "res://scenes/Arena.tscn"
 const BLUE := 0
 const RED := 1
+const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
 const REQUIRED_ROW_KEYS := ["team", "slot_index", "creature_id", "name", "active", "hp_ratio", "stocks", "max_stocks", "state"]
 
 func _initialize() -> void:
@@ -29,18 +30,20 @@ func _run() -> void:
 	var stock_state_ok := _check_stock_state_row(arena, failures)
 	var prompt_ok := _check_deposit_prompt(arena, failures)
 	var rail_ok := _check_dense_rail_removed(arena, failures)
+	var colors_ok := _check_habitat_stock_colors(arena, failures)
 	var hud_node_ok := arena.get("squad_hud") != null
 	if not hud_node_ok:
 		failures.append("Arena expected squad_hud node to be wired for trio UI.")
 
-	var passed := stock_ok and rows_ok and switch_ok and stock_state_ok and prompt_ok and rail_ok and hud_node_ok
-	print("m5_trio_ux stock=%s rows=%s switch=%s stock_state=%s prompt=%s rail=%s hud=%s" % [
+	var passed := stock_ok and rows_ok and switch_ok and stock_state_ok and prompt_ok and rail_ok and colors_ok and hud_node_ok
+	print("m5_trio_ux stock=%s rows=%s switch=%s stock_state=%s prompt=%s rail=%s colors=%s hud=%s" % [
 		str(stock_ok),
 		str(rows_ok),
 		str(switch_ok),
 		str(stock_state_ok),
 		str(prompt_ok),
 		str(rail_ok),
+		str(colors_ok),
 		str(hud_node_ok)
 	])
 	for failure in failures:
@@ -150,6 +153,20 @@ func _check_dense_rail_removed(arena: Node, failures: Array[String]) -> bool:
 		failures.append("cooldown label should no longer contain dense trio stock rail; text=%s" % cooldown_text)
 	return ok
 
+
+func _check_habitat_stock_colors(arena: Node, failures: Array[String]) -> bool:
+	if not arena.has_method("_habitat_stock_color"):
+		failures.append("Arena expected _habitat_stock_color(team) for canonical stock marker color.")
+		return false
+	var blue: Color = arena._habitat_stock_color(BLUE)
+	var red: Color = arena._habitat_stock_color(RED)
+	var ok := _color_matches(blue, VisualGrammar.team_color(BLUE, 0.84).lightened(0.08)) \
+		and _color_matches(red, VisualGrammar.team_color(RED, 0.84).lightened(0.08))
+	if not ok:
+		failures.append("habitat stock colors should derive from VisualGrammar team colors; blue=%s red=%s" % [str(blue), str(red)])
+	return ok
+
+
 func _rows_have_shape(rows: Array, own_team: bool, failures: Array[String]) -> bool:
 	var ok := true
 	for row_value in rows:
@@ -194,3 +211,7 @@ func _slot_indices(slots: Array) -> Array[int]:
 	for slot: Dictionary in slots:
 		output.append(int(slot.get("slot_index", -1)))
 	return output
+
+
+func _color_matches(a: Color, b: Color) -> bool:
+	return absf(a.r - b.r) < 0.001 and absf(a.g - b.g) < 0.001 and absf(a.b - b.b) < 0.001 and absf(a.a - b.a) < 0.001

@@ -9,6 +9,7 @@ const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
 const MudHutScript := preload("res://scripts/game/mud_hut.gd")
 const MinionScript := preload("res://scripts/game/minion.gd")
 const SimConstants := preload("res://scripts/sim/sim_constants.gd")
+const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
 
 class StubArena extends Node2D:
 	var entities: Array[Node] = []
@@ -50,6 +51,7 @@ func _initialize() -> void:
 	var hut = MudHutScript.new()
 	stub.add_child(hut)
 	hut.setup(stub, 1, 0, Vector2.ZERO)
+	var hut_color_ok: bool = _color_matches(hut.get_team_accent_color(0.72), VisualGrammar.team_color(1, 0.72))
 	var kinds := {"tank": 0, "melee": 0, "pebble": 0}
 	for entity in stub.entities:
 		if entity is MinionScript:
@@ -113,9 +115,9 @@ func _initialize() -> void:
 		and float(melee_style.get("visual_radius_px", 99.0)) < float(melee_style.get("combat_radius_px", 0.0)) \
 		and float(lane_style.get("visual_radius_px", 99.0)) < float(lane_style.get("combat_radius_px", 0.0))
 
-	var passed := huts_3v3 and huts_1v1 and squad_ok and patrol_radius_ok and respawn_ok and destroy_ok and kinds_ok and minion_visual_ok
-	print("m4 huts3v3=%s huts1v1=%s squad=%s patrol=%s respawn=%s destroy=%s kinds=%s visual=%s" % [
-		str(huts_3v3), str(huts_1v1), str(squad_ok), str(patrol_radius_ok), str(respawn_ok), str(destroy_ok), str(kinds_ok), str(minion_visual_ok)
+	var passed := huts_3v3 and huts_1v1 and squad_ok and patrol_radius_ok and respawn_ok and destroy_ok and kinds_ok and minion_visual_ok and hut_color_ok
+	print("m4 huts3v3=%s huts1v1=%s squad=%s patrol=%s respawn=%s destroy=%s kinds=%s visual=%s hut_color=%s" % [
+		str(huts_3v3), str(huts_1v1), str(squad_ok), str(patrol_radius_ok), str(respawn_ok), str(destroy_ok), str(kinds_ok), str(minion_visual_ok), str(hut_color_ok)
 	])
 	quit(0 if passed else 1)
 
@@ -129,3 +131,6 @@ func _all_truth_rings_match(states: Array) -> bool:
 		if not _truth_ring_matches(state):
 			return false
 	return true
+
+func _color_matches(a: Color, b: Color) -> bool:
+	return absf(a.r - b.r) < 0.001 and absf(a.g - b.g) < 0.001 and absf(a.b - b.b) < 0.001 and absf(a.a - b.a) < 0.001

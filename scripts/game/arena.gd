@@ -35,6 +35,7 @@ const StockManagerScript := preload("res://scripts/game/stock_manager.gd")
 const FoodSourceScript := preload("res://scripts/game/food_source.gd")
 const WildlifeEncounterScript := preload("res://scripts/game/wildlife_encounter.gd")
 const BreedingActorScript := preload("res://scripts/game/breeding_actor.gd")
+const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
 
 const PLAYABLE_CREATURE_POOL := ["snapping_turtle", "chorus_frog", "mink", "beaver", "otter", "leech", "owl", "duck", "bullfrog", "cane_toad", "crayfish", "bog_turtle", "water_shrew", "newt", "great_blue_heron", "kingfisher", "water_snake", "alligator", "wolf_spider", "firefly", "mosquito_swarm"]
 const SQUAD_COMMAND_FARM := "farm"
@@ -2311,11 +2312,14 @@ func _draw_habitat_stock_visuals() -> void:
 	for visual: Dictionary in get_habitat_stock_visuals():
 		var position: Vector2 = visual.get("position", Vector2.ZERO)
 		var team := int(visual.get("team", BLUE))
-		var team_color := Color(0.42, 0.72, 1.0, 0.84) if team == BLUE else Color(1.0, 0.38, 0.32, 0.84)
+		var team_color := _habitat_stock_color(team)
 		draw_circle(position, 10.0, Color(0.04, 0.05, 0.045, 0.82))
 		draw_circle(position, 7.0, team_color)
 		draw_arc(position, 11.5, 0.0, TAU, 20, Color(0.88, 0.92, 0.82, 0.45), 1.5)
 		draw_string(ThemeDB.fallback_font, position + Vector2(-5.0, 4.0), str(int(visual.get("slot_index", 0)) + 1), HORIZONTAL_ALIGNMENT_LEFT, 10.0, 9, Color(0.02, 0.025, 0.02, 0.95))
+
+func _habitat_stock_color(team: int) -> Color:
+	return VisualGrammar.team_color(team, 0.84).lightened(0.08)
 
 func _draw_breeding_cues() -> void:
 	for cue: Dictionary in stock_manager.get_breeding_cues():
