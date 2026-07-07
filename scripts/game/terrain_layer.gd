@@ -31,6 +31,9 @@ func has_environmental_prop_treatment() -> bool:
 func has_habitat_ground_treatment() -> bool:
 	return true
 
+func has_habitat_beacon_treatment() -> bool:
+	return true
+
 func _draw() -> void:
 	if terrain_map == null:
 		return
@@ -125,6 +128,23 @@ func _draw_habitat_ground(zone: String, rect: Rect2, rng: RandomNumberGenerator)
 		var foot := Vector2(rng.randf_range(rect.position.x + 10.0, rect.end.x - 10.0), rng.randf_range(rect.position.y + 10.0, rect.end.y - 10.0))
 		var radius := rng.randf_range(2.0, 4.4)
 		draw_circle(foot, radius, Color(VisualGrammar.BOG_MUD_DARK.r, VisualGrammar.BOG_MUD_DARK.g, VisualGrammar.BOG_MUD_DARK.b, 0.28))
+	_draw_habitat_beacons(rect, team, rng)
+
+func _draw_habitat_beacons(rect: Rect2, team: int, rng: RandomNumberGenerator) -> void:
+	var accent := VisualGrammar.habitat_accent_color(team, 0.68)
+	var dark := VisualGrammar.BOG_MUD_DARK.darkened(0.08)
+	var reed := VisualGrammar.BOG_REED.lightened(0.04)
+	var sign := -1.0 if team == 0 else 1.0
+	for y_side: float in [-1.0, 1.0]:
+		var anchor := Vector2(rect.get_center().x + sign * rect.size.x * 0.34, rect.get_center().y + y_side * rect.size.y * 0.32)
+		draw_circle(anchor + Vector2(2.0 * sign, 3.0), 8.0, VisualGrammar.shadow_color(0.45))
+		draw_line(anchor + Vector2(-4.0 * sign, 6.0), anchor + Vector2(-6.0 * sign, -14.0), dark, 2.2)
+		draw_line(anchor + Vector2(3.0 * sign, 6.0), anchor + Vector2(6.0 * sign, -13.0), dark.lightened(0.08), 2.0)
+		draw_line(anchor + Vector2(-7.0 * sign, -8.0), anchor + Vector2(8.0 * sign, -10.0), reed, 2.0)
+		draw_arc(anchor + Vector2(0.0, -7.0), 8.0, PI * 0.1, PI * 0.9, 14, accent, 2.2)
+		for wrap in 2:
+			var wrap_y := -7.0 + float(wrap) * 5.0 + rng.randf_range(-0.4, 0.4)
+			draw_line(anchor + Vector2(-6.0 * sign, wrap_y), anchor + Vector2(6.0 * sign, wrap_y - 1.5), accent.darkened(0.1), 1.4)
 
 func _draw_zone_edge(zone: String, rect: Rect2) -> void:
 	match zone:

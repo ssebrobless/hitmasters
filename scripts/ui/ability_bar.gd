@@ -10,6 +10,15 @@ const BOX_SIZE := Vector2(126.0, 46.0)
 const BOX_GAP := 8.0
 const RESOURCE_BAR_SIZE := Vector2(160.0, 8.0)
 const UPDATE_INTERVAL := 0.1
+const DISPLAY_NAME_MAX_CHARS := 12
+const DISPLAY_NAME_OVERRIDES := {
+	"Lingual Lure": "Lure",
+	"Protective Shell": "Shell",
+	"Slithering Retreat": "Retreat",
+	"Silk-lined Burrows": "Burrows",
+	"Toxic Parotoids": "Toxic Glands",
+	"Meral Display": "Display"
+}
 
 var arena: Node = null
 var accumulator := 0.0
@@ -35,6 +44,7 @@ func get_ability_slots() -> Array[Dictionary]:
 	slots.append({
 		"key": "LMB",
 		"name": "Primary",
+		"display_name": "Primary",
 		"remaining": float(player.primary_timer),
 		"max": maxf(float(stats.get("attack_interval_sec", 1.0)) if typeof(stats.get("attack_interval_sec")) != TYPE_STRING else 1.0, 0.01),
 		"charges": -1
@@ -47,14 +57,26 @@ func get_ability_slots() -> Array[Dictionary]:
 		var remaining: float = float(player.q_timer) if slot_key == "Q" else float(player.e_timer)
 		var charges: int = int(player.q_charges) if slot_key == "Q" else int(player.e_charges)
 		var max_cd := float(ability.get("cooldown_sec", ability.get("cooldown_after_sec", 0.0)))
+		var full_name := String(ability.get("name", slot_key))
 		slots.append({
 			"key": slot_key,
-			"name": String(ability.get("name", slot_key)),
+			"name": full_name,
+			"display_name": get_display_name_for_ability(full_name),
 			"remaining": remaining,
 			"max": maxf(max_cd, 0.01),
 			"charges": charges
 		})
 	return slots
+
+func get_display_name_for_ability(full_name: String) -> String:
+	if DISPLAY_NAME_OVERRIDES.has(full_name):
+		return String(DISPLAY_NAME_OVERRIDES[full_name])
+	if full_name.length() <= DISPLAY_NAME_MAX_CHARS:
+		return full_name
+	var words := full_name.split(" ", false)
+	if words.size() > 1 and String(words[0]).length() <= DISPLAY_NAME_MAX_CHARS:
+		return String(words[0])
+	return full_name.substr(0, DISPLAY_NAME_MAX_CHARS)
 
 func get_secondary_meter() -> Dictionary:
 	if arena == null or not is_instance_valid(arena):
@@ -119,7 +141,7 @@ func _draw_slot(at: Vector2, slot: Dictionary, player: Node) -> void:
 	var font := ThemeDB.fallback_font
 	draw_string(font, rect.position + Vector2(6.0, 15.0), String(slot.key), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 11, Color(0.75, 0.8, 0.72))
 	var name_color := Color(0.95, 0.97, 0.9) if ready else Color(0.6, 0.63, 0.58)
-	draw_string(font, rect.position + Vector2(6.0, 32.0), String(slot.name), HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 12.0, 13, name_color)
+	draw_string(font, rect.position + Vector2(6.0, 32.0), String(slot.get("display_name", slot.name)), HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 12.0, 13, name_color)
 	if not ready:
 		draw_string(font, rect.position + Vector2(rect.size.x - 38.0, 15.0), "%.1f" % remaining, HORIZONTAL_ALIGNMENT_RIGHT, 34.0, 11, Color(1.0, 0.85, 0.4))
 	var charges := int(slot.charges)

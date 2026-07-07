@@ -41,9 +41,18 @@ func _check_ability_bar(arena: Node, failures: Array[String]) -> void:
 	var names: Array[String] = []
 	for slot in slots:
 		names.append(String(slot.name))
+		var display_name := String(slot.get("display_name", ""))
+		if display_name.is_empty() or display_name.length() > 12:
+			failures.append("ability bar display name should fit fixed boxes, got %s" % str(slot))
 	# Snapping Turtle's designated names straight from the roster.
 	if not names.has("Grab") or not names.has("Lingual Lure"):
 		failures.append("ability bar should carry roster ability names, got %s" % str(names))
+	if arena.ability_bar.has_method("get_display_name_for_ability"):
+		var long_display := String(arena.ability_bar.get_display_name_for_ability("Slithering Retreat"))
+		if long_display.length() > 12 or long_display == "Slithering Retreat":
+			failures.append("ability bar should shorten long roster names for fixed boxes, got '%s'" % long_display)
+	else:
+		failures.append("ability bar expected get_display_name_for_ability(name).")
 	# Live cooldown state: force Q onto cooldown and re-read.
 	arena.player.q_timer = 3.0
 	var refreshed: Array = arena.ability_bar.get_ability_slots()

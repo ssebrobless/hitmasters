@@ -117,6 +117,7 @@ var camera: Camera2D = null
 const CAMERA_LEAD_DEADZONE := 70.0
 const CAMERA_LEAD_FRACTION := 0.32
 const CAMERA_LEAD_MAX := 132.0
+const WORLD_OVERLAY_REDRAW_INTERVAL := 0.05
 var actor_stats: Dictionary = {}
 var team_stats := {
 	BLUE: {"kills": 0, "deaths": 0, "core_damage": 0.0, "hut_damage": 0.0, "huts_destroyed": 0, "stock_losses": 0, "deposits": 0, "breeds_completed": 0, "breeds_denied": 0, "wildlife_defeats": 0},
@@ -152,6 +153,7 @@ var local_input: Node = LocalInputScript.new()
 var bot_brain: RefCounted = BotBrainScript.new()
 var match_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var stock_manager: RefCounted = StockManagerScript.new()
+var world_overlay_redraw_accumulator := 0.0
 
 func _ready() -> void:
 	_configure_mode()
@@ -242,7 +244,22 @@ func _physics_process(delta: float) -> void:
 
 func _process(delta: float) -> void:
 	_update_camera_lead(delta)
-	queue_redraw()
+	world_overlay_redraw_accumulator += delta
+	if world_overlay_redraw_accumulator >= WORLD_OVERLAY_REDRAW_INTERVAL:
+		world_overlay_redraw_accumulator = 0.0
+		queue_redraw()
+
+func uses_throttled_world_overlay_redraw() -> bool:
+	return WORLD_OVERLAY_REDRAW_INTERVAL >= 0.05
+
+func get_world_overlay_redraw_interval() -> float:
+	return WORLD_OVERLAY_REDRAW_INTERVAL
+
+func uses_diegetic_habitat_markers() -> bool:
+	return true
+
+func uses_diegetic_stock_reserve_tokens() -> bool:
+	return true
 
 func _update_camera_lead(delta: float) -> void:
 	# Supervive-style cursor-led camera: past a deadzone, the view drifts a
@@ -264,8 +281,6 @@ func _draw() -> void:
 	if DEBUG_HURTBOX_OVERLAY:
 		_draw_hurtbox_debug_overlays()
 
-	draw_string(ThemeDB.fallback_font, blue_core_position + Vector2(-42.0, -110.0), "BLUE HABITAT", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, Color(0.45, 0.72, 1.0))
-	draw_string(ThemeDB.fallback_font, red_core_position + Vector2(-42.0, -110.0), "RED HABITAT", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, Color(1.0, 0.45, 0.4))
 	_draw_habitat_stock_visuals()
 	_draw_breeding_cues()
 	_draw_squad_badges()
@@ -318,7 +333,7 @@ func _build_ui() -> void:
 	# Full controls + ability text live in the hold-P panel now (UI pass);
 	# the old cooldown text line is superseded by the ability bar but kept
 	# updated (hidden) for check-script compatibility.
-	help_label.text = "hold P — creature info & controls"
+	help_label.text = "hold P - creature info & controls"
 	cooldown_label.visible = false
 
 	root.add_child(status_label)
@@ -2405,11 +2420,16 @@ func _draw_habitat_stock_visuals() -> void:
 	for visual: Dictionary in get_habitat_stock_visuals():
 		var position: Vector2 = visual.get("position", Vector2.ZERO)
 		var team := int(visual.get("team", BLUE))
+		var slot_index := int(visual.get("slot_index", 0))
 		var team_color := _habitat_stock_color(team)
-		draw_circle(position, 10.0, VisualGrammar.shadow_color(0.82))
-		draw_circle(position, 7.0, team_color)
-		draw_arc(position, 11.5, 0.0, TAU, 20, Color(0.88, 0.92, 0.82, 0.45), 1.5)
-		draw_string(ThemeDB.fallback_font, position + Vector2(-5.0, 4.0), str(int(visual.get("slot_index", 0)) + 1), HORIZONTAL_ALIGNMENT_LEFT, 10.0, 9, Color(0.02, 0.025, 0.02, 0.95))
+		draw_circle(position + Vector2(1.5, 2.5), 10.0, VisualGrammar.shadow_color(0.72))
+		draw_arc(position, 10.5, PI * 0.08, PI * 0.92, 18, VisualGrammar.BOG_REED.darkened(0.08), 2.6)
+		draw_arc(position + Vector2(0.0, 1.0), 7.4, PI * 0.12, PI * 0.88, 16, VisualGrammar.BOG_MUD.lightened(0.08), 2.0)
+		draw_circle(position + Vector2(0.0, -1.0), 4.5, team_color)
+		draw_arc(position + Vector2(0.0, -1.0), 5.8, 0.0, TAU, 16, Color(0.88, 0.92, 0.82, 0.38), 1.2)
+		for mark in slot_index + 1:
+			var x_offset := (float(mark) - float(slot_index) * 0.5) * 3.2
+			draw_line(position + Vector2(x_offset, 7.0), position + Vector2(x_offset, 10.0), team_color.darkened(0.18), 1.2)
 
 func _habitat_stock_color(team: int) -> Color:
 	return VisualGrammar.team_color(team, 0.84).lightened(0.08)
@@ -2493,10 +2513,7 @@ func _update_ui() -> void:
 	var red_core = cores[RED]
 	var creature_name: String = player.creature_data.get("name", "Unknown") if player != null else "Unknown"
 	if not match_over:
-		var mode_text := "1v1 Trio" if _is_1v1_trio_mode() else GameConfig.selected_mode
-		var active_text := "Slot %d %s" % [active_squad_index + 1, creature_name] if _is_1v1_trio_mode() else creature_name
-		var hunger_text := "Hunger %d%%" % int(round(float(player.get("hunger")))) if player != null and player.get("hunger") != null else "Hunger --"
-		_set_label_text_if_changed(status_label, "%s | %s | Day %d dawn %ds | Active: %s | %s | Bots: %d | Next wave: %ds" % [mode_text, _format_match_time(elapsed), day_index, ceili(maxf(DAY_LENGTH_SEC - day_timer, 0.0)), active_text, hunger_text, bots.size(), ceili(wave_timer)])
+		_set_label_text_if_changed(status_label, get_status_hud_text(creature_name))
 	_set_label_text_if_changed(core_label, "Blue Core %d / %d    Red Core %d / %d" % [blue_core.health, blue_core.max_health, red_core.health, red_core.max_health])
 	_set_label_text_if_changed(cooldown_label, _get_cooldown_text())
 	_set_label_text_if_changed(scoreboard_label, _get_scoreboard_text())
@@ -2505,6 +2522,23 @@ func _update_ui() -> void:
 func _set_label_text_if_changed(label: Label, next_text: String) -> void:
 	if label != null and label.text != next_text:
 		label.text = next_text
+
+func get_status_hud_text(creature_name := "") -> String:
+	var mode_text: String = "1v1 Trio" if _is_1v1_trio_mode() else GameConfig.selected_mode
+	var display_name: String = creature_name
+	if display_name.is_empty():
+		display_name = String(player.creature_data.get("name", "Unknown")) if player != null else "Unknown"
+	var active_text: String = "S%d %s" % [active_squad_index + 1, display_name] if _is_1v1_trio_mode() else display_name
+	var hunger_text: String = "Hunger %d%%" % int(round(float(player.get("hunger")))) if player != null and player.get("hunger") != null else "Hunger --"
+	return "%s  %s  Day %d\n%s  %s  Bots %d  Wave %ds" % [
+		mode_text,
+		_format_match_time(elapsed),
+		day_index,
+		active_text,
+		hunger_text,
+		bots.size(),
+		ceili(wave_timer)
+	]
 
 func _get_cooldown_text() -> String:
 	if player == null:
