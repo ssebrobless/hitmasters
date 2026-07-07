@@ -4,6 +4,7 @@ const SimConstants := preload("res://scripts/sim/sim_constants.gd")
 const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
 const EnvironmentProfileScript := preload("res://scripts/sim/environment_profile.gd")
 const MinionScript := preload("res://scripts/game/minion.gd")
+const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
 
 func _initialize() -> void:
 	var terrain := TerrainMapScript.new()
@@ -54,6 +55,7 @@ func _initialize() -> void:
 	var zones_clear_huts_ok: bool = _animal_zones_clear_hut_patrols(terrain)
 	var food_resources_ok: bool = _food_resources_ok(terrain.get_food_spawn_points())
 	var obstacles_ok: bool = _environmental_obstacles_ok(terrain.get_environmental_obstacles())
+	var palette_ok: bool = _visual_palette_ok()
 
 	terrain.configure("1v1")
 	var duel_units := terrain.arena_rect.size / unit
@@ -65,8 +67,8 @@ func _initialize() -> void:
 		and duel_units == Vector2(480.0, 170.0) \
 		and duel_origin_units == Vector2(-240.0, -85.0)
 	var bridges_ok: bool = upper_bridge_zone == TerrainMapScript.LAND and lower_bridge_zone == TerrainMapScript.LAND and bridge_rects_ok
-	var passed: bool = shared_bounds_ok and habitats_ok and core_positions_ok and cores_in_habitat and center_zone == TerrainMapScript.WATER and shallow_zone == TerrainMapScript.SHALLOW and bridges_ok and profiles_ok and anchors_ok and animal_zones_ok and zones_clear_huts_ok and food_resources_ok and obstacles_ok and duel_anchor_count == terrain.get_cover_rects().size()
-	print("terrain_3v3_units=%sx%s terrain_1v1_units=%sx%s habitats=%s cores=%s center=%s shallow=%s bridges=%s profiles_ok=%s anchors_ok=%s zones=%s zone_hut_clear=%s food=%s obstacles=%s duel_anchor_count=%d" % [
+	var passed: bool = shared_bounds_ok and habitats_ok and core_positions_ok and cores_in_habitat and center_zone == TerrainMapScript.WATER and shallow_zone == TerrainMapScript.SHALLOW and bridges_ok and profiles_ok and anchors_ok and animal_zones_ok and zones_clear_huts_ok and food_resources_ok and obstacles_ok and palette_ok and duel_anchor_count == terrain.get_cover_rects().size()
+	print("terrain_3v3_units=%sx%s terrain_1v1_units=%sx%s habitats=%s cores=%s center=%s shallow=%s bridges=%s profiles_ok=%s anchors_ok=%s zones=%s zone_hut_clear=%s food=%s obstacles=%s palette=%s duel_anchor_count=%d" % [
 		str(arena_units.x),
 		str(arena_units.y),
 		str(duel_units.x),
@@ -82,9 +84,41 @@ func _initialize() -> void:
 		str(zones_clear_huts_ok),
 		str(food_resources_ok),
 		str(obstacles_ok),
+		str(palette_ok),
 		duel_anchor_count
 	])
 	quit(0 if passed else 1)
+
+func _visual_palette_ok() -> bool:
+	var palette: Dictionary = VisualGrammar.environment_palette()
+	var required_keys := [
+		"land_dark", "land", "moss", "mud_dark", "mud",
+		"reed", "water_deep", "water_shallow", "water_foam", "shadow"
+	]
+	for key: String in required_keys:
+		if not palette.has(key):
+			return false
+	var land: Color = VisualGrammar.terrain_color(TerrainMapScript.LAND)
+	var shallow: Color = VisualGrammar.terrain_color(TerrainMapScript.SHALLOW)
+	var water: Color = VisualGrammar.terrain_color(TerrainMapScript.WATER)
+	var cover: Color = VisualGrammar.terrain_color(TerrainMapScript.COVER)
+	var foam: Color = palette["water_foam"]
+	var hierarchy_ok: bool = _luminance(water) < _luminance(land) \
+		and _luminance(land) <= _luminance(shallow) \
+		and _luminance(foam) > _luminance(shallow)
+	var muted_ok: bool = _saturation(land) <= 0.36 \
+		and _saturation(shallow) <= 0.36 \
+		and _saturation(water) <= 0.45 \
+		and _saturation(cover) <= 0.5
+	return hierarchy_ok and muted_ok and foam.a < 1.0
+
+func _luminance(color: Color) -> float:
+	return color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722
+
+func _saturation(color: Color) -> float:
+	var high: float = maxf(maxf(color.r, color.g), color.b)
+	var low: float = minf(minf(color.r, color.g), color.b)
+	return 0.0 if high <= 0.0 else (high - low) / high
 
 func _animal_zones_ok(terrain: RefCounted, zones: Array) -> bool:
 	if zones.size() != 10:

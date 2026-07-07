@@ -9,6 +9,17 @@ const ICON_HUT := "hut"
 const ICON_CORE := "core"
 const ICON_OBJECT := "object"
 
+const BOG_LAND_DARK := Color(0.16, 0.18, 0.12)
+const BOG_LAND := Color(0.22, 0.25, 0.17)
+const BOG_MOSS := Color(0.30, 0.35, 0.22)
+const BOG_MUD_DARK := Color(0.19, 0.14, 0.09)
+const BOG_MUD := Color(0.33, 0.24, 0.14)
+const BOG_REED := Color(0.38, 0.40, 0.25)
+const WATER_DEEP := Color(0.10, 0.16, 0.18)
+const WATER_SHALLOW := Color(0.20, 0.29, 0.27)
+const WATER_FOAM := Color(0.62, 0.68, 0.62, 0.7)
+const SHADOW := Color(0.04, 0.05, 0.03, 0.35)
+
 static func team_color(team: int, alpha := 1.0) -> Color:
 	var color := Color(0.25, 0.65, 1.0) if team == 0 else Color(1.0, 0.28, 0.25)
 	color.a = alpha
@@ -47,20 +58,34 @@ static func telegraph_color(kind: String, alpha := 1.0, friendly := true) -> Col
 			return Color(1.0, 1.0, 1.0, alpha)
 
 static func terrain_color(zone: String, alpha := 1.0, miniature := false) -> Color:
-	var color := Color(0.16, 0.2, 0.11) if miniature else Color(0.15, 0.19, 0.1)
+	var color := BOG_LAND if miniature else BOG_LAND_DARK
 	match zone:
 		TerrainMapScript.HABITAT_BLUE:
-			color = Color(0.14, 0.22, 0.32) if miniature else Color(0.13, 0.17, 0.13)
+			color = Color(0.19, 0.28, 0.27) if miniature else Color(0.18, 0.22, 0.14)
 		TerrainMapScript.HABITAT_RED:
-			color = Color(0.3, 0.15, 0.13) if miniature else Color(0.17, 0.14, 0.11)
+			color = Color(0.28, 0.22, 0.16) if miniature else Color(0.19, 0.16, 0.11)
 		TerrainMapScript.WATER:
-			color = Color(0.12, 0.3, 0.4) if miniature else Color(0.1, 0.26, 0.34)
+			color = WATER_SHALLOW if miniature else WATER_DEEP
 		TerrainMapScript.SHALLOW:
-			color = Color(0.18, 0.33, 0.28) if miniature else Color(0.16, 0.3, 0.26)
+			color = Color(0.22, 0.34, 0.31) if miniature else WATER_SHALLOW
 		TerrainMapScript.COVER:
-			color = Color(0.1, 0.18, 0.1) if miniature else Color(0.1, 0.16, 0.09)
+			color = Color(0.12, 0.22, 0.12) if miniature else Color(0.08, 0.15, 0.08)
 	color.a = alpha
 	return color
+
+static func environment_palette() -> Dictionary:
+	return {
+		"land_dark": BOG_LAND_DARK,
+		"land": BOG_LAND,
+		"moss": BOG_MOSS,
+		"mud_dark": BOG_MUD_DARK,
+		"mud": BOG_MUD,
+		"reed": BOG_REED,
+		"water_deep": WATER_DEEP,
+		"water_shallow": WATER_SHALLOW,
+		"water_foam": WATER_FOAM,
+		"shadow": SHADOW
+	}
 
 static func with_alpha(color: Color, alpha: float) -> Color:
 	var output := color
