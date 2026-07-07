@@ -70,6 +70,7 @@ func _initialize() -> void:
 	var hut_color_ok: bool = _color_matches(hut.get_team_accent_color(0.72), VisualGrammar.team_color(1, 0.72))
 	var hut_visual_ok: bool = hut.has_method("uses_event_driven_redraw") \
 		and hut.has_method("get_visual_damage_state") \
+		and hut.has_method("get_damage_visual_features") \
 		and bool(hut.call("uses_event_driven_redraw")) \
 		and String(hut.call("get_visual_damage_state")) == "intact"
 	var kinds := {"tank": 0, "melee": 0, "pebble": 0}
@@ -107,7 +108,12 @@ func _initialize() -> void:
 	var damaged_visual_ok: bool = String(hut.call("get_visual_damage_state")) == "damaged"
 	hut.take_damage(hut.max_health * 0.35)
 	var critical_visual_ok: bool = String(hut.call("get_visual_damage_state")) == "critical"
-	hut_visual_ok = hut_visual_ok and damaged_visual_ok and critical_visual_ok
+	var critical_features: Dictionary = hut.call("get_damage_visual_features")
+	var critical_features_ok: bool = bool(critical_features.get("cracks", false)) \
+		and bool(critical_features.get("notched_silhouette", false)) \
+		and bool(critical_features.get("exposed_framing", false)) \
+		and bool(critical_features.get("fallen_clods", false))
+	hut_visual_ok = hut_visual_ok and damaged_visual_ok and critical_visual_ok and critical_features_ok
 
 	# Hut destruction notifies the arena and unregisters it.
 	hut.take_damage(hut.max_health)

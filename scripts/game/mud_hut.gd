@@ -58,6 +58,16 @@ func get_visual_damage_state() -> String:
 		return "damaged"
 	return "intact"
 
+func get_damage_visual_features() -> Dictionary:
+	var state := get_visual_damage_state()
+	return {
+		"state": state,
+		"cracks": state == "damaged" or state == "critical",
+		"notched_silhouette": state == "critical",
+		"exposed_framing": state == "critical",
+		"fallen_clods": state == "critical"
+	}
+
 func take_damage(amount: float, _source_team: int = -1, _source_actor: Node = null) -> void:
 	if health <= 0.0:
 		return
@@ -129,8 +139,11 @@ func _draw() -> void:
 	var accent := get_team_accent_color()
 	var shadow_offset := Vector2(body_radius * 0.2, body_radius * 0.28)
 	draw_circle(shadow_offset, body_radius * 0.92, VisualGrammar.SHADOW)
-	draw_circle(Vector2.ZERO, body_radius + 4.0, mud_dark)
-	draw_circle(Vector2.ZERO, body_radius, mud)
+	if state == "critical":
+		_draw_notched_dome(mud_dark, mud)
+	else:
+		draw_circle(Vector2.ZERO, body_radius + 4.0, mud_dark)
+		draw_circle(Vector2.ZERO, body_radius, mud)
 	draw_arc(Vector2(body_radius * 0.08, body_radius * 0.05), body_radius * 0.9, -0.05, PI * 0.72, 18, mud_dark.darkened(0.18), 4.0)
 	draw_arc(Vector2(-body_radius * 0.18, -body_radius * 0.18), body_radius * 0.7, PI * 1.05, PI * 1.82, 18, mud.lightened(0.18), 4.0)
 	for i in 5:
@@ -141,6 +154,8 @@ func _draw() -> void:
 		var stick_out := Vector2(cos(stick_angle), sin(stick_angle))
 		draw_line(stick_out * body_radius * 0.62, stick_out * (body_radius + 5.0), mud_dark.darkened(0.12), 2.2)
 	_draw_damage_marks(state, mud_dark)
+	if state == "critical":
+		_draw_exposed_framing(mud_dark)
 	# Entrance facing mid.
 	var entrance := Vector2(-1.0 if team == 1 else 1.0, 0.0)
 	var entrance_center := entrance * body_radius * 0.58 + Vector2(0.0, body_radius * 0.08)
@@ -153,6 +168,19 @@ func _draw() -> void:
 	var ratio := clampf(health / max_health, 0.0, 1.0)
 	draw_rect(Rect2(Vector2(-body_radius, body_radius + 6.0), Vector2(body_radius * 2.0, 5.0)), Color(0.07, 0.07, 0.08))
 	draw_rect(Rect2(Vector2(-body_radius, body_radius + 6.0), Vector2(body_radius * 2.0 * ratio, 5.0)), accent)
+
+func _draw_notched_dome(mud_dark: Color, mud: Color) -> void:
+	var outer := PackedVector2Array()
+	var inner := PackedVector2Array()
+	for i in 24:
+		var angle := TAU * float(i) / 24.0
+		var radius_scale := 1.0
+		if i in [2, 3, 9, 15, 16, 21]:
+			radius_scale = 0.82
+		outer.append(Vector2(cos(angle), sin(angle)) * (body_radius + 4.0) * radius_scale)
+		inner.append(Vector2(cos(angle), sin(angle)) * body_radius * radius_scale)
+	draw_colored_polygon(outer, mud_dark)
+	draw_colored_polygon(inner, mud)
 
 func _draw_damage_marks(state: String, mud_dark: Color) -> void:
 	if state == "intact":
@@ -170,3 +198,12 @@ func _draw_damage_marks(state: String, mud_dark: Color) -> void:
 			var clod_angle := TAU * float(i) / 4.0 + 0.45
 			var clod := Vector2(cos(clod_angle), sin(clod_angle)) * body_radius * rng.randf_range(0.7, 0.98)
 			draw_circle(clod, rng.randf_range(3.0, 5.0), mud_dark.darkened(0.18))
+
+func _draw_exposed_framing(mud_dark: Color) -> void:
+	var frame_color := mud_dark.lightened(0.16)
+	for offset in [-0.38, 0.0, 0.38]:
+		var x: float = body_radius * float(offset)
+		draw_line(Vector2(x, -body_radius * 0.52), Vector2(x + body_radius * 0.18, body_radius * 0.28), frame_color, 2.0)
+	draw_line(Vector2(-body_radius * 0.52, -body_radius * 0.1), Vector2(body_radius * 0.5, body_radius * 0.18), frame_color.darkened(0.12), 2.0)
+	draw_line(Vector2(-body_radius * 0.68, body_radius * 0.64), Vector2(-body_radius * 0.32, body_radius * 0.78), mud_dark.darkened(0.1), 2.2)
+	draw_line(Vector2(body_radius * 0.38, body_radius * 0.74), Vector2(body_radius * 0.78, body_radius * 0.58), mud_dark.darkened(0.1), 2.2)
