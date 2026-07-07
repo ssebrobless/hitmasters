@@ -867,7 +867,10 @@ func get_render_motion_state() -> Dictionary:
 	}
 
 func _visual_size_profile() -> Dictionary:
-	return VISUAL_SIZE_PROFILES.get(creature_id, {})
+	return visual_size_profile_for(creature_id)
+
+static func visual_size_profile_for(next_creature_id: String) -> Dictionary:
+	return VISUAL_SIZE_PROFILES.get(next_creature_id, {}).duplicate(true)
 
 func _visual_height_units(profile: Dictionary) -> float:
 	var base_height := float(profile.get("height_units", 0.45))
@@ -895,6 +898,9 @@ func _takeoff_charge_render_t() -> float:
 	return clampf(takeoff_distance_px / maxf(TAKEOFF_DISTANCE_UNITS * SimConstants.UNIT_PX, 1.0), 0.0, 1.0)
 
 func _visual_height_band(height_units: float) -> String:
+	return visual_height_band_for(height_units)
+
+static func visual_height_band_for(height_units: float) -> String:
 	if height_units >= 1.25:
 		return "high"
 	if height_units >= 0.55:

@@ -2,6 +2,7 @@ extends Control
 
 const VisualStyle := preload("res://scripts/visual/visual_style.gd")
 const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
+const CreatureScript := preload("res://scripts/sim/creature.gd")
 
 const PREVIEW_REFERENCE_RADIUS_UNITS := 1.6
 const PREVIEW_MAX_RADIUS_FRACTION := 0.31
@@ -38,7 +39,10 @@ func _draw() -> void:
 		_draw_capsule_footprint(center, Vector2(0.0, -1.0), radius, length_px, team_ring)
 	else:
 		draw_arc(center, radius + 4.0, 0.0, TAU, 44, team_ring, 1.5)
-	VisualStyle.draw_battle_creature(self, hero_id, team, radius, Vector2(0.0, -1.0), 0.0, 1.0, false, {"moving": true, "walk_phase": Time.get_ticks_msec() * 0.004, "origin": center})
+	var preview_state := _preview_motion_state()
+	preview_state["origin"] = center
+	preview_state["walk_phase"] = Time.get_ticks_msec() * 0.004
+	VisualStyle.draw_battle_creature(self, hero_id, team, radius, Vector2(0.0, -1.0), 0.0, 1.0, bool(preview_state.get("airborne_preview", false)), preview_state)
 
 func _process(_delta: float) -> void:
 	queue_redraw()
@@ -69,6 +73,44 @@ func _preview_footprint() -> Dictionary:
 		"length_px": length_px,
 		"reference_radius_px": max_radius
 	}
+
+func _preview_motion_state() -> Dictionary:
+	var profile := CreatureScript.visual_size_profile_for(hero_id)
+	var airborne_preview := _is_airborne_preview(profile)
+	var base_height := float(profile.get("height_units", 0.45))
+	var height_units := base_height
+	if airborne_preview:
+		height_units = maxf(base_height, float(profile.get("flight_height_units", base_height + 0.45)))
+	var model_scale := float(profile.get("model_scale", 1.0))
+	return {
+		"moving": true,
+		"model_scale": model_scale,
+		"base_model_scale": model_scale,
+		"height_units": height_units,
+		"height_class": String(profile.get("height_class", "mid")),
+		"height_band": CreatureScript.visual_height_band_for(height_units),
+		"airborne_preview": airborne_preview,
+		"height_shadow_alpha": _preview_height_shadow_alpha(height_units, airborne_preview),
+		"height_shadow_radius_mult": _preview_height_shadow_radius_mult(height_units, airborne_preview)
+	}
+
+func _is_airborne_preview(profile: Dictionary) -> bool:
+	var height_class := String(profile.get("height_class", ""))
+	if height_class in ["raptor", "small_diver", "swarm", "tiny_hoverer"]:
+		return true
+	return false
+
+func _preview_height_shadow_alpha(height_units: float, airborne_preview: bool) -> float:
+	if not airborne_preview:
+		return 0.0
+	var height_t := clampf(height_units / 1.8, 0.0, 1.0)
+	return clampf(0.34 - height_t * 0.12, 0.12, 0.5)
+
+func _preview_height_shadow_radius_mult(height_units: float, airborne_preview: bool) -> float:
+	if not airborne_preview:
+		return 1.0
+	var height_t := clampf(height_units / 1.8, 0.0, 1.0)
+	return clampf(0.78 + height_t * 0.12, 0.75, 1.18)
 
 func _draw_capsule_footprint(center: Vector2, forward: Vector2, radius: float, length: float, color: Color) -> void:
 	var capsule_color := VisualGrammar.with_alpha(color, 0.32)
