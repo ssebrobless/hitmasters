@@ -1597,6 +1597,7 @@ static func _base_swarm(canvas: CanvasItem, radius: float, forward: Vector2, sid
 			var stream_end := stream_start - forward * radius * (0.82 + 0.24 * swarm_intensity) + side * stream_side * radius * 0.18
 			canvas.draw_line(stream_start, stream_end, Color(swarm_main.r, swarm_main.g, swarm_main.b, 0.16 + 0.08 * swarm_intensity), maxf(radius * 0.045, 1.0))
 			canvas.draw_circle(stream_end + forward * radius * 0.18, maxf(radius * (0.075 + 0.02 * swarm_intensity), 1.0), Color(swarm_dark.r, swarm_dark.g, swarm_dark.b, 0.2 + 0.06 * swarm_intensity))
+			canvas.draw_circle(stream_start.lerp(stream_end, 0.62), maxf(radius * (0.052 + 0.018 * swarm_intensity), 1.0), Color(swarm_main.r, swarm_main.g, swarm_main.b, 0.18 + 0.08 * blood_ratio))
 		for eddy_side: float in [-1.0, 0.0, 1.0]:
 			var eddy_center := -forward * radius * (0.05 + 0.18 * absf(eddy_side)) + side * eddy_side * radius * 0.34
 			canvas.draw_arc(eddy_center, radius * (0.28 + 0.07 * swarm_intensity), -0.4, TAU * 0.68, 14, Color(swarm_dark.r, swarm_dark.g, swarm_dark.b, 0.16 + 0.06 * swarm_intensity), maxf(radius * 0.04, 1.0))
