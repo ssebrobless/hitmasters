@@ -214,15 +214,13 @@ func _draw() -> void:
 		var punch: float = sin(swing_t * PI) * (body_radius * 0.6)
 		lunge = facing * (punch if kind != "pebble" else -punch * 0.6)
 	draw_set_transform(lunge, 0.0, Vector2.ONE)
-	var pixel_size := 5.0 if kind == "tank" else 4.0
-	VisualStyle.draw_pixel_minion(self, team, pixel_size)
-	if kind == "pebble":
-		# Sling arm: the held pebble whips forward on release.
-		var pebble_rest := Vector2(0.0, -body_radius - 3.0)
-		var pebble_at := pebble_rest if attack_commit_timer <= 0.0 else pebble_rest.lerp(facing * (body_radius + 4.0), 1.0 - attack_commit_timer / 0.25)
-		draw_circle(pebble_at, 3.0, Color(0.6, 0.55, 0.45))
-	elif kind == "tank":
-		draw_arc(Vector2.ZERO, body_radius + 2.0, 0.0, TAU, 20, Color(0.5, 0.45, 0.35), 2.0)
+	VisualStyle.draw_minion(self, kind, team, body_radius, facing, {
+		"attack_commit_t": clampf(attack_commit_timer / 0.25, 0.0, 1.0),
+		"moving": velocity.length() > 4.0
+	})
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	draw_rect(Rect2(Vector2(-body_radius, -body_radius - 8.0), Vector2(body_radius * 2.0, 4.0)), Color(0.08, 0.08, 0.08))
 	draw_rect(Rect2(Vector2(-body_radius, -body_radius - 8.0), Vector2(body_radius * 2.0 * (health / max_health), 4.0)), Color(0.3, 1.0, 0.45))
+
+func get_render_style_state() -> Dictionary:
+	return VisualStyle.minion_render_metrics(kind, body_radius)

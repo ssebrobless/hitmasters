@@ -1782,24 +1782,81 @@ static func draw_aim_indicator(canvas: CanvasItem, radius: float, facing: Vector
 	canvas.draw_line(tip, tip - forward * 5.0 + side * 4.0, faint, 1.5)
 	canvas.draw_line(tip, tip - forward * 5.0 - side * 4.0, faint, 1.5)
 
-static func draw_pixel_minion(canvas: CanvasItem, team: int, pixel_size := 4.0, alpha := 1.0) -> void:
+static func minion_render_metrics(kind: String, body_radius: float) -> Dictionary:
+	var visual_scale := 0.92
+	match kind:
+		"tank":
+			visual_scale = 1.08
+		"pebble":
+			visual_scale = 0.82
+		"melee":
+			visual_scale = 0.95
+		_:
+			visual_scale = 0.9
+	return {
+		"kind": kind,
+		"combat_radius_px": body_radius,
+		"truth_ring_radius_px": body_radius,
+		"visual_radius_px": body_radius * visual_scale
+	}
+
+static func draw_minion(canvas: CanvasItem, kind: String, team: int, body_radius: float, facing: Vector2, anim: Dictionary = {}) -> void:
+	var forward := facing.normalized()
+	if forward == Vector2.ZERO:
+		forward = Vector2.RIGHT
+	var side := Vector2(-forward.y, forward.x)
+	var alpha := clampf(float(anim.get("alpha", 1.0)), 0.0, 1.0)
+	var metrics := minion_render_metrics(kind, body_radius)
+	var radius := float(metrics.get("visual_radius_px", body_radius))
 	var team_col := _with_alpha(team_color(team), alpha)
-	var dark_col := _with_alpha(team_col.darkened(0.2), alpha)
-	var body_cells := [
-		Vector2i(2, 1), Vector2i(3, 1),
-		Vector2i(1, 2), Vector2i(2, 2), Vector2i(3, 2), Vector2i(4, 2),
-		Vector2i(1, 3), Vector2i(2, 3), Vector2i(3, 3), Vector2i(4, 3),
-		Vector2i(2, 4), Vector2i(3, 4)
-	]
-	var outline_cells := [
-		Vector2i(2, 0), Vector2i(3, 0),
-		Vector2i(0, 2), Vector2i(5, 2),
-		Vector2i(0, 3), Vector2i(5, 3),
-		Vector2i(1, 5), Vector2i(4, 5)
-	]
-	_draw_cells(canvas, outline_cells, pixel_size, dark_col, Vector2(3.0, 3.0))
-	_draw_cells(canvas, body_cells, pixel_size, team_col, Vector2(3.0, 3.0))
-	_draw_cells(canvas, [Vector2i(4, 1), Vector2i(5, 1)], pixel_size, _with_alpha(Color(0.85, 0.9, 0.95), alpha), Vector2(3.0, 3.0))
+	var mud := _with_alpha(Color(0.28, 0.22, 0.13), alpha)
+	var mud_dark := _with_alpha(Color(0.13, 0.1, 0.06), alpha)
+	var mud_light := _with_alpha(Color(0.44, 0.36, 0.2), alpha)
+	var eye := _with_alpha(team_col.lightened(0.35), alpha)
+	_draw_ground_truth_footprint(canvas, Vector2.ZERO, body_radius, team_col, alpha)
+	match kind:
+		"tank":
+			_draw_minion_tank(canvas, radius, forward, side, mud, mud_dark, mud_light, team_col, eye)
+		"pebble":
+			_draw_minion_pebble(canvas, radius, forward, side, mud, mud_dark, mud_light, team_col, eye, anim, alpha)
+		_:
+			_draw_minion_chomper(canvas, radius, forward, side, mud, mud_dark, mud_light, team_col, eye, kind == "lane")
+
+static func _draw_minion_tank(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, mud: Color, mud_dark: Color, mud_light: Color, team_col: Color, eye: Color) -> void:
+	canvas.draw_circle(Vector2.ZERO, radius, mud_dark)
+	canvas.draw_circle(-forward * radius * 0.08, radius * 0.86, mud)
+	canvas.draw_arc(-forward * radius * 0.08, radius * 0.62, PI * 1.05, PI * 1.95, 18, mud_light, maxf(radius * 0.09, 1.5))
+	canvas.draw_arc(Vector2.ZERO, radius * 0.74, PI * 0.12, PI * 0.88, 18, Color(team_col.r, team_col.g, team_col.b, team_col.a * 0.52), maxf(radius * 0.12, 2.0))
+	for rib: float in [-0.46, 0.0, 0.46]:
+		canvas.draw_line(-forward * radius * 0.35 + side * radius * rib, forward * radius * 0.45 + side * radius * rib * 0.7, Color(mud_light.r, mud_light.g, mud_light.b, mud_light.a * 0.6), maxf(radius * 0.055, 1.0))
+	canvas.draw_circle(forward * radius * 0.52 + side * radius * 0.24, maxf(radius * 0.11, 1.4), eye)
+	canvas.draw_circle(forward * radius * 0.52 - side * radius * 0.24, maxf(radius * 0.11, 1.4), eye)
+
+static func _draw_minion_chomper(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, mud: Color, mud_dark: Color, mud_light: Color, team_col: Color, eye: Color, lane := false) -> void:
+	var body_radius := radius * (0.86 if lane else 0.94)
+	canvas.draw_circle(Vector2.ZERO, body_radius, mud_dark)
+	canvas.draw_circle(-forward * radius * 0.08, body_radius * 0.9, mud)
+	canvas.draw_circle(forward * radius * 0.42, radius * 0.5, mud_light)
+	for jaw_side: float in [-1.0, 1.0]:
+		var jaw_root := forward * radius * 0.72 + side * jaw_side * radius * 0.18
+		var jaw_tip := forward * radius * 1.16 + side * jaw_side * radius * 0.36
+		canvas.draw_line(jaw_root, jaw_tip, mud_dark, maxf(radius * 0.14, 2.0))
+		canvas.draw_circle(jaw_tip, maxf(radius * 0.1, 1.4), mud_dark)
+	canvas.draw_line(-forward * radius * 0.35, forward * radius * 0.35, Color(team_col.r, team_col.g, team_col.b, team_col.a * 0.5), maxf(radius * 0.12, 1.6))
+	canvas.draw_circle(forward * radius * 0.58 + side * radius * 0.18, maxf(radius * 0.09, 1.2), eye)
+	canvas.draw_circle(forward * radius * 0.58 - side * radius * 0.18, maxf(radius * 0.09, 1.2), eye)
+
+static func _draw_minion_pebble(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, mud: Color, mud_dark: Color, mud_light: Color, team_col: Color, eye: Color, anim: Dictionary, alpha: float) -> void:
+	canvas.draw_circle(Vector2.ZERO, radius * 0.9, mud_dark)
+	canvas.draw_circle(-forward * radius * 0.08, radius * 0.78, mud)
+	canvas.draw_circle(forward * radius * 0.42, radius * 0.38, mud_light)
+	var sling_t := clampf(float(anim.get("attack_commit_t", 0.0)), 0.0, 1.0)
+	var arm_back := -forward * radius * (0.34 + sling_t * 0.2) + side * radius * 0.55
+	var arm_tip := forward * radius * (0.82 + sling_t * 0.25) + side * radius * (0.42 - sling_t * 0.18)
+	canvas.draw_line(arm_back, arm_tip, mud_dark, maxf(radius * 0.1, 1.4))
+	canvas.draw_circle(arm_tip, maxf(radius * 0.14, 1.6), Color(0.56, 0.5, 0.38, alpha))
+	canvas.draw_line(-forward * radius * 0.35, forward * radius * 0.25, Color(team_col.r, team_col.g, team_col.b, team_col.a * 0.5), maxf(radius * 0.1, 1.4))
+	canvas.draw_circle(forward * radius * 0.48 - side * radius * 0.18, maxf(radius * 0.08, 1.1), eye)
 
 static func draw_pixel_core(canvas: CanvasItem, team: int, pixel_size := 8.0, alpha := 1.0) -> void:
 	var team_col := _with_alpha(team_color(team), alpha)

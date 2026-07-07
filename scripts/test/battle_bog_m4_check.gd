@@ -93,9 +93,22 @@ func _initialize() -> void:
 	stub.add_child(tank)
 	tank.setup(stub, 0, Vector2.ZERO, "tank")
 	var kinds_ok: bool = pebble.attack_range > 90.0 and tank.max_health > 200.0 and tank.speed < 145.0
+	var tank_style: Dictionary = tank.get_render_style_state()
+	var pebble_style: Dictionary = pebble.get_render_style_state()
+	var minion_visual_ok: bool = _truth_ring_matches(tank_style) \
+		and _truth_ring_matches(pebble_style) \
+		and String(tank_style.get("kind", "")) == "tank" \
+		and String(pebble_style.get("kind", "")) == "pebble" \
+		and float(tank_style.get("visual_radius_px", 0.0)) > float(tank_style.get("combat_radius_px", 0.0)) \
+		and float(pebble_style.get("visual_radius_px", 99.0)) < float(pebble_style.get("combat_radius_px", 0.0))
 
-	var passed := huts_3v3 and huts_1v1 and squad_ok and patrol_radius_ok and respawn_ok and destroy_ok and kinds_ok
-	print("m4 huts3v3=%s huts1v1=%s squad=%s patrol=%s respawn=%s destroy=%s kinds=%s" % [
-		str(huts_3v3), str(huts_1v1), str(squad_ok), str(patrol_radius_ok), str(respawn_ok), str(destroy_ok), str(kinds_ok)
+	var passed := huts_3v3 and huts_1v1 and squad_ok and patrol_radius_ok and respawn_ok and destroy_ok and kinds_ok and minion_visual_ok
+	print("m4 huts3v3=%s huts1v1=%s squad=%s patrol=%s respawn=%s destroy=%s kinds=%s visual=%s" % [
+		str(huts_3v3), str(huts_1v1), str(squad_ok), str(patrol_radius_ok), str(respawn_ok), str(destroy_ok), str(kinds_ok), str(minion_visual_ok)
 	])
 	quit(0 if passed else 1)
+
+func _truth_ring_matches(state: Dictionary) -> bool:
+	var combat_radius := float(state.get("combat_radius_px", -1.0))
+	var truth_radius := float(state.get("truth_ring_radius_px", -2.0))
+	return combat_radius > 0.0 and absf(truth_radius - combat_radius) < 0.001
