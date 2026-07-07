@@ -2409,8 +2409,8 @@ func _finish_match(winner: String, reason: String, status_text: String) -> void:
 	if match_over:
 		return
 	match_over = true
-	status_label.text = status_text
-	end_summary_label.text = _get_match_summary(winner)
+	_set_label_text_if_changed(status_label, status_text)
+	_set_label_text_if_changed(end_summary_label, _get_match_summary(winner))
 	_write_match_summary_log(winner, reason)
 
 func _update_ui() -> void:
@@ -2421,11 +2421,15 @@ func _update_ui() -> void:
 		var mode_text := "1v1 Trio" if _is_1v1_trio_mode() else GameConfig.selected_mode
 		var active_text := "Slot %d %s" % [active_squad_index + 1, creature_name] if _is_1v1_trio_mode() else creature_name
 		var hunger_text := "Hunger %d%%" % int(round(float(player.get("hunger")))) if player != null and player.get("hunger") != null else "Hunger --"
-		status_label.text = "%s | %s | Day %d dawn %ds | Active: %s | %s | Bots: %d | Next wave: %ds" % [mode_text, _format_match_time(elapsed), day_index, ceili(maxf(DAY_LENGTH_SEC - day_timer, 0.0)), active_text, hunger_text, bots.size(), ceili(wave_timer)]
-	core_label.text = "Blue Core %d / %d    Red Core %d / %d" % [blue_core.health, blue_core.max_health, red_core.health, red_core.max_health]
-	cooldown_label.text = _get_cooldown_text()
-	scoreboard_label.text = _get_scoreboard_text()
-	kill_feed_label.text = _get_kill_feed_text()
+		_set_label_text_if_changed(status_label, "%s | %s | Day %d dawn %ds | Active: %s | %s | Bots: %d | Next wave: %ds" % [mode_text, _format_match_time(elapsed), day_index, ceili(maxf(DAY_LENGTH_SEC - day_timer, 0.0)), active_text, hunger_text, bots.size(), ceili(wave_timer)])
+	_set_label_text_if_changed(core_label, "Blue Core %d / %d    Red Core %d / %d" % [blue_core.health, blue_core.max_health, red_core.health, red_core.max_health])
+	_set_label_text_if_changed(cooldown_label, _get_cooldown_text())
+	_set_label_text_if_changed(scoreboard_label, _get_scoreboard_text())
+	_set_label_text_if_changed(kill_feed_label, _get_kill_feed_text())
+
+func _set_label_text_if_changed(label: Label, next_text: String) -> void:
+	if label != null and label.text != next_text:
+		label.text = next_text
 
 func _get_cooldown_text() -> String:
 	if player == null:

@@ -34,7 +34,7 @@ is the action list.
 | 6 | Minimap at 5-10 Hz with baked background | MED | S |
 | 7 | Bot/minion target queries on 0.1-0.2s timers | MED | S |
 | 8 | Collision layer/mask hygiene | MED | S |
-| 9 | HUD Label.text assigned only on change | LOW-MED | S |
+| 9 | HUD Label.text assigned only on change - DONE (M8 label guard) | LOW-MED | S |
 | 10 | Renderer to mobile/compatibility; static typing in hot loops | LOW-MED | S |
 
 Workflow rule: profile with max minions (Debugger > Profiler + Monitors;
