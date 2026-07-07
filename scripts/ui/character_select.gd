@@ -7,6 +7,7 @@ const SLICE_CREATURE_IDS := [
 	"chorus_frog",
 	"mink",
 	"beaver",
+	"otter",
 	"owl",
 	"duck",
 	"bullfrog",

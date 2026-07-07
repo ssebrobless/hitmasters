@@ -89,9 +89,32 @@ func _check_lunge(arena: Node, failures: Array[String]) -> void:
 func _check_swallow(arena: Node, failures: Array[String]) -> void:
 	var actor: Node = arena.player
 	var target: Node = arena.bots[1]
+	actor.release_latch("test_reset")
+	target.release_latch("test_reset")
+	actor.modifiers.clear()
+	actor.break_stealth()
+	actor.kit.lunge_active = false
+	actor.kit.lunge_hit_done = false
+	actor.kit.lunge_button_was_pressed = false
+	for bot in arena.bots:
+		if bot == target:
+			continue
+		bot.release_latch("test_reset")
+		bot.health = bot.max_health
+		bot.global_position = Vector2(600.0, 600.0)
+		bot.velocity = Vector2.ZERO
+		bot.dash_velocity = Vector2.ZERO
+		bot.dash_timer = 0.0
 	target.apply_creature("mink")
 	actor.global_position = Vector2.ZERO
-	target.global_position = Vector2(24.0, 0.0)
+	target.global_position = Vector2(18.0, 0.0)
+	actor.velocity = Vector2.ZERO
+	actor.dash_velocity = Vector2.ZERO
+	actor.dash_timer = 0.0
+	target.velocity = Vector2.ZERO
+	target.dash_velocity = Vector2.ZERO
+	target.dash_timer = 0.0
+	target.break_stealth()
 	target.health = target.max_health * 0.08
 	actor.health = actor.max_health * 0.5
 	actor.primary_timer = 0.0
