@@ -1775,14 +1775,24 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(mosquito_idle_state.get("mosquito_trail_pose", false)) \
 		and _none_render_flags(mosquito_idle_state, mosquito_non_mosquito_motion_flags) \
 		and float(mosquito_idle_state.get("mosquito_swarm_intensity", 1.0)) <= 0.001
-	if not mosquito_swarm or not mosquito_idle_clear:
-		failures.append("moving mosquito swarm should expose directional swarm-cloud drift, trail, and blood ratio without firefly, bird, heron, duck, crawler, swimmer, shrew, turtle, mammal, snake, gator, frog, crustacean, or spider overlap, then clear when idle; moving=%s idle=%s state=%s/%s" % [
+	actor.primary_timer = 0.0
+	actor.anim_attack_timer = 0.0
+	var mosquito_attack_frame := InputFrameScript.new()
+	mosquito_attack_frame.aim = actor.global_position + Vector2.RIGHT * 100.0
+	mosquito_attack_frame.set_button(InputFrameScript.BUTTON_PRIMARY, true)
+	actor.set_input_frame(mosquito_attack_frame)
+	actor.kit.tick(actor, 0.016)
+	var mosquito_attack_read: bool = actor.anim_attack_timer > 0.0 and actor.primary_timer > 0.0
+	if not mosquito_swarm or not mosquito_idle_clear or not mosquito_attack_read:
+		failures.append("moving mosquito swarm should expose directional swarm-cloud drift, trail, blood ratio, and airborne projectile release animation without firefly, bird, heron, duck, crawler, swimmer, shrew, turtle, mammal, snake, gator, frog, crustacean, or spider overlap, then clear when idle; moving=%s idle=%s attack=%s state=%s/%s" % [
 			str(mosquito_swarm),
 			str(mosquito_idle_clear),
+			str(mosquito_attack_read),
 			str(mosquito_move_state),
 			str(mosquito_idle_state)
 		])
 	actor.apply_creature("firefly")
+	actor.anim_attack_timer = 0.0
 	var firefly_non_firefly_motion_flags: Array[String] = [
 		"mosquito_swarm_pose",
 		"mosquito_trail_pose",
@@ -1841,10 +1851,19 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and float(firefly_idle_state.get("firefly_hover_intensity", 1.0)) <= 0.001 \
 		and not bool(firefly_idle_state.get("firefly_flash_pose", false)) \
 		and _none_render_flags(firefly_idle_state, firefly_non_firefly_motion_flags)
-	if not firefly_hover or not firefly_idle_clear:
-		failures.append("moving firefly should expose single-hover lantern drift and flash cues without mosquito, bird, heron, duck, crawler, swimmer, shrew, turtle, mammal, snake, gator, frog, crustacean, or spider overlap, then clear when idle; moving=%s idle=%s state=%s/%s" % [
+	actor.primary_timer = 0.0
+	actor.anim_attack_timer = 0.0
+	var firefly_attack_frame := InputFrameScript.new()
+	firefly_attack_frame.aim = actor.global_position + Vector2.RIGHT * 100.0
+	firefly_attack_frame.set_button(InputFrameScript.BUTTON_PRIMARY, true)
+	actor.set_input_frame(firefly_attack_frame)
+	actor.kit.tick(actor, 0.016)
+	var firefly_attack_read: bool = actor.anim_attack_timer > 0.0 and actor.primary_timer > 0.0
+	if not firefly_hover or not firefly_idle_clear or not firefly_attack_read:
+		failures.append("moving firefly should expose single-hover lantern drift, flash cues, and airborne spark release animation without mosquito, bird, heron, duck, crawler, swimmer, shrew, turtle, mammal, snake, gator, frog, crustacean, or spider overlap, then clear when idle; moving=%s idle=%s attack=%s state=%s/%s" % [
 			str(firefly_hover),
 			str(firefly_idle_clear),
+			str(firefly_attack_read),
 			str(firefly_hover_state),
 			str(firefly_idle_state)
 		])

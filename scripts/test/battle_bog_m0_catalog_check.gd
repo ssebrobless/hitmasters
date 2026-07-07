@@ -47,4 +47,5 @@ func _check_invalid_region_rejected(catalog: Node) -> bool:
 		]
 	}))
 	file.close()
-	return not catalog.load_catalog(temp_path)
+	var rejected: bool = not catalog.load_catalog(temp_path, false)
+	return rejected and catalog.get_validation_errors().size() > 0

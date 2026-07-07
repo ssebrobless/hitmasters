@@ -551,7 +551,7 @@ func _apply_own_anim(event_type: String, payload: Dictionary) -> void:
 		"windup_started":
 			anim_windup_duration = maxf(float(payload.get("duration", 0.001)), 0.001)
 			anim_windup_timer = anim_windup_duration
-			if bool(payload.get("counter_hit_window", false)):
+			if payload.get("counter_hit_window", false) == true:
 				begin_counter_hit_window(anim_windup_duration)
 		"attack_swung":
 			break_stealth()
@@ -642,7 +642,7 @@ func get_render_motion_state() -> Dictionary:
 	var shrew_land_skitter_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if shrew_land_skitter else 0.0
 	var chorus_hop := creature_id == "chorus_frog" and moving and not is_airborne()
 	var chorus_hop_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if chorus_hop else 0.0
-	var bullfrog_lunge := creature_id == "bullfrog" and kit != null and bool(kit.get("lunge_active"))
+	var bullfrog_lunge: bool = creature_id == "bullfrog" and kit != null and kit.get("lunge_active") == true
 	var bullfrog_camouflage := creature_id == "bullfrog" and stealth_timer > 0.0
 	var bullfrog_coil := creature_id == "bullfrog" and (bullfrog_lunge or bullfrog_camouflage)
 	var bullfrog_lunge_intensity := clampf(dash_timer / 0.18, 0.0, 1.0) if bullfrog_lunge else 0.0
@@ -672,7 +672,7 @@ func get_render_motion_state() -> Dictionary:
 	var bog_turtle_creep := creature_id == "bog_turtle" and surface != EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var bog_turtle_paddle := creature_id == "bog_turtle" and surface == EnvironmentProfileScript.SURFACE_WATER and moving and not is_airborne()
 	var bog_turtle_motion_intensity := clampf(velocity.length() / maxf(get_speed_px(), 1.0), 0.0, 1.25) if bog_turtle_creep or bog_turtle_paddle else 0.0
-	var wolf_spider_lunge := creature_id == "wolf_spider" and kit != null and bool(kit.get("lunge_active"))
+	var wolf_spider_lunge: bool = creature_id == "wolf_spider" and kit != null and kit.get("lunge_active") == true
 	var wolf_spider_burrowed := creature_id == "wolf_spider" and state == CreatureStateScript.State.BURROWED
 	var wolf_spider_latched := creature_id == "wolf_spider" and latch_victim != null and latch_source == "Bite"
 	var wolf_spider_skitter := creature_id == "wolf_spider" and moving and not is_airborne() and not wolf_spider_lunge and not wolf_spider_burrowed and not wolf_spider_latched
@@ -949,7 +949,7 @@ func _update_terrain(delta: float) -> void:
 	var terrain_lerp_rate := float(movement_profile.get("terrain_lerp_rate", TERRAIN_SPEED_LERP_RATE))
 	terrain_speed_px = lerpf(terrain_speed_px if terrain_speed_px > 0.0 else terrain_speed_target_px, terrain_speed_target_px, clampf(delta * terrain_lerp_rate, 0.0, 1.0))
 
-	if not is_airborne() and bool(current_environment_profile.get("drains_swim", false)):
+	if not is_airborne() and current_environment_profile.get("drains_swim", false) == true:
 		if _has_limited_swim_time():
 			swim_time_remaining = maxf(swim_time_remaining - delta, 0.0)
 
@@ -957,7 +957,7 @@ func _update_terrain(delta: float) -> void:
 		wrong_terrain_seconds += delta
 		var rate := WRONG_TERRAIN_LATE_DPS if wrong_terrain_seconds > WRONG_TERRAIN_GRACE_SEC else WRONG_TERRAIN_EARLY_DPS
 		take_area_damage(max_health * rate * delta)
-	elif bool(current_environment_profile.get("restores_swim", true)):
+	elif current_environment_profile.get("restores_swim", true) == true:
 		wrong_terrain_seconds = 0.0
 		if swim_time_max > 0.0:
 			swim_time_remaining = minf(swim_time_remaining + delta, swim_time_max)
@@ -1481,7 +1481,7 @@ func _make_kit() -> RefCounted:
 func _is_wrong_terrain() -> bool:
 	if current_environment_profile.is_empty():
 		current_environment_profile = _environment_profile_for_zone(get_current_zone())
-	return bool(current_environment_profile.get("wrong_terrain_now", false))
+	return current_environment_profile.get("wrong_terrain_now", false) == true
 
 func _uses_deep_water_swim_speed() -> bool:
 	return EnvironmentProfileScript.uses_swim_speed_in_deep_water(_effective_movement_tags())

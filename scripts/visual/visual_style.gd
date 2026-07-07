@@ -1592,10 +1592,16 @@ static func _base_swarm(canvas: CanvasItem, radius: float, forward: Vector2, sid
 	var swarm_intensity := clampf(float(anim.get("mosquito_swarm_intensity", 0.0)), 0.0, 1.25)
 	var trail_pose := bool(anim.get("mosquito_trail_pose", false))
 	var blood_ratio := clampf(float(anim.get("mosquito_blood_ratio", 0.0)), 0.0, 1.0)
+	var attack_t := float(anim.get("attack_t", -1.0))
 	var engorged := Color(0.58, 0.12, 0.12)
 	var swarm_dark := dark.lerp(engorged, blood_ratio * 0.55)
 	var swarm_main := main.lerp(Color(0.72, 0.22, 0.18), blood_ratio * 0.45)
 	var cloud_radius := radius * radius_mult * (1.0 + blood_ratio * 0.12 + swarm_intensity * 0.04)
+	if attack_t >= 0.0:
+		var sting_t := clampf(attack_t, 0.0, 1.0)
+		var sting_color := Color(swarm_main.r, swarm_main.g, swarm_main.b, 0.24 + 0.18 * (1.0 - sting_t))
+		canvas.draw_line(forward * radius * 0.34, forward * radius * (1.42 + 0.28 * sting_t), sting_color, maxf(radius * 0.08, 1.3))
+		canvas.draw_circle(forward * radius * (1.12 + 0.22 * sting_t), maxf(radius * (0.07 + 0.02 * blood_ratio), 1.1), Color(sting_color.r, sting_color.g, sting_color.b, sting_color.a * 0.72))
 	if trail_pose or swarm_pose:
 		var trail_count := 4 if trail_pose else 3
 		for trail_index in trail_count:
@@ -1705,6 +1711,7 @@ static func _base_bug(canvas: CanvasItem, radius: float, forward: Vector2, side:
 	var hover_pose := String(anim.get("creature_id", "")) == "firefly" and bool(anim.get("firefly_hover_pose", false))
 	var hover_intensity := clampf(float(anim.get("firefly_hover_intensity", 0.0)), 0.0, 1.25)
 	var flash_pose := String(anim.get("creature_id", "")) == "firefly" and bool(anim.get("firefly_flash_pose", false))
+	var attack_t := float(anim.get("attack_t", -1.0))
 	var glow_scale := 1.0 + breathe * pulse + (0.24 if flash_pose else 0.0)
 	var hover_drift := side * sin(walk_phase * 0.72) * radius * 0.16 * hover_intensity if hover_pose else Vector2.ZERO
 	# Bioluminescent glow halo.
@@ -1726,6 +1733,12 @@ static func _base_bug(canvas: CanvasItem, radius: float, forward: Vector2, side:
 		canvas.draw_arc(lantern_drop, radius * (0.34 + 0.08 * hover_intensity), PI * 0.1, PI * 0.9, 12, Color(glow.r, glow.g, glow.b, 0.22 + 0.08 * pulse), maxf(radius * 0.04, 1.0))
 	if flash_pose:
 		canvas.draw_arc(-forward * radius * 0.4 + hover_drift, radius * 2.05, -0.25, TAU * 0.72, 28, Color(glow.r, glow.g, glow.b, 0.32 + pulse * 0.16), maxf(radius * 0.1, 1.5))
+	if attack_t >= 0.0:
+		var spark_t := clampf(attack_t, 0.0, 1.0)
+		var spark_color := Color(glow.r, glow.g, glow.b, 0.28 + 0.22 * (1.0 - spark_t))
+		var spark_origin := forward * radius * 0.44 + hover_drift
+		canvas.draw_line(spark_origin, spark_origin + forward * radius * (1.08 + 0.28 * spark_t), spark_color, maxf(radius * 0.08, 1.3))
+		canvas.draw_circle(spark_origin + forward * radius * (0.86 + 0.22 * spark_t), maxf(radius * (0.08 + 0.03 * breathe), 1.2), Color(spark_color.r, spark_color.g, spark_color.b, spark_color.a * 0.82))
 	# Wings blurred mid-beat.
 	for wing_side: float in [-1.0, 1.0]:
 		var wing_flare := sin(walk_phase * wingbeat + wing_side) * radius * (0.08 + 0.05 * hover_intensity) if moving else 0.0
