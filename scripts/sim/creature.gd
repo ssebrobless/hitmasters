@@ -729,6 +729,7 @@ func get_render_motion_state() -> Dictionary:
 	var air_attack_scale_bonus := float(visual_size_profile.get("air_attack_model_scale_bonus", 0.0)) * air_attack_release_t
 	var visual_model_scale := minf(1.35, base_model_scale + low_window_scale_bonus + air_attack_scale_bonus)
 	var visual_radius_px := body_radius * visual_model_scale
+	var silhouette_contract := VisualStyle.creature_silhouette_contract(creature_id, body_radius, visual_model_scale)
 	var air_attack_cue_radius_px := visual_radius_px * (1.12 + air_attack_cue_t * 0.22) if air_attack_cue else 0.0
 	var airborne_visual := is_airborne() or state == CreatureStateScript.State.PERCHED
 	var height_shadow_alpha := _height_shadow_alpha(visual_height_units, low_window_t, airborne_visual)
@@ -741,6 +742,14 @@ func get_render_motion_state() -> Dictionary:
 		"combat_radius_px": body_radius,
 		"visual_radius_px": visual_radius_px,
 		"truth_ring_radius_px": body_radius,
+		"silhouette_archetype": String(silhouette_contract.get("archetype", "")),
+		"silhouette_features": silhouette_contract.get("silhouette_features", []),
+		"filled_mass_radius_px": float(silhouette_contract.get("filled_mass_radius_px", 0.0)),
+		"filled_mass_radius_mult": float(silhouette_contract.get("filled_mass_radius_mult", 0.0)),
+		"wide_filled_overhang_limit_mult": float(silhouette_contract.get("wide_filled_overhang_limit_mult", 1.15)),
+		"thin_overhang_radius_px": float(silhouette_contract.get("thin_overhang_radius_px", 0.0)),
+		"thin_overhang_radius_mult": float(silhouette_contract.get("thin_overhang_radius_mult", 0.0)),
+		"contact_shadow_ellipse": bool(silhouette_contract.get("contact_shadow_ellipse", false)),
 		"low_window_model_scale_bonus": low_window_scale_bonus,
 		"air_attack_model_scale_bonus": air_attack_scale_bonus,
 		"air_attack_release_t": air_attack_release_t,

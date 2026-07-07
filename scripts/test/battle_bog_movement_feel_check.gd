@@ -2167,8 +2167,9 @@ func _check_visual_height_profiles(arena: Node, failures: Array[String]) -> void
 		and float(bog_state.get("visual_radius_px", 999.0)) < float(bog_state.get("combat_radius_px", 0.0)) * 0.9
 	var roster_profiled := _all_roster_creatures_have_height_profile(arena)
 	var roster_truth_ring := _all_roster_creatures_have_truth_ring(arena)
-	if not tall_heron or not owl_lift or not owl_low_read or not kingfisher_low_read or not tiny_low or not tiny_hover or not flying_attack_scale or not heron_truth_ring or not bog_truth_ring or not roster_profiled or not roster_truth_ring:
-		failures.append("visual height profiles should distinguish tall, airborne, hittable low-window, low, tiny hover, airborne attack readability scales, and combat-radius truth rings; heron=%s owl=%s/%s/%s kingfisher=%s/%s bog=%s mosquito=%s/%s firefly=%s/%s rings=%s/%s/%s roster_profiled=%s" % [
+	var roster_silhouette_contract := _all_roster_creatures_have_silhouette_contract(arena)
+	if not tall_heron or not owl_lift or not owl_low_read or not kingfisher_low_read or not tiny_low or not tiny_hover or not flying_attack_scale or not heron_truth_ring or not bog_truth_ring or not roster_profiled or not roster_truth_ring or not roster_silhouette_contract:
+		failures.append("visual height profiles should distinguish tall, airborne, hittable low-window, low, tiny hover, airborne attack readability scales, combat-radius truth rings, and silhouette mass contracts; heron=%s owl=%s/%s/%s kingfisher=%s/%s bog=%s mosquito=%s/%s firefly=%s/%s rings=%s/%s/%s roster_profiled=%s silhouette_contract=%s" % [
 			str(heron_state),
 			str(owl_air_state),
 			str(owl_low_state),
@@ -2183,7 +2184,8 @@ func _check_visual_height_profiles(arena: Node, failures: Array[String]) -> void
 			str(heron_truth_ring),
 			str(bog_truth_ring),
 			str(roster_truth_ring),
-			str(roster_profiled)
+			str(roster_profiled),
+			str(roster_silhouette_contract)
 		])
 
 func _check_live_height_hud_read(arena: Node, failures: Array[String]) -> void:
@@ -2356,6 +2358,48 @@ func _all_roster_creatures_have_truth_ring(arena: Node) -> bool:
 		actor.apply_creature(creature_id)
 		var state: Dictionary = actor.get_render_motion_state()
 		if not _truth_ring_matches_combat_radius(state):
+			return false
+	return true
+
+func _all_roster_creatures_have_silhouette_contract(arena: Node) -> bool:
+	var actor: Node = arena.player
+	var roster := [
+		"bullfrog", "chorus_frog", "newt", "cane_toad", "snapping_turtle", "water_snake", "bog_turtle", "alligator", "owl", "great_blue_heron", "kingfisher", "duck", "water_shrew", "beaver", "otter", "mink", "leech", "crayfish", "mosquito_swarm", "wolf_spider", "firefly"
+	]
+	var expected_archetypes := {
+		"bullfrog": "frog",
+		"chorus_frog": "frog",
+		"newt": "mustelid",
+		"cane_toad": "frog",
+		"snapping_turtle": "turtle",
+		"water_snake": "serpent",
+		"bog_turtle": "turtle",
+		"alligator": "croc",
+		"owl": "bird",
+		"great_blue_heron": "bird",
+		"kingfisher": "bird",
+		"duck": "bird",
+		"water_shrew": "mustelid",
+		"beaver": "mustelid",
+		"otter": "mustelid",
+		"mink": "mustelid",
+		"leech": "cluster",
+		"crayfish": "crustacean",
+		"mosquito_swarm": "swarm",
+		"wolf_spider": "spider",
+		"firefly": "bug"
+	}
+	for creature_id: String in roster:
+		actor.apply_creature(creature_id)
+		var state: Dictionary = actor.get_render_motion_state()
+		var filled_mult := float(state.get("filled_mass_radius_mult", 99.0))
+		var thin_mult := float(state.get("thin_overhang_radius_mult", 0.0))
+		var features: Array = state.get("silhouette_features", [])
+		var archetype_ok := String(state.get("silhouette_archetype", "")) == String(expected_archetypes.get(creature_id, ""))
+		var mass_ok := filled_mult > 0.0 and filled_mult <= float(state.get("wide_filled_overhang_limit_mult", 1.15))
+		var overhang_ok := thin_mult >= filled_mult and thin_mult <= 1.65
+		var shadow_ok := bool(state.get("contact_shadow_ellipse", false))
+		if not archetype_ok or not mass_ok or not overhang_ok or not shadow_ok or features.is_empty():
 			return false
 	return true
 

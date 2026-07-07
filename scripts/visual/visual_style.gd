@@ -36,6 +36,20 @@ const SKINS := {
 	"firefly": {"base": "bug", "main": Color(0.22, 0.16, 0.1), "dark": Color(0.12, 0.09, 0.06), "glow": Color(0.95, 0.9, 0.4)}
 }
 
+const SILHOUETTE_CONTRACTS := {
+	"frog": {"filled_mass_mult": 0.98, "thin_overhang_mult": 1.08, "features": ["squat_body", "leg_arc"]},
+	"turtle": {"filled_mass_mult": 1.0, "thin_overhang_mult": 1.12, "features": ["shell_mass", "short_head"]},
+	"mustelid": {"filled_mass_mult": 0.96, "thin_overhang_mult": 1.28, "features": ["long_spine", "thin_tail"]},
+	"bird": {"filled_mass_mult": 0.88, "thin_overhang_mult": 1.42, "features": ["compact_body", "thin_beak_neck", "thin_wings"]},
+	"serpent": {"filled_mass_mult": 0.92, "thin_overhang_mult": 1.55, "features": ["coiled_mass", "thin_body_axis"]},
+	"croc": {"filled_mass_mult": 1.04, "thin_overhang_mult": 1.62, "features": ["long_body", "thin_snout_tail"]},
+	"crustacean": {"filled_mass_mult": 0.98, "thin_overhang_mult": 1.25, "features": ["low_carapace", "thin_claws"]},
+	"spider": {"filled_mass_mult": 0.78, "thin_overhang_mult": 1.42, "features": ["central_body", "thin_legs"]},
+	"swarm": {"filled_mass_mult": 0.36, "thin_overhang_mult": 1.18, "features": ["distributed_dots", "readability_cloud"]},
+	"cluster": {"filled_mass_mult": 0.94, "thin_overhang_mult": 1.06, "features": ["flat_blob_chain"]},
+	"bug": {"filled_mass_mult": 0.72, "thin_overhang_mult": 1.16, "features": ["tiny_body", "glow_shell"]}
+}
+
 static func creature_color(creature_id: String) -> Color:
 	var skin: Dictionary = SKINS.get(creature_id, {})
 	if skin.has("main"):
@@ -44,6 +58,32 @@ static func creature_color(creature_id: String) -> Color:
 		return skin["shell"]
 	var creature_hash: int = abs(hash(creature_id))
 	return Color.from_hsv(float(creature_hash % 360) / 360.0, 0.58, 0.92)
+
+static func creature_silhouette_contract(creature_id: String, body_radius: float, model_scale := 1.0) -> Dictionary:
+	var skin: Dictionary = SKINS.get(creature_id, {})
+	var base := String(skin.get("base", "blob"))
+	var contract: Dictionary = SILHOUETTE_CONTRACTS.get(base, {
+		"filled_mass_mult": 1.0,
+		"thin_overhang_mult": 1.0,
+		"features": ["fallback_blob"]
+	})
+	var visual_radius := body_radius * clampf(model_scale, 0.72, 1.35)
+	var filled_mass_mult := float(contract.get("filled_mass_mult", 1.0))
+	var thin_overhang_mult := float(contract.get("thin_overhang_mult", 1.0))
+	return {
+		"creature_id": creature_id,
+		"archetype": base,
+		"silhouette_features": contract.get("features", []),
+		"combat_radius_px": body_radius,
+		"truth_ring_radius_px": body_radius,
+		"visual_radius_px": visual_radius,
+		"filled_mass_radius_px": body_radius * filled_mass_mult,
+		"filled_mass_radius_mult": filled_mass_mult,
+		"wide_filled_overhang_limit_mult": 1.15,
+		"thin_overhang_radius_px": body_radius * thin_overhang_mult,
+		"thin_overhang_radius_mult": thin_overhang_mult,
+		"contact_shadow_ellipse": true
+	}
 
 static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: int, radius: float, facing: Vector2, flash_alpha := 0.0, alpha := 1.0, airborne := false, anim: Dictionary = {}) -> void:
 	var forward := facing.normalized()
