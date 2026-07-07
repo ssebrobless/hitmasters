@@ -28,6 +28,8 @@ func _initialize() -> void:
 	var shallow_zone := terrain.get_zone_at(Vector2(16.0 * unit, 0.0))
 	var upper_bridge_zone := terrain.get_zone_at(Vector2(0.0, -42.0 * unit))
 	var lower_bridge_zone := terrain.get_zone_at(Vector2(0.0, 55.0 * unit))
+	var bridge_rects := terrain.get_land_bridge_rects()
+	var bridge_rects_ok: bool = _bridge_rects_ok(terrain, bridge_rects)
 	var shallow_land_profile := terrain.get_environment_profile_for_zone(TerrainMapScript.SHALLOW, ["land_walker"])
 	var shallow_comfort_profile := terrain.get_environment_profile_for_zone(TerrainMapScript.SHALLOW, ["semi_aquatic"])
 	var deep_land_profile := EnvironmentProfileScript.for_zone(TerrainMapScript.WATER, ["land_walker"])
@@ -62,7 +64,7 @@ func _initialize() -> void:
 		and arena_origin_units == Vector2(-240.0, -85.0) \
 		and duel_units == Vector2(480.0, 170.0) \
 		and duel_origin_units == Vector2(-240.0, -85.0)
-	var bridges_ok: bool = upper_bridge_zone == TerrainMapScript.LAND and lower_bridge_zone == TerrainMapScript.LAND
+	var bridges_ok: bool = upper_bridge_zone == TerrainMapScript.LAND and lower_bridge_zone == TerrainMapScript.LAND and bridge_rects_ok
 	var passed: bool = shared_bounds_ok and habitats_ok and core_positions_ok and cores_in_habitat and center_zone == TerrainMapScript.WATER and shallow_zone == TerrainMapScript.SHALLOW and bridges_ok and profiles_ok and anchors_ok and animal_zones_ok and zones_clear_huts_ok and food_resources_ok and obstacles_ok and duel_anchor_count == terrain.get_cover_rects().size()
 	print("terrain_3v3_units=%sx%s terrain_1v1_units=%sx%s habitats=%s cores=%s center=%s shallow=%s bridges=%s profiles_ok=%s anchors_ok=%s zones=%s zone_hut_clear=%s food=%s obstacles=%s duel_anchor_count=%d" % [
 		str(arena_units.x),
@@ -111,6 +113,26 @@ func _animal_zones_ok(zones: Array) -> bool:
 		if bool(spec["boss"]) and (int(blue_zone.get("breed_activation_count", 0)) != 5 or int(red_zone.get("breed_activation_count", 0)) != 5):
 			return false
 		if not _arrays_equal(blue_zone.get("creatures", []), spec["creatures"]) or not _arrays_equal(red_zone.get("creatures", []), spec["creatures"]):
+			return false
+	return true
+
+func _bridge_rects_ok(terrain: RefCounted, bridge_rects: Array) -> bool:
+	var unit := SimConstants.UNIT_PX
+	if bridge_rects.size() != 2:
+		return false
+	var expected := [
+		Rect2(Vector2(-24.0, -48.0), Vector2(48.0, 13.0)),
+		Rect2(Vector2(-24.0, 48.0), Vector2(48.0, 13.0))
+	]
+	for i in expected.size():
+		var rect: Rect2 = bridge_rects[i]
+		var rect_units := Rect2(rect.position / unit, rect.size / unit)
+		if rect_units != expected[i]:
+			return false
+		if terrain.get_zone_at(rect.get_center()) != TerrainMapScript.LAND:
+			return false
+		if terrain.get_zone_at(rect.get_center() + Vector2(0.0, -10.0 * unit)) != TerrainMapScript.WATER \
+			and terrain.get_zone_at(rect.get_center() + Vector2(0.0, 10.0 * unit)) != TerrainMapScript.WATER:
 			return false
 	return true
 

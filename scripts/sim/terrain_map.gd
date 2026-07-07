@@ -28,6 +28,7 @@ var hut_positions := {}
 var food_spawn_points: Array = []
 var animal_zones: Array = []
 var environmental_obstacles: Array = []
+var land_bridge_rects: Array[Rect2] = []
 
 func configure(next_mode: String) -> void:
 	mode = next_mode
@@ -90,6 +91,9 @@ func get_animal_zones() -> Array:
 func get_environmental_obstacles() -> Array:
 	return environmental_obstacles.duplicate(true)
 
+func get_land_bridge_rects() -> Array[Rect2]:
+	return land_bridge_rects.duplicate()
+
 func _rebuild_perch_anchors() -> void:
 	perch_anchors.clear()
 	for rect: Rect2 in get_cover_rects():
@@ -151,6 +155,10 @@ func _configure_unified_map() -> void:
 	var water_rects: Array = central_water_rects.duplicate()
 	water_rects.append_array(_with_mirrored_rects(blue_stream_water_rects))
 	water_rects.append_array(_with_mirrored_rects(blue_zone_water_rects))
+	land_bridge_rects = [
+		_rect_units(-24.0, -48.0, 48.0, 13.0),
+		_rect_units(-24.0, 48.0, 48.0, 13.0)
+	]
 	animal_zones = _build_animal_zones()
 	environmental_obstacles = _build_environmental_obstacles()
 	var cover_rects: Array = []

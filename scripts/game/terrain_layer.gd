@@ -25,6 +25,7 @@ func _draw() -> void:
 			draw_rect(rect, VisualGrammar.terrain_color(zone))
 			_draw_zone_detail(zone, rect)
 			_draw_zone_edge(zone, rect)
+	_draw_land_bridges()
 	_draw_perch_anchors()
 	draw_rect(arena_rect, Color(0.28, 0.33, 0.24), false, 6.0)
 
@@ -104,6 +105,30 @@ func _draw_stippled_rect(rect: Rect2, color: Color, step: float) -> void:
 		draw_circle(Vector2(rect.position.x, y), 1.6, color)
 		draw_circle(Vector2(rect.end.x, y), 1.6, color)
 		y += step
+
+func _draw_land_bridges() -> void:
+	if terrain_map == null or not terrain_map.has_method("get_land_bridge_rects"):
+		return
+	for rect: Rect2 in terrain_map.get_land_bridge_rects():
+		draw_rect(rect.grow(4.0), Color(0.18, 0.2, 0.12, 0.52))
+		draw_rect(rect, Color(0.34, 0.31, 0.19, 0.9))
+		draw_rect(rect.grow(-4.0), Color(0.44, 0.39, 0.24, 0.42), false, 2.0)
+		var plank_y := rect.position.y + 5.0
+		while plank_y < rect.end.y - 3.0:
+			draw_line(
+				Vector2(rect.position.x + 5.0, plank_y),
+				Vector2(rect.end.x - 5.0, plank_y),
+				Color(0.18, 0.15, 0.09, 0.36),
+				1.4
+			)
+			plank_y += 8.0
+		for edge_x in [rect.position.x + 4.0, rect.end.x - 4.0]:
+			draw_line(
+				Vector2(edge_x, rect.position.y + 2.0),
+				Vector2(edge_x, rect.end.y - 2.0),
+				Color(0.2, 0.18, 0.1, 0.42),
+				2.0
+			)
 
 func _draw_perch_anchors() -> void:
 	if terrain_map == null or not terrain_map.has_method("get_perch_anchors"):
