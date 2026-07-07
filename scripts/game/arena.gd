@@ -2926,9 +2926,17 @@ func _top_player_summary_row(team: int) -> Dictionary:
 
 func _top_match_summary_rows() -> Dictionary:
 	return {
-		"blue": _top_player_summary_row(BLUE),
-		"red": _top_player_summary_row(RED)
+		"blue": _top_player_summary_entry(BLUE),
+		"red": _top_player_summary_entry(RED)
 	}
+
+func _top_player_summary_entry(team: int) -> Dictionary:
+	var top := _top_player_summary_row(team)
+	if top.is_empty():
+		return {}
+	var entry := top.duplicate(true)
+	entry["summary_score"] = snappedf(_player_summary_score(top), 0.1)
+	return entry
 
 func _player_summary_score(row: Dictionary) -> float:
 	return float(row.get("kills", 0)) * 120.0 \
