@@ -51,6 +51,7 @@ const TERRAIN_TRANSITION_TELL_SEC := 0.32
 const TOXIC_RECOIL_TELL_SEC := 0.22
 const ESCAPE_CURL_TELL_SEC := 0.24
 const PLUNGE_TELL_SEC := 0.20
+const AIR_ATTACK_STARTUP_TELL_SEC := 0.28
 const LOW_WINDOW_VISUAL_MAX_SEC := 0.7
 const DISABLED_PHYSICS_LAYER := 0
 const DISABLED_PHYSICS_MASK := 0
@@ -67,19 +68,19 @@ const VISUAL_SIZE_PROFILES := {
 	"water_snake": {"model_scale": 0.96, "height_units": 0.16, "height_class": "long_low"},
 	"bog_turtle": {"model_scale": 0.82, "height_units": 0.2, "height_class": "tiny_low"},
 	"alligator": {"model_scale": 1.18, "height_units": 0.35, "height_class": "long_low"},
-	"owl": {"model_scale": 1.08, "height_units": 0.85, "flight_height_units": 1.45, "low_window_height_units": 0.42, "low_window_model_scale_bonus": 0.12, "air_attack_model_scale_bonus": 0.06, "height_class": "raptor"},
-	"great_blue_heron": {"model_scale": 1.28, "height_units": 1.55, "flight_height_units": 1.8, "low_window_height_units": 0.72, "height_class": "tall_wader"},
-	"kingfisher": {"model_scale": 0.92, "height_units": 0.55, "flight_height_units": 1.22, "low_window_height_units": 0.34, "low_window_model_scale_bonus": 0.12, "air_attack_model_scale_bonus": 0.1, "height_class": "small_diver"},
-	"duck": {"model_scale": 1.0, "height_units": 0.45, "flight_height_units": 0.95, "low_window_height_units": 0.36, "air_attack_model_scale_bonus": 0.06, "height_class": "low_paddler"},
+	"owl": {"model_scale": 1.1, "height_units": 0.5, "flight_height_units": 1.45, "low_window_height_units": 0.42, "low_window_model_scale_bonus": 0.16, "air_attack_model_scale_bonus": 0.08, "air_attack_cue_base_mult": 1.22, "air_attack_cue_bonus_mult": 0.38, "height_class": "raptor"},
+	"great_blue_heron": {"model_scale": 1.22, "height_units": 1.55, "flight_height_units": 1.65, "low_window_height_units": 0.72, "height_class": "tall_wader"},
+	"kingfisher": {"model_scale": 0.96, "height_units": 0.48, "flight_height_units": 1.15, "low_window_height_units": 0.34, "low_window_model_scale_bonus": 0.16, "air_attack_model_scale_bonus": 0.14, "air_attack_cue_base_mult": 1.26, "air_attack_cue_bonus_mult": 0.42, "height_class": "small_diver"},
+	"duck": {"model_scale": 1.04, "height_units": 0.45, "flight_height_units": 0.85, "low_window_height_units": 0.36, "air_attack_model_scale_bonus": 0.0, "height_class": "low_paddler"},
 	"water_shrew": {"model_scale": 0.85, "height_units": 0.22, "height_class": "tiny_low"},
 	"beaver": {"model_scale": 1.18, "height_units": 0.35, "height_class": "heavy_swimmer"},
 	"otter": {"model_scale": 1.08, "height_units": 0.3, "height_class": "sleek_swimmer"},
 	"mink": {"model_scale": 0.96, "height_units": 0.28, "height_class": "small_mustelid"},
 	"leech": {"model_scale": 0.75, "height_units": 0.08, "height_class": "flat_cluster"},
 	"crayfish": {"model_scale": 0.98, "height_units": 0.18, "height_class": "low_crustacean"},
-	"mosquito_swarm": {"model_scale": 1.0, "height_units": 0.65, "flight_height_units": 0.85, "air_attack_model_scale_bonus": 0.14, "height_class": "swarm"},
+	"mosquito_swarm": {"model_scale": 0.94, "height_units": 0.62, "flight_height_units": 0.75, "air_attack_model_scale_bonus": 0.18, "air_attack_cue_base_mult": 1.24, "air_attack_cue_bonus_mult": 0.4, "height_class": "swarm"},
 	"wolf_spider": {"model_scale": 0.95, "height_units": 0.18, "height_class": "low_sprawler"},
-	"firefly": {"model_scale": 0.78, "height_units": 0.55, "flight_height_units": 0.9, "air_attack_model_scale_bonus": 0.2, "height_class": "tiny_hoverer"}
+	"firefly": {"model_scale": 0.82, "height_units": 0.55, "flight_height_units": 0.9, "air_attack_model_scale_bonus": 0.22, "air_attack_cue_base_mult": 1.24, "air_attack_cue_bonus_mult": 0.4, "height_class": "tiny_hoverer"}
 }
 
 var arena: Node = null
@@ -161,6 +162,8 @@ var render_terrain_to_surface := ""
 var render_toxic_recoil_timer := 0.0
 var render_escape_curl_timer := 0.0
 var render_plunge_timer := 0.0
+var render_air_attack_startup_timer := 0.0
+var render_air_attack_startup_duration := AIR_ATTACK_STARTUP_TELL_SEC
 var last_move_displacement_px := 0.0
 var stealth_timer := 0.0
 var low_window_timer := 0.0
@@ -226,6 +229,8 @@ func apply_creature(next_creature_id: String) -> void:
 	render_toxic_recoil_timer = 0.0
 	render_escape_curl_timer = 0.0
 	render_plunge_timer = 0.0
+	render_air_attack_startup_timer = 0.0
+	render_air_attack_startup_duration = AIR_ATTACK_STARTUP_TELL_SEC
 	low_window_timer = 0.0
 	counter_hit_window_timer = 0.0
 	body_heading = last_aim_direction.normalized() if last_aim_direction != Vector2.ZERO else Vector2.RIGHT
@@ -260,6 +265,7 @@ func _process(delta: float) -> void:
 	render_toxic_recoil_timer = maxf(render_toxic_recoil_timer - delta, 0.0)
 	render_escape_curl_timer = maxf(render_escape_curl_timer - delta, 0.0)
 	render_plunge_timer = maxf(render_plunge_timer - delta, 0.0)
+	render_air_attack_startup_timer = maxf(render_air_attack_startup_timer - delta, 0.0)
 	anim_attack_timer = maxf(anim_attack_timer - delta, 0.0)
 	anim_windup_timer = maxf(anim_windup_timer - delta, 0.0)
 	if velocity.length() > 4.0:
@@ -327,6 +333,11 @@ func begin_render_escape_curl(duration := ESCAPE_CURL_TELL_SEC) -> void:
 
 func begin_render_plunge(duration := PLUNGE_TELL_SEC) -> void:
 	render_plunge_timer = maxf(render_plunge_timer, duration)
+	_request_render_redraw(true)
+
+func begin_render_air_attack_startup(duration := AIR_ATTACK_STARTUP_TELL_SEC) -> void:
+	render_air_attack_startup_duration = maxf(duration, 0.001)
+	render_air_attack_startup_timer = maxf(render_air_attack_startup_timer, render_air_attack_startup_duration)
 	_request_render_redraw(true)
 
 func begin_render_takeoff_flap(duration := TAKEOFF_FLAP_TELL_SEC) -> void:
@@ -724,14 +735,17 @@ func get_render_motion_state() -> Dictionary:
 	var base_model_scale := float(visual_size_profile.get("model_scale", 1.0))
 	var low_window_scale_bonus := float(visual_size_profile.get("low_window_model_scale_bonus", 0.08)) * low_window_t if is_airborne() and low_window_t > 0.0 else 0.0
 	var air_attack_release_t := clampf(anim_attack_timer / maxf(anim_attack_duration, 0.001), 0.0, 1.0) if is_airborne() and anim_attack_timer > 0.0 else 0.0
-	var air_attack_cue_t := maxf(low_window_t, air_attack_release_t)
+	var air_attack_startup_t := clampf(render_air_attack_startup_timer / maxf(render_air_attack_startup_duration, 0.001), 0.0, 1.0) if is_airborne() and render_air_attack_startup_timer > 0.0 else 0.0
+	var air_attack_cue_t := maxf(maxf(low_window_t, air_attack_release_t), air_attack_startup_t * 0.85)
 	var air_attack_cue := is_airborne() and air_attack_cue_t > 0.0
 	var air_attack_scale_bonus := float(visual_size_profile.get("air_attack_model_scale_bonus", 0.0)) * air_attack_release_t
 	var visual_model_scale := minf(1.35, base_model_scale + low_window_scale_bonus + air_attack_scale_bonus)
 	var visual_radius_px := body_radius * visual_model_scale
 	var silhouette_contract := VisualStyle.creature_silhouette_contract(creature_id, body_radius, visual_model_scale, body_capsule_half_len_px)
 	var open_hurtbox_regions := HurtboxScript.open_regions(self)
-	var air_attack_cue_radius_px := visual_radius_px * (1.12 + air_attack_cue_t * 0.22) if air_attack_cue else 0.0
+	var air_attack_cue_base_mult := float(visual_size_profile.get("air_attack_cue_base_mult", 1.12))
+	var air_attack_cue_bonus_mult := float(visual_size_profile.get("air_attack_cue_bonus_mult", 0.22))
+	var air_attack_cue_radius_px := visual_radius_px * (air_attack_cue_base_mult + air_attack_cue_t * air_attack_cue_bonus_mult) if air_attack_cue else 0.0
 	var airborne_visual := is_airborne() or state == CreatureStateScript.State.PERCHED
 	var height_shadow_alpha := _height_shadow_alpha(visual_height_units, low_window_t, airborne_visual)
 	var height_shadow_radius_mult := _height_shadow_radius_mult(visual_height_units, low_window_t, airborne_visual)
@@ -759,6 +773,7 @@ func get_render_motion_state() -> Dictionary:
 		"low_window_model_scale_bonus": low_window_scale_bonus,
 		"air_attack_model_scale_bonus": air_attack_scale_bonus,
 		"air_attack_release_t": air_attack_release_t,
+		"air_attack_startup_t": air_attack_startup_t,
 		"air_attack_cue_t": air_attack_cue_t if air_attack_cue else 0.0,
 		"air_attack_cue_radius_px": air_attack_cue_radius_px,
 		"height_units": visual_height_units,
@@ -1299,6 +1314,8 @@ func _respawn() -> void:
 	render_toxic_recoil_timer = 0.0
 	render_escape_curl_timer = 0.0
 	render_plunge_timer = 0.0
+	render_air_attack_startup_timer = 0.0
+	render_air_attack_startup_duration = AIR_ATTACK_STARTUP_TELL_SEC
 	pass_obstacles_timer = 0.0
 	primary_timer = 0.4
 	q_timer = maxf(q_timer, 1.0)
@@ -1709,6 +1726,7 @@ func _render_signature() -> String:
 	parts.append(str(_timer_bucket(render_toxic_recoil_timer, TOXIC_RECOIL_TELL_SEC)))
 	parts.append(str(_timer_bucket(render_escape_curl_timer, ESCAPE_CURL_TELL_SEC)))
 	parts.append(str(_timer_bucket(render_plunge_timer, PLUNGE_TELL_SEC)))
+	parts.append(str(_timer_bucket(render_air_attack_startup_timer, render_air_attack_startup_duration)))
 	parts.append(str(_timer_bucket(anim_attack_timer, anim_attack_duration)))
 	parts.append(str(_timer_bucket(anim_windup_timer, anim_windup_duration)))
 	parts.append(str(_timer_bucket(low_window_timer, LOW_WINDOW_VISUAL_MAX_SEC)))

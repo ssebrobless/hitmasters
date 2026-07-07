@@ -59,6 +59,8 @@ func _peck(actor: Node) -> void:
 	var airborne: bool = actor.state == CreatureStateScript.State.AIRBORNE or actor.state == CreatureStateScript.State.PERCHED
 	var damage: float = flying_damage if airborne else grounded_damage
 	var plunging := moved_since_attack_px >= PLUNGE_MOVE_UNITS * SimConstants.UNIT_PX
+	if airborne and actor.has_method("begin_render_air_attack_startup"):
+		actor.begin_render_air_attack_startup(0.24 if plunging else 0.28)
 	if plunging:
 		damage *= PLUNGE_BONUS_MULT
 		if actor.has_method("begin_render_plunge"):

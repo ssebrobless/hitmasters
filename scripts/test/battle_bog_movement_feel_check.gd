@@ -41,6 +41,7 @@ func _run() -> void:
 	_check_bird_transition_cues(arena, failures)
 	_check_predator_latch_cues(arena, failures)
 	_check_visual_height_profiles(arena, failures)
+	_check_air_attack_readability_contract(arena, failures)
 	_check_live_height_hud_read(arena, failures)
 	_check_actor_redraw_signatures(arena, failures)
 
@@ -2188,6 +2189,118 @@ func _check_visual_height_profiles(arena: Node, failures: Array[String]) -> void
 			str(roster_silhouette_contract)
 		])
 
+func _check_air_attack_readability_contract(arena: Node, failures: Array[String]) -> void:
+	var actor: Node = arena.player
+	actor.apply_creature("mosquito_swarm")
+	actor.state = CreatureStateScript.State.AIRBORNE
+	actor.anim_attack_timer = 0.0
+	actor.low_window_timer = 0.0
+	actor.begin_render_air_attack_startup(0.28)
+	var startup_only_state: Dictionary = actor.get_render_motion_state()
+	var startup_only_ok: bool = bool(startup_only_state.get("air_attack_readable", false)) \
+		and float(startup_only_state.get("air_attack_startup_t", 0.0)) > 0.9 \
+		and float(startup_only_state.get("air_attack_release_t", 1.0)) <= 0.001 \
+		and not bool(startup_only_state.get("low_window_active", true)) \
+		and _truth_ring_matches_combat_radius(startup_only_state) \
+		and float(startup_only_state.get("air_attack_cue_radius_px", 0.0)) > float(startup_only_state.get("visual_radius_px", 0.0)) * 1.45
+
+	actor.apply_creature("owl")
+	actor.global_position = Vector2(400.0, 400.0)
+	actor.state = CreatureStateScript.State.AIRBORNE
+	actor.primary_timer = 0.0
+	actor.anim_attack_timer = 0.0
+	actor.low_window_timer = 0.0
+	actor.set_input_frame(_primary_frame(actor, Vector2.RIGHT))
+	actor.kit.tick(actor, 0.016)
+	var owl_attack_state: Dictionary = actor.get_render_motion_state()
+	var owl_live_cue: bool = bool(owl_attack_state.get("air_attack_readable", false)) \
+		and bool(owl_attack_state.get("low_window_active", false)) \
+		and float(owl_attack_state.get("air_attack_startup_t", 0.0)) > 0.9 \
+		and float(owl_attack_state.get("air_attack_cue_radius_px", 0.0)) > float(owl_attack_state.get("visual_radius_px", 0.0)) * 1.5 \
+		and String(owl_attack_state.get("height_band", "")) == "body"
+
+	actor.apply_creature("kingfisher")
+	actor.global_position = Vector2(400.0, 400.0)
+	actor.state = CreatureStateScript.State.AIRBORNE
+	actor.primary_timer = 0.0
+	actor.anim_attack_timer = 0.0
+	actor.low_window_timer = 0.0
+	actor.set_input_frame(_primary_frame(actor, Vector2.RIGHT))
+	actor.kit.tick(actor, 0.016)
+	var kingfisher_attack_state: Dictionary = actor.get_render_motion_state()
+	var kingfisher_live_cue: bool = bool(kingfisher_attack_state.get("air_attack_readable", false)) \
+		and bool(kingfisher_attack_state.get("low_window_active", false)) \
+		and float(kingfisher_attack_state.get("air_attack_startup_t", 0.0)) > 0.9 \
+		and float(kingfisher_attack_state.get("height_shadow_alpha", 0.0)) > 0.36 \
+		and float(kingfisher_attack_state.get("height_shadow_radius_mult", 0.0)) > 1.08 \
+		and float(kingfisher_attack_state.get("air_attack_cue_radius_px", 0.0)) > float(kingfisher_attack_state.get("visual_radius_px", 0.0)) * 1.55 \
+		and String(kingfisher_attack_state.get("height_band", "")) == "body"
+
+	actor.apply_creature("mosquito_swarm")
+	actor.global_position = Vector2(400.0, 400.0)
+	actor.primary_timer = 0.0
+	actor.anim_attack_timer = 0.0
+	actor.low_window_timer = 0.0
+	actor.set_input_frame(_primary_frame(actor, Vector2.RIGHT))
+	actor.kit.tick(actor, 0.016)
+	var mosquito_attack_state: Dictionary = actor.get_render_motion_state()
+	var mosquito_live_cue: bool = bool(mosquito_attack_state.get("air_attack_readable", false)) \
+		and float(mosquito_attack_state.get("air_attack_startup_t", 0.0)) > 0.9 \
+		and float(mosquito_attack_state.get("air_attack_release_t", 0.0)) > 0.9 \
+		and not bool(mosquito_attack_state.get("low_window_active", false)) \
+		and float(mosquito_attack_state.get("air_attack_cue_radius_px", 0.0)) > float(mosquito_attack_state.get("visual_radius_px", 0.0)) * 1.55
+
+	actor.apply_creature("firefly")
+	actor.global_position = Vector2(400.0, 400.0)
+	actor.primary_timer = 0.0
+	actor.anim_attack_timer = 0.0
+	actor.low_window_timer = 0.0
+	actor.set_input_frame(_primary_frame(actor, Vector2.RIGHT))
+	actor.kit.tick(actor, 0.016)
+	var firefly_attack_state: Dictionary = actor.get_render_motion_state()
+	var firefly_live_cue: bool = bool(firefly_attack_state.get("air_attack_readable", false)) \
+		and float(firefly_attack_state.get("air_attack_startup_t", 0.0)) > 0.9 \
+		and float(firefly_attack_state.get("air_attack_release_t", 0.0)) > 0.9 \
+		and not bool(firefly_attack_state.get("low_window_active", false)) \
+		and float(firefly_attack_state.get("air_attack_cue_radius_px", 0.0)) > float(firefly_attack_state.get("visual_radius_px", 0.0)) * 1.55
+
+	actor.apply_creature("great_blue_heron")
+	actor.state = CreatureStateScript.State.AIRBORNE
+	actor.primary_timer = 0.0
+	actor.anim_attack_timer = 0.0
+	actor.low_window_timer = 0.0
+	actor.set_input_frame(_primary_frame(actor, Vector2.RIGHT))
+	actor.kit.tick(actor, 0.016)
+	var heron_air_primary_state: Dictionary = actor.get_render_motion_state()
+	var heron_no_fake_low: bool = not bool(heron_air_primary_state.get("air_attack_readable", false)) \
+		and not bool(heron_air_primary_state.get("low_window_active", false)) \
+		and float(heron_air_primary_state.get("air_attack_startup_t", 0.0)) <= 0.001 \
+		and actor.anim_attack_timer <= 0.001
+
+	actor.apply_creature("duck")
+	actor.state = CreatureStateScript.State.AIRBORNE
+	actor.primary_timer = 0.0
+	actor.anim_attack_timer = 0.0
+	actor.low_window_timer = 0.0
+	actor.set_input_frame(_primary_frame(actor, Vector2.RIGHT))
+	actor.kit.tick(actor, 0.016)
+	var duck_air_primary_state: Dictionary = actor.get_render_motion_state()
+	var duck_no_fake_low: bool = not bool(duck_air_primary_state.get("air_attack_readable", false)) \
+		and not bool(duck_air_primary_state.get("low_window_active", false)) \
+		and float(duck_air_primary_state.get("air_attack_startup_t", 0.0)) <= 0.001 \
+		and actor.anim_attack_timer <= 0.001
+
+	if not startup_only_ok or not owl_live_cue or not kingfisher_live_cue or not mosquito_live_cue or not firefly_live_cue or not heron_no_fake_low or not duck_no_fake_low:
+		failures.append("flying attack readability should separate render-only startup warning, true LOW punish windows, projectile release cues, and non-attacking airborne heron/duck quiet states; startup=%s owl=%s kingfisher=%s mosquito=%s firefly=%s heron=%s duck=%s" % [
+			str(startup_only_state),
+			str(owl_attack_state),
+			str(kingfisher_attack_state),
+			str(mosquito_attack_state),
+			str(firefly_attack_state),
+			str(heron_air_primary_state),
+			str(duck_air_primary_state)
+		])
+
 func _check_live_height_hud_read(arena: Node, failures: Array[String]) -> void:
 	var actor: Node = arena.player
 	actor.apply_creature("snapping_turtle")
@@ -2432,6 +2545,13 @@ func _move_frame(direction: Vector2) -> Resource:
 func _flight_frame(direction: Vector2) -> Resource:
 	var frame := _move_frame(direction)
 	frame.set_button(InputFrameScript.BUTTON_FLIGHT_TOGGLE, true)
+	return frame
+
+func _primary_frame(actor: Node, direction: Vector2) -> Resource:
+	var frame := InputFrameScript.new()
+	frame.move = Vector2.ZERO
+	frame.aim = actor.global_position + direction.normalized() * 100.0
+	frame.set_button(InputFrameScript.BUTTON_PRIMARY, true)
 	return frame
 
 func _movement_zone_point(arena: Node, zone: String) -> Vector2:

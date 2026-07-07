@@ -51,4 +51,6 @@ func _flushing(actor: Node) -> void:
 	actor.state = CreatureStateScript.State.AIRBORNE
 	actor.flight_time_remaining = actor.flight_time_max
 	actor.flight_toggle_requires_release = true
+	if actor.has_method("begin_render_takeoff_flap"):
+		actor.begin_render_takeoff_flap(0.24)
 	actor.e_timer = KitHelpers.cooldown_seconds(e)

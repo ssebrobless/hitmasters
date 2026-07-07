@@ -63,6 +63,8 @@ func _swoop(actor: Node) -> void:
 	var swoop_damage: float = float(actor.stats.get("primary_damage", {}).get("swoop", 50.0)) if typeof(actor.stats.get("primary_damage")) == TYPE_DICTIONARY else 50.0
 	var to_cursor: Vector2 = actor.input_frame.aim - actor.global_position
 	var reach: float = minf(to_cursor.length(), SWOOP_RANGE_UNITS * SimConstants.UNIT_PX)
+	if actor.has_method("begin_render_air_attack_startup"):
+		actor.begin_render_air_attack_startup(0.28)
 	MeleeHit.hit(actor, reach, swoop_damage, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_AIR, "Swoop")
 	actor.open_low_window(LOW_WINDOW_SEC)
 	actor.break_stealth()

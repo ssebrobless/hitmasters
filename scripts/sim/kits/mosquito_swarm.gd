@@ -99,6 +99,8 @@ func _fire_primary(actor: Node) -> void:
 	var projectile = MosquitoProjectileScript.new()
 	actor.arena.add_child(projectile)
 	var range_px := KitHelpers.range_units(actor.stats, 7.0) * SimConstants.UNIT_PX
+	if actor.has_method("begin_render_air_attack_startup"):
+		actor.begin_render_air_attack_startup(0.24)
 	actor.emit_vfx_event("attack_swung", {"actor": actor, "position": actor.global_position, "aim": actor.get_aim_direction(), "reach_px": range_px, "source_ability": "Piercing Swarm"})
 	projectile.setup(actor.arena, actor, self, actor.global_position + actor.get_aim_direction() * (actor.body_radius + 4.0), actor.get_aim_direction(), range_px)
 	projectiles.append(projectile)

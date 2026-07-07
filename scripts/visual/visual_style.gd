@@ -207,9 +207,15 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 				)
 		if readable_air_attack:
 			var cue_color := _with_alpha(Color(1.0, 0.84, 0.34, 0.54 * air_attack_cue_intensity), alpha)
-			var cue_radius := visual_radius * (1.12 + air_attack_cue_intensity * 0.22)
+			var cue_radius := float(anim.get("air_attack_cue_radius_px", visual_radius * (1.12 + air_attack_cue_intensity * 0.22)))
 			canvas.draw_arc(Vector2.ZERO, cue_radius, 0.0, TAU, 44, cue_color, maxf(2.0, visual_radius * 0.13))
 			canvas.draw_arc(Vector2.ZERO, cue_radius * 0.62, 0.0, TAU, 36, Color(cue_color.r, cue_color.g, cue_color.b, cue_color.a * 0.48), maxf(1.4, visual_radius * 0.07))
+			canvas.draw_line(
+				-forward * visual_radius * 0.32,
+				forward * cue_radius * 0.72,
+				Color(cue_color.r, cue_color.g, cue_color.b, cue_color.a * 0.62),
+				maxf(1.5, visual_radius * 0.075)
+			)
 			for bracket_side: float in [-1.0, 1.0]:
 				var bracket_origin := side * bracket_side * cue_radius * 0.96 - forward * visual_radius * 0.1
 				canvas.draw_line(bracket_origin, bracket_origin - side * bracket_side * visual_radius * (0.32 + 0.08 * air_attack_cue_intensity), cue_color, maxf(1.6, visual_radius * 0.08))
