@@ -52,6 +52,8 @@ const TOXIC_RECOIL_TELL_SEC := 0.22
 const ESCAPE_CURL_TELL_SEC := 0.24
 const PLUNGE_TELL_SEC := 0.20
 const LOW_WINDOW_VISUAL_MAX_SEC := 0.7
+const DISABLED_PHYSICS_LAYER := 0
+const DISABLED_PHYSICS_MASK := 0
 const RENDER_TIMER_BUCKETS := 8.0
 const RENDER_RATIO_BUCKETS := 32.0
 const RENDER_ANGLE_BUCKETS := 32.0
@@ -174,6 +176,7 @@ func setup(creature_arena: Node, creature_team: int, spawn_position: Vector2, ne
 	team = creature_team
 	position = spawn_position
 	terrain_map = next_terrain_map
+	_disable_godot_physics_collision()
 	apply_creature(next_creature_id)
 
 func apply_creature(next_creature_id: String) -> void:
@@ -1644,6 +1647,10 @@ func _footprint_capsule_half_len_px() -> float:
 
 func get_hurtbox_hull() -> Dictionary:
 	return HurtboxScript.hull_of(self)
+
+func _disable_godot_physics_collision() -> void:
+	collision_layer = DISABLED_PHYSICS_LAYER
+	collision_mask = DISABLED_PHYSICS_MASK
 
 func _request_render_redraw(force := false) -> void:
 	if not _is_near_render_view():

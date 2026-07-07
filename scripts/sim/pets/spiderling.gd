@@ -8,6 +8,8 @@ const BITE_DAMAGE := 4.0
 const BITE_INTERVAL := 0.7
 const MOVE_SPEED := 1.35
 const LIFETIME_SEC := 12.0
+const DISABLED_PHYSICS_LAYER := 0
+const DISABLED_PHYSICS_MASK := 0
 
 var arena: Node = null
 var owner_creature: Node = null
@@ -25,6 +27,8 @@ func setup(pet_arena: Node, pet_owner: Node, pet_team: int, spawn_position: Vect
 	owner_creature = pet_owner
 	team = pet_team
 	global_position = spawn_position
+	collision_layer = DISABLED_PHYSICS_LAYER
+	collision_mask = DISABLED_PHYSICS_MASK
 	body_radius = 0.2 * SimConstants.UNIT_PX
 
 func is_alive() -> bool:

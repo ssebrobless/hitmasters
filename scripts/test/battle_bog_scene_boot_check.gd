@@ -3,6 +3,8 @@ extends SceneTree
 const MAIN_MENU_SCENE := "res://scenes/MainMenu.tscn"
 const CHARACTER_SELECT_SCENE := "res://scenes/CharacterSelect.tscn"
 const ARENA_SCENE := "res://scenes/Arena.tscn"
+const DucklingScript := preload("res://scripts/sim/pets/duckling.gd")
+const SpiderlingScript := preload("res://scripts/sim/pets/spiderling.gd")
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -101,6 +103,7 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 	var minimap_backdrop_ok := minimap != null and minimap.has_method("has_static_backdrop") and bool(minimap.call("has_static_backdrop"))
 	var terrain_layer_ok := terrain_layer != null and terrain_layer.has_method("is_static_cached_layer") and bool(terrain_layer.call("is_static_cached_layer"))
 	var water_layer_ok := water_layer != null and water_layer.has_method("get_redraw_interval") and water_layer.has_method("get_ripple_count") and float(water_layer.call("get_redraw_interval")) >= 0.05 and int(water_layer.call("get_ripple_count")) > 0
+	var collision_hygiene_ok := _check_collision_hygiene(scene, failures)
 
 	var ok := squad.size() == expected_squad_size \
 		and bots.size() == expected_bot_count \
@@ -116,9 +119,10 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 		and minimap.has_method("has_static_backdrop") \
 		and minimap_backdrop_ok \
 		and terrain_layer_ok \
-		and water_layer_ok
+		and water_layer_ok \
+		and collision_hygiene_ok
 	if not ok:
-		failures.append("Arena %s expected squad=%d bots=%d cores=2 huts=%d lane_minions=%d wave=%.1f hunger=%.1f player/camera/status/minimap/static terrain/water; got squad=%d bots=%d cores=%d huts=%d lane_minions=%d wave=%.1f hunger=%.1f player=%s camera=%s status=%s minimap=%s backdrop=%s terrain=%s water=%s" % [
+		failures.append("Arena %s expected squad=%d bots=%d cores=2 huts=%d lane_minions=%d wave=%.1f hunger=%.1f player/camera/status/minimap/static terrain/water/collision hygiene; got squad=%d bots=%d cores=%d huts=%d lane_minions=%d wave=%.1f hunger=%.1f player=%s camera=%s status=%s minimap=%s backdrop=%s terrain=%s water=%s collision=%s" % [
 			mode,
 			expected_squad_size,
 			expected_bot_count,
@@ -139,9 +143,54 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 			str(minimap != null),
 			str(minimap_backdrop_ok),
 			str(terrain_layer_ok),
-			str(water_layer_ok)
+			str(water_layer_ok),
+			str(collision_hygiene_ok)
 		])
 	return ok
+
+func _check_collision_hygiene(scene: Node, failures: Array[String]) -> bool:
+	var movers_ok := true
+	var physics_movers: Array[Node] = []
+	var player: Node = scene.get("player")
+	if player != null and is_instance_valid(player):
+		physics_movers.append(player)
+	var squad: Array = scene.get("player_squad")
+	for member in squad:
+		if member != null and is_instance_valid(member) and not physics_movers.has(member):
+			physics_movers.append(member)
+	var bots: Array = scene.get("bots")
+	for bot in bots:
+		if bot != null and is_instance_valid(bot):
+			physics_movers.append(bot)
+	for mover in physics_movers:
+		if not (mover is CharacterBody2D) or int(mover.collision_layer) != 0 or int(mover.collision_mask) != 0:
+			movers_ok = false
+	var minions_ok := true
+	for minion in scene.get("minions"):
+		if minion != null and is_instance_valid(minion) and minion is CharacterBody2D:
+			minions_ok = false
+	var pets_ok := _check_pet_collision_hygiene(scene, player)
+	if not movers_ok or not minions_ok or not pets_ok:
+		failures.append("scripted movers should stay out of Godot physics collision layers; movers_ok=%s minions_ok=%s pets_ok=%s movers=%s" % [
+			str(movers_ok),
+			str(minions_ok),
+			str(pets_ok),
+			str(physics_movers)
+		])
+	return movers_ok and minions_ok and pets_ok
+
+func _check_pet_collision_hygiene(scene: Node, owner: Node) -> bool:
+	var duckling := DucklingScript.new()
+	scene.add_child(duckling)
+	duckling.setup(scene, owner, 0, Vector2.ZERO, 0, 80.0)
+	var duckling_ok: bool = int(duckling.collision_layer) == 0 and int(duckling.collision_mask) == 0
+	duckling.queue_free()
+	var spiderling := SpiderlingScript.new()
+	scene.add_child(spiderling)
+	spiderling.setup(scene, owner, 0, Vector2.ZERO)
+	var spiderling_ok: bool = int(spiderling.collision_layer) == 0 and int(spiderling.collision_mask) == 0
+	spiderling.queue_free()
+	return duckling_ok and spiderling_ok
 
 func _count_lane_minions(minions: Array) -> int:
 	var count := 0

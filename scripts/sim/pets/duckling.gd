@@ -9,6 +9,8 @@ const PECK_RANGE_UNITS := 1.0
 const PECK_DAMAGE := 5.0
 const PECK_INTERVAL := 0.8
 const FOLLOW_SPEED := 1.1
+const DISABLED_PHYSICS_LAYER := 0
+const DISABLED_PHYSICS_MASK := 0
 
 var arena: Node = null
 var owner_creature: Node = null
@@ -27,6 +29,8 @@ func setup(pet_arena: Node, pet_owner: Node, pet_team: int, spawn_position: Vect
 	owner_creature = pet_owner
 	team = pet_team
 	global_position = spawn_position
+	collision_layer = DISABLED_PHYSICS_LAYER
+	collision_mask = DISABLED_PHYSICS_MASK
 	slot_index = slot
 	max_health = pet_health
 	health = pet_health

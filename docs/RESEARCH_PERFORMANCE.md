@@ -33,7 +33,7 @@ is the action list.
 | 5 | Cache compiled RegEx / pre-parse ability numbers at kit load - DONE (M8 parse cache) | MED | S |
 | 6 | Minimap at 5-10 Hz with baked background - DONE (M8 static backdrop) | MED | S |
 | 7 | Bot/minion target queries on 0.1-0.2s timers - DONE (M8 bot intent cache) | MED | S |
-| 8 | Collision layer/mask hygiene | MED | S |
+| 8 | Collision layer/mask hygiene - DONE (M8 scripted movers opt out) | MED | S |
 | 9 | HUD Label.text assigned only on change - DONE (M8 label guard) | LOW-MED | S |
 | 10 | Renderer to mobile/compatibility; static typing in hot loops | LOW-MED | S |
 
