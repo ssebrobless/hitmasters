@@ -714,6 +714,7 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 		var slide_center := -forward * radius * 0.35
 		canvas.draw_arc(slide_center, radius * (0.72 + 0.1 * otter_motion_intensity), PI * 0.12, PI * 0.88, 14, otter_slide_dust, maxf(radius * 0.07, 1.2))
 		canvas.draw_line(-forward * radius * 0.65, -forward * radius * (1.5 + 0.24 * otter_motion_intensity), Color(otter_slide_dust.r, otter_slide_dust.g, otter_slide_dust.b, otter_slide_dust.a * 0.75), maxf(radius * 0.05, 1.1))
+		canvas.draw_arc(slide_center + forward * radius * 0.18, radius * (0.46 + 0.08 * otter_motion_intensity), PI * 0.08, PI * 0.92, 12, Color(otter_slide_dust.r, otter_slide_dust.g, otter_slide_dust.b, otter_slide_dust.a * 0.62), maxf(radius * 0.045, 1.0))
 		for skid_side: float in [-1.0, 1.0]:
 			var skid_start := -forward * radius * 0.15 + side * skid_side * radius * 0.46
 			canvas.draw_line(skid_start, skid_start - forward * radius * (0.82 + 0.22 * otter_motion_intensity) + side * skid_side * radius * 0.08, Color(otter_slide_dust.r, otter_slide_dust.g, otter_slide_dust.b, 0.16 + 0.08 * otter_motion_intensity), maxf(radius * 0.055, 1.1))
@@ -723,6 +724,7 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			var wake_start := -forward * radius * 0.55 + side * wake_side * radius * 0.46
 			canvas.draw_line(wake_start, wake_start - forward * radius * (0.85 + 0.32 * otter_motion_intensity) + side * wake_side * radius * 0.18, otter_water, maxf(radius * 0.07, 1.3))
 			canvas.draw_arc(wake_start + forward * radius * 0.16, radius * (0.32 + 0.08 * otter_motion_intensity), -0.35, 0.92, 12, Color(otter_water.r, otter_water.g, otter_water.b, otter_water.a * 0.76), maxf(radius * 0.045, 1.0))
+			canvas.draw_circle(wake_start + forward * radius * 0.32, maxf(radius * (0.05 + 0.02 * otter_motion_intensity), 1.0), Color(otter_water.r, otter_water.g, otter_water.b, otter_water.a * 0.7))
 		canvas.draw_line(-forward * radius * 0.22, -forward * radius * (1.35 + 0.22 * otter_motion_intensity), Color(otter_water.r, otter_water.g, otter_water.b, 0.18 + 0.08 * otter_motion_intensity), maxf(radius * 0.05, 1.0))
 
 	var spine: Array[Vector2] = []
