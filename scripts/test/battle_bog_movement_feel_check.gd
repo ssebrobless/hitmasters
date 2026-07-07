@@ -549,6 +549,17 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.add_modifier("Water Walk", {"water_walk": 2.0}, 1.0)
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var shrew_non_shrew_motion_flags: Array[String] = [
+		"chorus_hop_pose", "cane_squat_hop_pose", "bullfrog_heavy_hop_pose", "bullfrog_coil_pose", "bullfrog_lunge_pose",
+		"slick_crawl_pose", "newt_swim_pose", "leech_inchworm_pose", "leech_undulate_pose",
+		"water_snake_land_slither_pose", "water_slither_pose", "turtle_plod_pose", "turtle_swim_pose",
+		"bog_turtle_creep_pose", "bog_turtle_paddle_pose", "duck_waddle_pose", "duck_paddle_pose",
+		"beaver_lumber_pose", "beaver_swim_pose", "mink_bound_pose", "mink_swim_pose",
+		"otter_land_slide_pose", "otter_swim_pose", "crayfish_scuttle_pose", "crayfish_tail_flick_swim_pose",
+		"spider_skitter_pose", "high_walk_pose", "alligator_water_cruise_pose", "owl_glide_pose",
+		"owl_silent_flight_pose", "kingfisher_dart_pose", "wading_pose", "heron_stalk_pose",
+		"mosquito_swarm_pose", "firefly_hover_pose"
+	]
 	var shrew_skim_state: Dictionary = actor.get_render_motion_state()
 	var shrew_skim: bool = bool(shrew_skim_state.get("surface_walk", false)) \
 		and not bool(shrew_skim_state.get("submerged_shrew_pose", false)) \
@@ -562,6 +573,7 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(shrew_skim_state.get("mink_swim_pose", false)) \
 		and not bool(shrew_skim_state.get("otter_swim_pose", false)) \
 		and not bool(shrew_skim_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and _none_render_flags(shrew_skim_state, shrew_non_shrew_motion_flags) \
 		and float(shrew_skim_state.get("surface_wake_intensity", 0.0)) > 0.25
 	actor.remove_modifiers_from_source("Water Walk")
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
@@ -579,6 +591,7 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(shrew_submerged_state.get("mink_swim_pose", false)) \
 		and not bool(shrew_submerged_state.get("otter_swim_pose", false)) \
 		and not bool(shrew_submerged_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and _none_render_flags(shrew_submerged_state, shrew_non_shrew_motion_flags) \
 		and float(shrew_submerged_state.get("submerged_shrew_intensity", 0.0)) > 0.25
 	actor.current_environment_profile = {"surface": "land"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
@@ -596,6 +609,7 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(shrew_land_state.get("mink_bound_pose", false)) \
 		and not bool(shrew_land_state.get("otter_land_slide_pose", false)) \
 		and not bool(shrew_land_state.get("crayfish_scuttle_pose", false)) \
+		and _none_render_flags(shrew_land_state, shrew_non_shrew_motion_flags) \
 		and float(shrew_land_state.get("shrew_land_skitter_intensity", 0.0)) > 0.25
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
@@ -617,9 +631,10 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(shrew_idle_state.get("otter_land_slide_pose", false)) \
 		and not bool(shrew_idle_state.get("crayfish_scuttle_pose", false)) \
 		and not bool(shrew_idle_state.get("crayfish_tail_flick_swim_pose", false)) \
+		and _none_render_flags(shrew_idle_state, shrew_non_shrew_motion_flags) \
 		and float(shrew_idle_state.get("shrew_land_skitter_intensity", 1.0)) <= 0.001
 	if not shrew_skim or not shrew_submerged or not shrew_land_skitter or not shrew_idle_clear:
-		failures.append("water shrew should expose tiny surface skim, submerged swim, and land skitter without low swimmer/crawler overlap, then clear when idle; skim=%s submerged=%s land=%s idle=%s state=%s/%s/%s/%s" % [
+		failures.append("water shrew should expose tiny surface skim, submerged swim, and land skitter without frog, low swimmer, crawler, snake, turtle, duck, mammal, gator, bird, swarm, hover, crustacean, or spider overlap, then clear when idle; skim=%s submerged=%s land=%s idle=%s state=%s/%s/%s/%s" % [
 			str(shrew_skim),
 			str(shrew_submerged),
 			str(shrew_land_skitter),

@@ -671,6 +671,7 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 			var streak_origin := -forward * radius * (0.45 + 0.16 * surface_wake_intensity) + side * wake_side * radius * 0.44
 			canvas.draw_line(streak_origin, streak_origin - forward * radius * (0.62 + 0.24 * surface_wake_intensity) + side * wake_side * radius * 0.18, Color(water_tint.r, water_tint.g, water_tint.b, water_tint.a * 0.7), maxf(1.0, radius * 0.07))
 			canvas.draw_arc(wake_center + forward * radius * 0.18, radius * (0.18 + 0.05 * surface_wake_intensity), PI * 0.08, PI * 0.9, 8, Color(water_tint.r, water_tint.g, water_tint.b, water_tint.a * 0.82), maxf(radius * 0.04, 1.0))
+			canvas.draw_circle(wake_center + forward * radius * 0.32, maxf(radius * (0.045 + 0.018 * surface_wake_intensity), 1.0), water_tint.lightened(0.22))
 	if shrew_land_skitter:
 		for dust_side: float in [-1.0, 1.0]:
 			var dust_start := -forward * radius * 0.36 + side * dust_side * radius * 0.32
