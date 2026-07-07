@@ -13,9 +13,9 @@ func _run() -> void:
 	var failures: Array[String] = []
 	var main_ok: bool = await _check_main_menu(failures)
 	var select_ok: bool = await _check_character_select(failures)
-	var arena_1v1_ok: bool = await _check_arena_mode("1v1", 3, 3, 2, 4, 18.0, 90.0, failures)
-	var arena_3v3_ok: bool = await _check_arena_mode("3v3", 0, 5, 4, 12, 20.0, 105.0, failures)
-	var hero_lab_ok: bool = await _check_arena_mode("Hero Lab", 0, 1, 4, 12, 18.0, 105.0, failures)
+	var arena_1v1_ok: bool = await _check_arena_mode("1v1", 3, 3, 2, 4, 18.0, 90.0, 2.6, failures)
+	var arena_3v3_ok: bool = await _check_arena_mode("3v3", 0, 5, 4, 12, 20.0, 105.0, 2.2, failures)
+	var hero_lab_ok: bool = await _check_arena_mode("Hero Lab", 0, 1, 4, 12, 18.0, 105.0, 2.8, failures)
 	var passed := main_ok and select_ok and arena_1v1_ok and arena_3v3_ok and hero_lab_ok
 
 	print("scene_boot main=%s select=%s arena_1v1=%s arena_3v3=%s hero_lab=%s" % [
@@ -73,7 +73,7 @@ func _check_character_select(failures: Array[String]) -> bool:
 		])
 	return ok
 
-func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_count: int, expected_hut_count: int, expected_lane_minions: int, expected_wave_interval: float, expected_hunger_sec: float, failures: Array[String]) -> bool:
+func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_count: int, expected_hut_count: int, expected_lane_minions: int, expected_wave_interval: float, expected_hunger_sec: float, expected_camera_zoom: float, failures: Array[String]) -> bool:
 	var config := get_root().get_node_or_null("GameConfig")
 	if config != null:
 		config.selected_mode = mode
@@ -100,6 +100,7 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 	var lane_minions := _count_lane_minions(minions)
 	var wave_interval := float(scene.get("wave_interval"))
 	var hunger_sec := float(scene.get_hunger_full_to_empty_sec()) if scene.has_method("get_hunger_full_to_empty_sec") else -1.0
+	var camera_zoom := camera.zoom.x if camera != null else -1.0
 	var minimap_backdrop_ok := minimap != null and minimap.has_method("has_static_backdrop") and bool(minimap.call("has_static_backdrop"))
 	var terrain_layer_ok := terrain_layer != null and terrain_layer.has_method("is_static_cached_layer") and bool(terrain_layer.call("is_static_cached_layer"))
 	var shoreline_ok := terrain_layer != null and terrain_layer.has_method("has_shoreline_treatment") and bool(terrain_layer.call("has_shoreline_treatment"))
@@ -126,6 +127,7 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 		and lane_minions == expected_lane_minions \
 		and absf(wave_interval - expected_wave_interval) < 0.001 \
 		and absf(hunger_sec - expected_hunger_sec) < 0.001 \
+		and absf(camera_zoom - expected_camera_zoom) < 0.001 \
 		and player != null \
 		and camera != null \
 		and status_label != null \
@@ -142,7 +144,7 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 		and collision_hygiene_ok \
 		and renderer_ok
 	if not ok:
-		failures.append("Arena %s expected squad=%d bots=%d cores=2 huts=%d lane_minions=%d wave=%.1f hunger=%.1f player/camera/status/minimap/static terrain/shoreline/edge detail/props/habitat ground/debug hurtbox/water/collision hygiene/mobile renderer; got squad=%d bots=%d cores=%d huts=%d lane_minions=%d wave=%.1f hunger=%.1f player=%s camera=%s status=%s minimap=%s backdrop=%s terrain=%s shoreline=%s edge_detail=%s props=%s habitat_ground=%s debug_hurtbox=%s water=%s collision=%s renderer=%s" % [
+		failures.append("Arena %s expected squad=%d bots=%d cores=2 huts=%d lane_minions=%d wave=%.1f hunger=%.1f zoom=%.1f player/camera/status/minimap/static terrain/shoreline/edge detail/props/habitat ground/debug hurtbox/water/collision hygiene/mobile renderer; got squad=%d bots=%d cores=%d huts=%d lane_minions=%d wave=%.1f hunger=%.1f zoom=%.1f player=%s camera=%s status=%s minimap=%s backdrop=%s terrain=%s shoreline=%s edge_detail=%s props=%s habitat_ground=%s debug_hurtbox=%s water=%s collision=%s renderer=%s" % [
 			mode,
 			expected_squad_size,
 			expected_bot_count,
@@ -150,6 +152,7 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 			expected_lane_minions,
 			expected_wave_interval,
 			expected_hunger_sec,
+			expected_camera_zoom,
 			squad.size(),
 			bots.size(),
 			cores.size(),
@@ -157,6 +160,7 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 			lane_minions,
 			wave_interval,
 			hunger_sec,
+			camera_zoom,
 			str(player != null),
 			str(camera != null),
 			str(status_label != null),

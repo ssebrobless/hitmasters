@@ -125,15 +125,27 @@ func _check_gang_up(arena: Node, failures: Array[String]) -> void:
 		and actor.latch_timer > 1.8
 	var immobilized: bool = target.get_modifier_value("move_speed_mult", 1.0) <= 0.01
 	var disarmed: bool = not bool(actor.kit.get("gang_up_armed")) and actor.e_timer > 5.0
-	if not armed or not gang_latched or not immobilized or not disarmed:
-		failures.append("Otter Gang Up should arm next bite into immobilizing pack latch; armed=%s latch=%s immobilized=%s disarmed=%s source=%s target_mult=%.2f e=%.2f" % [
+	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	target.velocity = Vector2.ZERO
+	var actor_state: Dictionary = actor.get_render_motion_state()
+	var target_state: Dictionary = target.get_render_motion_state()
+	var latch_readable: bool = bool(actor_state.get("otter_pack_latch_pose", false)) \
+		and bool(actor_state.get("latch_attacker_pose", false)) \
+		and String(actor_state.get("latch_source", "")) == "Gang Up" \
+		and bool(target_state.get("latched_victim_pose", false)) \
+		and String(target_state.get("latch_source", "")) == "Gang Up"
+	if not armed or not gang_latched or not immobilized or not disarmed or not latch_readable:
+		failures.append("Otter Gang Up should arm next bite into an immobilizing, readable pack latch; armed=%s latch=%s immobilized=%s disarmed=%s readable=%s source=%s target_mult=%.2f e=%.2f actor_state=%s target_state=%s" % [
 			str(armed),
 			str(gang_latched),
 			str(immobilized),
 			str(disarmed),
+			str(latch_readable),
 			actor.latch_source,
 			target.get_modifier_value("move_speed_mult", 1.0),
-			actor.e_timer
+			actor.e_timer,
+			str(actor_state),
+			str(target_state)
 		])
 	actor.release_latch("test_reset")
 

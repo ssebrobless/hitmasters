@@ -43,9 +43,11 @@ func _check_timed_breeding_completion(arena: Node, failures: Array[String]) -> v
 	var before_speed: float = actor.get_speed_px()
 	_satiate(actor)
 	var deposited: bool = arena._try_manual_habitat_deposit(actor)
+	var post_deposit_hunger := absf(float(actor.get("hunger")) - 80.0) < 0.001 and not bool(actor.get("hunger_satiated"))
 	var first_cues: Array = arena.stock_manager.get_breeding_cues(actor.team)
 	var immediate_summary: Dictionary = arena.get_team_breeding_buff_summary(actor.team)
 	var no_immediate_stack := deposited \
+		and post_deposit_hunger \
 		and first_cues.size() == 1 \
 		and int(immediate_summary.get("total_stacks", -1)) == 0 \
 		and int(arena.get_boss_progress_state().get("bred_count", -1)) == 0
@@ -73,8 +75,9 @@ func _check_timed_breeding_completion(arena: Node, failures: Array[String]) -> v
 		and arena.stock_manager.get_breeding_cues(actor.team).is_empty()
 
 	if not no_immediate_stack or not duplicate_blocked or not still_pending or not completed:
-		failures.append("breeding deposit should deny duplicates, wait 45s, then grant bird speed stack; deposited=%s no_immediate=%s duplicate=%s pending=%s completed=%s first=%s complete=%s speed %.2f->%.2f progress=%s" % [
+		failures.append("breeding deposit should reset hunger to 80%%, deny duplicates, wait 45s, then grant bird speed stack; deposited=%s post_hunger=%s no_immediate=%s duplicate=%s pending=%s completed=%s first=%s complete=%s speed %.2f->%.2f progress=%s" % [
 			str(deposited),
+			str(post_deposit_hunger),
 			str(no_immediate_stack),
 			str(duplicate_blocked),
 			str(still_pending),

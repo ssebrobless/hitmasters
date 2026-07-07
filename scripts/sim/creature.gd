@@ -556,7 +556,7 @@ func is_satiated() -> bool:
 
 func reset_hunger_after_deposit() -> void:
 	hunger_satiated = false
-	hunger = HUNGER_MAX * 0.7
+	hunger = HUNGER_MAX * 0.8
 
 func emit_vfx_event(event_type: String, payload: Dictionary = {}) -> void:
 	_apply_own_anim(event_type, payload)

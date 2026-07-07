@@ -92,10 +92,11 @@ func _check_wildlife_encounters(arena: Node, failures: Array[String]) -> void:
 	var after_zone := _zone(arena.get_animal_zone_state(), "blue", "A")
 	var after_minimap_state: Dictionary = MinimapScript.animal_zone_minimap_state(after_zone)
 	var defeated: bool = not arena.wildlife_encounters.has(wildlife)
+	var hunger_gain := float(actor.get("hunger")) - before_hunger
 	var state_updated: bool = int(after_zone.get("alive_count", -1)) == int(blue_a.get("alive_count", 0)) - 1 \
 		and int(after_zone.get("defeated_count", 0)) == 1 \
 		and (after_zone.get("alive_occupants", []) as Array).size() == 4
-	var rewarded: bool = float(actor.get("hunger")) > before_hunger \
+	var rewarded: bool = hunger_gain >= 23.9 \
 		and int(after_zone.get("blue_defeats", 0)) == 1 \
 		and int(after_zone.get("last_defeat_team", -1)) == 0
 	for _i in 4:

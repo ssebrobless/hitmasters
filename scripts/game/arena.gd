@@ -50,7 +50,7 @@ const DAY_LENGTH_SEC := 120.0
 const FOOD_EAT_RADIUS_PAD := 8.0
 const BOSS_BREED_INTERVAL := 5
 const ANIMAL_ZONE_TICK_SEC := 0.2
-const WILDLIFE_HUNGER_REWARD := 18.0
+const WILDLIFE_HUNGER_REWARD := 24.0
 const WILDLIFE_HEAL_FRACTION := 0.05
 const BOSS_WILDLIFE_HUNGER_REWARD := 48.0
 const BOSS_WILDLIFE_HEAL_FRACTION := 0.12
@@ -116,7 +116,7 @@ var camera: Camera2D = null
 
 const CAMERA_LEAD_DEADZONE := 70.0
 const CAMERA_LEAD_FRACTION := 0.32
-const CAMERA_LEAD_MAX := 150.0
+const CAMERA_LEAD_MAX := 132.0
 var actor_stats: Dictionary = {}
 var team_stats := {
 	BLUE: {"kills": 0, "deaths": 0, "core_damage": 0.0, "hut_damage": 0.0, "huts_destroyed": 0, "stock_losses": 0, "deposits": 0, "breeds_completed": 0, "breeds_denied": 0, "wildlife_defeats": 0},
@@ -179,12 +179,15 @@ func _configure_mode() -> void:
 	team_spawns = terrain_map.team_spawns
 	bot_spawns = terrain_map.bot_spawns
 
-	if GameConfig.selected_mode == "1v1" or GameConfig.selected_mode == "Hero Lab":
+	if GameConfig.selected_mode == "1v1":
 		wave_interval = 18.0
 		camera_zoom = Vector2(2.6, 2.6)
+	elif GameConfig.selected_mode == "Hero Lab":
+		wave_interval = 18.0
+		camera_zoom = Vector2(2.8, 2.8)
 	else:
 		wave_interval = WAVE_INTERVAL
-		camera_zoom = Vector2(2.4, 2.4)
+		camera_zoom = Vector2(2.2, 2.2)
 	hunger_full_to_empty_sec = ONE_V_ONE_HUNGER_FULL_TO_EMPTY_SEC if GameConfig.selected_mode == "1v1" else CreatureScript.HUNGER_FULL_TO_EMPTY_SEC
 
 	wave_timer = 2.0
