@@ -104,6 +104,7 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 	var terrain_layer_ok := terrain_layer != null and terrain_layer.has_method("is_static_cached_layer") and bool(terrain_layer.call("is_static_cached_layer"))
 	var water_layer_ok := water_layer != null and water_layer.has_method("get_redraw_interval") and water_layer.has_method("get_ripple_count") and float(water_layer.call("get_redraw_interval")) >= 0.05 and int(water_layer.call("get_ripple_count")) > 0
 	var collision_hygiene_ok := _check_collision_hygiene(scene, failures)
+	var renderer_ok := _check_renderer_mode()
 
 	var ok := squad.size() == expected_squad_size \
 		and bots.size() == expected_bot_count \
@@ -120,9 +121,10 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 		and minimap_backdrop_ok \
 		and terrain_layer_ok \
 		and water_layer_ok \
-		and collision_hygiene_ok
+		and collision_hygiene_ok \
+		and renderer_ok
 	if not ok:
-		failures.append("Arena %s expected squad=%d bots=%d cores=2 huts=%d lane_minions=%d wave=%.1f hunger=%.1f player/camera/status/minimap/static terrain/water/collision hygiene; got squad=%d bots=%d cores=%d huts=%d lane_minions=%d wave=%.1f hunger=%.1f player=%s camera=%s status=%s minimap=%s backdrop=%s terrain=%s water=%s collision=%s" % [
+		failures.append("Arena %s expected squad=%d bots=%d cores=2 huts=%d lane_minions=%d wave=%.1f hunger=%.1f player/camera/status/minimap/static terrain/water/collision hygiene/mobile renderer; got squad=%d bots=%d cores=%d huts=%d lane_minions=%d wave=%.1f hunger=%.1f player=%s camera=%s status=%s minimap=%s backdrop=%s terrain=%s water=%s collision=%s renderer=%s" % [
 			mode,
 			expected_squad_size,
 			expected_bot_count,
@@ -144,9 +146,15 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 			str(minimap_backdrop_ok),
 			str(terrain_layer_ok),
 			str(water_layer_ok),
-			str(collision_hygiene_ok)
+			str(collision_hygiene_ok),
+			str(renderer_ok)
 		])
 	return ok
+
+func _check_renderer_mode() -> bool:
+	var rendering_method: String = String(ProjectSettings.get_setting("rendering/renderer/rendering_method", ""))
+	var mobile_method: String = String(ProjectSettings.get_setting("rendering/renderer/rendering_method.mobile", ""))
+	return rendering_method == "mobile" and mobile_method == "mobile"
 
 func _check_collision_hygiene(scene: Node, failures: Array[String]) -> bool:
 	var movers_ok := true

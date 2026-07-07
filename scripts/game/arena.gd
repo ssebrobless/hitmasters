@@ -1509,7 +1509,7 @@ func unregister_entity(entity: Node) -> void:
 	minions.erase(entity)
 
 func spawn_projectile(projectile_team: int, start_position: Vector2, direction: Vector2, damage: float, speed: float, color: Color, pierce := false, radius := 7.0, lifetime := 1.6, source_actor: Node = null) -> void:
-	var projectile = ProjectileScript.new()
+	var projectile: Node = ProjectileScript.new()
 	add_child(projectile)
 	projectile.setup(self, projectile_team, start_position, direction, _outgoing_damage(source_actor, damage), speed, color, pierce, radius, lifetime, source_actor)
 
@@ -1549,8 +1549,8 @@ func _maybe_trigger_squad_aggro(event: Dictionary) -> void:
 		return
 	if String(event.get("type", "")) != "hit_landed":
 		return
-	var source = event.get("source", null)
-	var target = event.get("target", null)
+	var source: Node = event.get("source", null)
+	var target: Node = event.get("target", null)
 	if source == player:
 		_issue_squad_aggro(target)
 
@@ -1559,13 +1559,13 @@ func resolve_projectile_hits(projectile: Node) -> void:
 		projectile.queue_free()
 		return
 
-	for entity in entities:
+	for entity: Node in entities:
 		if projectile.hit_entities.has(entity):
 			continue
 		if not TargetFilter.is_live_damage_target(projectile, entity, {"require_damage_api": false, "allow_wildlife": _projectile_allows_wildlife(projectile)}):
 			continue
 		# Hull test (decision #21): capsule bodies are hittable along their length.
-		var hit_info := HitShapeScript.circle_hit(projectile.global_position, projectile.radius, entity)
+		var hit_info: Dictionary = HitShapeScript.circle_hit(projectile.global_position, projectile.radius, entity)
 		if bool(hit_info.hit):
 			# Projectiles are RANGED (decision #1) — flying targets are hit
 			# normally and heavy shots can spike birds (decision #20).
@@ -1581,8 +1581,8 @@ func resolve_projectile_hits(projectile: Node) -> void:
 				projectile.queue_free()
 				return
 
-	for core_team in cores.keys():
-		var core = cores[core_team]
+	for core_team: int in cores.keys():
+		var core: Node = cores[core_team]
 		if core.team == projectile.team:
 			continue
 		if core.global_position.distance_to(projectile.global_position) <= projectile.radius + core.radius:
@@ -1598,8 +1598,8 @@ func resolve_projectile_hits(projectile: Node) -> void:
 
 func get_closest_enemy(source: Node, max_distance: float) -> Node:
 	var closest: Node = null
-	var closest_distance := max_distance
-	for entity in entities:
+	var closest_distance: float = max_distance
+	for entity: Node in entities:
 		if not TargetFilter.is_live_damage_target(source, entity, {"require_damage_api": false}):
 			continue
 		if not has_line_of_sight(source.global_position, entity.global_position, source.body_radius):
@@ -1615,13 +1615,13 @@ func _projectile_allows_wildlife(projectile: Node) -> bool:
 	return source_actor != null and is_instance_valid(source_actor) and source_actor.has_method("is_scored_actor") and source_actor.is_scored_actor()
 
 func damage_enemies_in_radius(source_team: int, center: Vector2, radius: float, damage: float, source_actor: Node = null, source_ability := "Area") -> void:
-	var final_damage := _outgoing_damage(source_actor, damage)
-	for entity in entities:
+	var final_damage: float = _outgoing_damage(source_actor, damage)
+	for entity: Node in entities:
 		if not _valid_target(entity) or entity.team == source_team:
 			continue
 		if cover_blocks_point(center, entity.global_position, minf(radius, 18.0)):
 			continue
-		var hit_info := HitShapeScript.circle_hit(center, radius, entity)
+		var hit_info: Dictionary = HitShapeScript.circle_hit(center, radius, entity)
 		if bool(hit_info.hit):
 			if entity.has_method("take_damage_event"):
 				var event := DamageEventScript.new()
@@ -1631,8 +1631,8 @@ func damage_enemies_in_radius(source_team: int, center: Vector2, radius: float, 
 			else:
 				entity.take_damage(final_damage, source_team, source_actor)
 
-	for core_team in cores.keys():
-		var core = cores[core_team]
+	for core_team: int in cores.keys():
+		var core: Node = cores[core_team]
 		if core.team != source_team and core.global_position.distance_to(center) <= radius + core.radius:
 			if not can_damage_core(core.team):
 				_show_core_shielded(core)
@@ -1647,7 +1647,7 @@ func _outgoing_damage(source_actor: Node, amount: float) -> float:
 	return amount
 
 func heal_allies_in_radius(source_team: int, center: Vector2, radius: float, amount: float) -> void:
-	for entity in entities:
+	for entity: Node in entities:
 		if not _valid_target(entity) or entity.team != source_team:
 			continue
 		if entity.has_method("heal") and entity.global_position.distance_to(center) <= radius + entity.body_radius:
@@ -1783,7 +1783,7 @@ const SEPARATION_MAX_PUSH_PX := 2.0
 
 func resolve_body_separation() -> void:
 	var bodies: Array[Node] = []
-	for entity in entities:
+	for entity: Node in entities:
 		if entity == null or not is_instance_valid(entity):
 			continue
 		if entity.has_method("is_alive") and not entity.is_alive():
@@ -1801,7 +1801,7 @@ func resolve_body_separation() -> void:
 		var hull: Dictionary = HurtboxScript.hull_of(body)
 		hulls.append(hull)
 		reaches.append(float(hull.radius) + float(hull.half_len))
-	for i in bodies.size():
+	for i: int in bodies.size():
 		for j in range(i + 1, bodies.size()):
 			var a: Node = bodies[i]
 			var b: Node = bodies[j]

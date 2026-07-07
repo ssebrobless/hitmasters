@@ -35,7 +35,7 @@ is the action list.
 | 7 | Bot/minion target queries on 0.1-0.2s timers - DONE (M8 bot intent cache) | MED | S |
 | 8 | Collision layer/mask hygiene - DONE (M8 scripted movers opt out) | MED | S |
 | 9 | HUD Label.text assigned only on change - DONE (M8 label guard) | LOW-MED | S |
-| 10 | Renderer to mobile/compatibility; static typing in hot loops | LOW-MED | S |
+| 10 | Renderer to mobile/compatibility; static typing in hot loops - DONE (M8 mobile renderer + typed hot loops) | LOW-MED | S |
 
 Workflow rule: profile with max minions (Debugger > Profiler + Monitors;
 --debug-canvas-item-redraw flag) before and after each change; do 1-3 first.
