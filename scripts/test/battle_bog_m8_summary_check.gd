@@ -75,6 +75,9 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 	var text: String = arena._get_match_summary("Blue")
 	var scoreboard_text: String = arena._get_scoreboard_text()
 	var player_rows: Array = summary.get("players", [])
+	var top_players: Dictionary = summary.get("top_players", {})
+	var top_blue: Dictionary = top_players.get("blue", {})
+	var top_red: Dictionary = top_players.get("red", {})
 
 	var data_ok := String(summary.get("schema", "")) == "battle_bog_match_summary_v1" \
 		and String(summary.get("winner", "")) == "Blue" \
@@ -108,7 +111,11 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and review_priority == 5 \
 		and _focus_has(review_focus, "hut_damage_delta", "Blue", 800) \
 		and _focus_has(review_focus, "deposit_delta", "Blue", 2) \
-		and _focus_has(review_focus, "breed_deny_delta", "Red", 1)
+		and _focus_has(review_focus, "breed_deny_delta", "Red", 1) \
+		and String(top_blue.get("name", "")).contains("Duck") \
+		and int(top_blue.get("hut_damage", 0)) >= 799 \
+		and String(top_red.get("name", "")).contains("Red") \
+		and int(top_red.get("breeds_denied", 0)) == 1
 	var text_ok: bool = text.contains("Stocks lost 1/9") \
 		and text.contains("Deposits 2") \
 		and text.contains("Breeds 1/0 denied") \
@@ -155,6 +162,9 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 	var log_review_focus: Array = log_data.get("balance_review_focus", [])
 	var log_draft: Dictionary = log_data.get("draft", {})
 	var log_squad: Array = log_data.get("selected_squad_ids", [])
+	var log_top_players: Dictionary = log_data.get("top_players", {})
+	var log_top_blue: Dictionary = log_top_players.get("blue", {})
+	var log_top_red: Dictionary = log_top_players.get("red", {})
 	var log_ok := bool(log_state.get("ok", false)) \
 		and bool(arena.match_over) \
 		and String(log_data.get("schema", "")) == "battle_bog_match_summary_v1" \
@@ -179,7 +189,11 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and log_review_priority == 5 \
 		and _focus_has(log_review_focus, "hut_damage_delta", "Blue", 800) \
 		and _focus_has(log_review_focus, "deposit_delta", "Blue", 2) \
-		and _focus_has(log_review_focus, "breed_deny_delta", "Red", 1)
+		and _focus_has(log_review_focus, "breed_deny_delta", "Red", 1) \
+		and String(log_top_blue.get("name", "")).contains("Duck") \
+		and int(log_top_blue.get("hut_damage", 0)) >= 799 \
+		and String(log_top_red.get("name", "")).contains("Red") \
+		and int(log_top_red.get("breeds_denied", 0)) == 1
 
 	if not deposited or not denied or not data_ok or not text_ok or not player_rows_ok or not scoreboard_ok or not log_ok:
 		failures.append("M8 summary should report stocks, deposits, breeding, hut damage, core damage, player rows, live scoreboard flow, and a JSON match log; deposited=%s denied=%s data_ok=%s text_ok=%s player_rows_ok=%s scoreboard_ok=%s log_ok=%s summary=%s text=%s scoreboard=%s rows=%s log=%s" % [

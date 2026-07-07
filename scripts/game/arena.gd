@@ -2618,6 +2618,7 @@ func get_match_summary_data(winner := "", reason := "") -> Dictionary:
 		"balance_flags": _match_balance_flags(),
 		"balance_review_priority": _match_balance_review_priority(),
 		"balance_review_focus": _match_balance_review_focus(),
+		"top_players": _top_match_summary_rows(),
 		"players": _player_match_summary_rows()
 	}
 
@@ -2922,6 +2923,12 @@ func _top_player_summary_row(team: int) -> Dictionary:
 			best_score = score
 			best = row
 	return best
+
+func _top_match_summary_rows() -> Dictionary:
+	return {
+		"blue": _top_player_summary_row(BLUE),
+		"red": _top_player_summary_row(RED)
+	}
 
 func _player_summary_score(row: Dictionary) -> float:
 	return float(row.get("kills", 0)) * 120.0 \
