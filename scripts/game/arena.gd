@@ -34,6 +34,7 @@ const CreatureInfoPanelScript := preload("res://scripts/ui/creature_info_panel.g
 const StockManagerScript := preload("res://scripts/game/stock_manager.gd")
 const FoodSourceScript := preload("res://scripts/game/food_source.gd")
 const WildlifeEncounterScript := preload("res://scripts/game/wildlife_encounter.gd")
+const ChampsosaurusBossScript := preload("res://scripts/game/bosses/champsosaurus_side_boss.gd")
 const BreedingActorScript := preload("res://scripts/game/breeding_actor.gd")
 const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
 
@@ -896,11 +897,16 @@ func _spawn_wildlife_for_zone(zone: Dictionary) -> void:
 	var alive_occupants: Array = []
 	for i in occupants.size():
 		var species_id := String(occupants[i])
-		var encounter = WildlifeEncounterScript.new()
-		add_child(encounter)
-		encounter.setup(self, zone, species_id, _animal_zone_spawn_position(zone, i, occupants.size()), i)
-		wildlife_encounters.append(encounter)
-		register_entity(encounter)
+		var spawn_pos := _animal_zone_spawn_position(zone, i, occupants.size())
+		var occupant: Node
+		if bool(zone.get("boss", false)) and String(zone.get("boss_family", "")) == "champsosaurus":
+			occupant = ChampsosaurusBossScript.new()
+		else:
+			occupant = WildlifeEncounterScript.new()
+		add_child(occupant)
+		occupant.setup(self, zone, species_id, spawn_pos, i)
+		wildlife_encounters.append(occupant)
+		register_entity(occupant)
 		alive_occupants.append(species_id)
 	zone["alive_occupants"] = alive_occupants
 	zone["alive_count"] = alive_occupants.size()
