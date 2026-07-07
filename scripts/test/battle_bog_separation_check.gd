@@ -33,6 +33,7 @@ func _run() -> void:
 	_check_push_is_soft(arena, failures)
 	_check_midpoint_invariant(arena, failures)
 	_check_repeated_resolution_deterministic(arena, failures)
+	_check_node2d_minion_separates(arena, failures)
 	_check_minion_slots(arena, failures)
 	print("separation failures=%d" % failures.size())
 	for failure in failures:
@@ -170,6 +171,34 @@ func _resolve_pair_signature(arena: Node, a: Node, b: Node, x: float) -> String:
 	for i in 120:
 		arena.resolve_body_separation()
 	return "%s|%s" % [str(a.global_position.snapped(Vector2(0.001, 0.001))), str(b.global_position.snapped(Vector2(0.001, 0.001)))]
+
+func _check_node2d_minion_separates(arena: Node, failures: Array[String]) -> void:
+	var pair := _two_creatures(arena)
+	var creature: Node = pair[0]
+	_normalize_grounded(creature, "snapping_turtle")
+	creature.global_position = Vector2(820.0, 300.0)
+	var minion := MinionScript.new()
+	arena.add_child(minion)
+	minion.setup(arena, 1, creature.global_position + Vector2(1.0, 0.0), "melee")
+	arena.register_entity(minion)
+	var was_node2d: bool = minion is Node2D and not _is_character_body(minion)
+	var was_manual_body: bool = arena.has_method("_is_separation_body") and bool(arena.call("_is_separation_body", minion))
+	for i in 80:
+		arena.resolve_body_separation()
+	var gap: float = creature.global_position.distance_to(minion.global_position)
+	var min_gap: float = creature.body_radius + minion.body_radius
+	if gap < min_gap - 0.5 or not was_node2d or not was_manual_body:
+		failures.append("Node2D minions should remain in soft separation after dropping CharacterBody2D; node2d=%s manual=%s gap=%.1f need=%.1f" % [
+			str(was_node2d),
+			str(was_manual_body),
+			gap,
+			min_gap
+		])
+	arena.unregister_entity(minion)
+	minion.queue_free()
+
+func _is_character_body(node: Node) -> bool:
+	return node is CharacterBody2D
 
 func _check_minion_slots(arena: Node, failures: Array[String]) -> void:
 	var target: Node = arena.bots[0]

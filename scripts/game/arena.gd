@@ -1789,7 +1789,7 @@ func resolve_body_separation() -> void:
 		if entity.has_method("is_alive") and not entity.is_alive():
 			continue
 		# Movers only (creatures + minions); huts/cores are terrain-like.
-		if not (entity is CharacterBody2D):
+		if not _is_separation_body(entity):
 			continue
 		bodies.append(entity)
 	# PERF: hulls computed once per body, and a squared-distance broad phase
@@ -1818,6 +1818,11 @@ func resolve_body_separation() -> void:
 				half = half.normalized() * SEPARATION_MAX_PUSH_PX
 			a.global_position = resolve_body_position(a.global_position + half, a.body_radius)
 			b.global_position = resolve_body_position(b.global_position - half, b.body_radius)
+
+func _is_separation_body(entity: Node) -> bool:
+	if entity is CharacterBody2D:
+		return true
+	return entity.has_method("uses_manual_movement_body") and bool(entity.call("uses_manual_movement_body"))
 
 func _separation_exempt(a: Node, b: Node) -> bool:
 	if _passes_over_bodies(a) or _passes_over_bodies(b):

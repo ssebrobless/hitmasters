@@ -1,4 +1,4 @@
-extends CharacterBody2D
+extends Node2D
 class_name Minion
 
 # Mud minions. Kinds:
@@ -36,6 +36,7 @@ var defender_slot := 0
 var target_refresh_timer := 0.0
 var cached_target: Node = null
 var facing := Vector2.RIGHT
+var velocity := Vector2.ZERO
 
 func setup(minion_arena: Node, minion_team: int, spawn_position: Vector2, minion_kind := "lane", lane_target := Vector2.ZERO, hut: Node = null, slot := 0) -> void:
 	arena = minion_arena
@@ -95,7 +96,7 @@ func _tick_minion(delta: float) -> void:
 		var from_home: float = global_position.distance_to(leash_hut.global_position)
 		if from_home > DEFENDER_PATROL_RADIUS:
 			target = null
-			_move_toward_point(leash_hut.global_position)
+			_move_toward_point(leash_hut.global_position, delta)
 			_request_redraw()
 			return
 
@@ -103,7 +104,7 @@ func _tick_minion(delta: float) -> void:
 		if kind == "lane":
 			_march(delta)
 		elif leash_hut != null and is_instance_valid(leash_hut) and global_position.distance_to(leash_hut.global_position) > DEFENDER_IDLE_RETURN_RADIUS:
-			_move_toward_point(leash_hut.global_position)
+			_move_toward_point(leash_hut.global_position, delta)
 		else:
 			velocity = Vector2.ZERO
 		_request_redraw()
@@ -120,7 +121,7 @@ func _tick_minion(delta: float) -> void:
 	else:
 		# Engagement slots: each minion approaches its own angle around the
 		# target so packs fan out into a fighting ring instead of a stack.
-		_move_toward_point(target.global_position + _engage_offset(target))
+		_move_toward_point(target.global_position + _engage_offset(target), delta)
 	_request_redraw()
 
 func _engage_offset(target: Node) -> Vector2:
@@ -166,9 +167,9 @@ func _march(_delta: float) -> void:
 	if global_position.distance_to(destination) < 40.0:
 		velocity = Vector2.ZERO
 		return
-	_move_toward_point(destination)
+	_move_toward_point(destination, _delta)
 
-func _move_toward_point(point: Vector2) -> void:
+func _move_toward_point(point: Vector2, delta := SimConstants.TICK_DELTA) -> void:
 	if attack_commit_timer > 0.0:
 		velocity = Vector2.ZERO
 		return
@@ -176,7 +177,7 @@ func _move_toward_point(point: Vector2) -> void:
 	if arena != null:
 		move_direction = arena.get_steering_direction(global_position, point, body_radius, team)
 	velocity = move_direction * speed
-	move_and_slide()
+	global_position += velocity * delta
 	if arena != null:
 		global_position = arena.resolve_body_position(global_position, body_radius)
 
@@ -186,6 +187,9 @@ func _is_enemy_core(target: Node) -> bool:
 func _request_redraw() -> void:
 	if arena == null or not arena.has_method("is_near_view") or arena.is_near_view(global_position):
 		queue_redraw()
+
+func uses_manual_movement_body() -> bool:
+	return true
 
 func take_damage(amount: float, _source_team: int = -1, _source_actor: Node = null) -> void:
 	if health <= 0.0:

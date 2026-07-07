@@ -58,6 +58,7 @@ func _run() -> void:
 	var failures: Array[String] = []
 	_check_tempo_constants(failures)
 	_check_minion_commit(failures)
+	_check_minion_manual_movement(failures)
 	_check_grip_struggle_drain(failures)
 	_check_struggle_hit(failures)
 	_check_third_party_dr(failures)
@@ -103,6 +104,29 @@ func _check_minion_commit(failures: Array[String]) -> void:
 	if minion.velocity == Vector2.ZERO:
 		failures.append("decision #32: uncommitted minion should move again")
 	arena.queue_free()
+
+func _check_minion_manual_movement(failures: Array[String]) -> void:
+	var arena := FakeArena.new()
+	get_root().add_child(arena)
+	var minion := MinionScript.new()
+	arena.add_child(minion)
+	minion.setup(arena, 0, Vector2.ZERO, "lane")
+	minion._move_toward_point(Vector2.RIGHT * 400.0, 0.5)
+	var moved_expected_distance: bool = absf(minion.global_position.x - minion.speed * 0.5) < 0.001
+	var no_character_body: bool = not _is_character_body(minion)
+	var separation_body: bool = minion.has_method("uses_manual_movement_body") and bool(minion.call("uses_manual_movement_body"))
+	if not moved_expected_distance or not no_character_body or not separation_body:
+		failures.append("minions should use manual Node2D movement while remaining soft-separation bodies; moved=%s pos=%s speed=%.1f character_body=%s separation=%s" % [
+			str(moved_expected_distance),
+			str(minion.global_position),
+			minion.speed,
+			str(not no_character_body),
+			str(separation_body)
+		])
+	arena.queue_free()
+
+func _is_character_body(node: Node) -> bool:
+	return node is CharacterBody2D
 
 func _check_grip_struggle_drain(failures: Array[String]) -> void:
 	var arena := FakeArena.new()
