@@ -1430,6 +1430,7 @@ static func _base_crustacean(canvas: CanvasItem, radius: float, forward: Vector2
 			canvas.draw_line(tail_origin, tail_origin - forward * radius * (0.78 + 0.24 * crayfish_motion_intensity) + side * wake_side * radius * 0.28, swim_wake, maxf(radius * 0.07, 1.2))
 			canvas.draw_arc(tail_origin - forward * radius * 0.16, radius * (0.26 + 0.08 * crayfish_motion_intensity), PI * 0.08, PI * 0.88, 10, swim_wake, maxf(radius * 0.045, 1.0))
 			canvas.draw_circle(tail_origin - forward * radius * (0.48 + 0.12 * crayfish_motion_intensity), maxf(radius * (0.045 + 0.018 * crayfish_motion_intensity), 1.0), swim_wake.lightened(0.22))
+			canvas.draw_circle(tail_origin - forward * radius * (0.76 + 0.16 * crayfish_motion_intensity) + side * wake_side * radius * 0.18, maxf(radius * (0.035 + 0.015 * crayfish_motion_intensity), 1.0), swim_wake.lightened(0.3))
 		canvas.draw_arc(-forward * radius * 1.05, radius * (0.42 + 0.12 * crayfish_motion_intensity), PI * 0.02, PI * 0.98, 14, swim_wake, maxf(radius * 0.065, 1.1))
 		canvas.draw_line(-forward * radius * 0.68, -forward * radius * (1.62 + 0.22 * crayfish_motion_intensity), Color(swim_wake.r, swim_wake.g, swim_wake.b, swim_wake.a * 0.72), maxf(radius * 0.08, 1.2))
 	if crayfish_scuttle:
@@ -1439,6 +1440,7 @@ static func _base_crustacean(canvas: CanvasItem, radius: float, forward: Vector2
 			canvas.draw_line(scratch_origin, scratch_origin + side * scratch_side * radius * (0.5 + 0.14 * crayfish_motion_intensity) - forward * radius * 0.1, lateral_scratch, maxf(radius * 0.045, 1.0))
 			canvas.draw_arc(scratch_origin - forward * radius * 0.18, radius * (0.18 + 0.05 * crayfish_motion_intensity), PI * 0.1, PI * 0.9, 8, lateral_scratch, maxf(radius * 0.04, 1.0))
 			canvas.draw_circle(scratch_origin + side * scratch_side * radius * (0.34 + 0.08 * crayfish_motion_intensity), maxf(radius * (0.035 + 0.018 * crayfish_motion_intensity), 1.0), Color(dark.r, dark.g, dark.b, lateral_scratch.a * 0.9))
+			canvas.draw_circle(scratch_origin - forward * radius * 0.1 - side * scratch_side * radius * 0.12, maxf(radius * (0.03 + 0.015 * crayfish_motion_intensity), 1.0), Color(dark.r, dark.g, dark.b, lateral_scratch.a * 0.72))
 	if escape_curl_t > 0.0:
 		var wake := Color(0.95, 0.72, 0.45, 0.22 * escape_curl_t)
 		for wake_side: float in [-1.0, 1.0]:

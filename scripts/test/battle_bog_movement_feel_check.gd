@@ -1210,24 +1210,53 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 			str(otter_idle_state)
 		])
 	actor.apply_creature("crayfish")
+	var crayfish_non_crayfish_motion_flags: Array[String] = [
+		"leech_inchworm_pose",
+		"leech_undulate_pose",
+		"slick_crawl_pose",
+		"newt_swim_pose",
+		"water_snake_land_slither_pose",
+		"water_snake_mud_slither",
+		"water_slither_pose",
+		"turtle_plod_pose",
+		"turtle_swim_pose",
+		"bog_turtle_creep_pose",
+		"bog_turtle_paddle_pose",
+		"duck_waddle_pose",
+		"duck_paddle_pose",
+		"beaver_lumber_pose",
+		"beaver_swim_pose",
+		"mink_bound_pose",
+		"mink_swim_pose",
+		"mink_choke_pose",
+		"otter_land_slide_pose",
+		"otter_swim_pose",
+		"otter_pack_latch_pose",
+		"surface_walk",
+		"submerged_shrew_pose",
+		"shrew_land_skitter_pose",
+		"alligator_water_cruise_pose",
+		"hop_pose",
+		"chorus_hop_pose",
+		"cane_squat_hop_pose",
+		"rooted_pose",
+		"owl_glide_pose",
+		"owl_silent_flight_pose",
+		"kingfisher_dart_pose",
+		"wading_pose",
+		"heron_stalk_pose",
+		"mosquito_swarm_pose",
+		"firefly_hover_pose",
+		"spider_skitter_pose",
+		"high_walk_pose"
+	]
 	actor.current_environment_profile = {"surface": "land"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
 	var crayfish_land_state: Dictionary = actor.get_render_motion_state()
 	var crayfish_scuttle: bool = bool(crayfish_land_state.get("crayfish_scuttle_pose", false)) \
 		and not bool(crayfish_land_state.get("crayfish_tail_flick_swim_pose", false)) \
-		and not bool(crayfish_land_state.get("leech_inchworm_pose", false)) \
-		and not bool(crayfish_land_state.get("slick_crawl_pose", false)) \
-		and not bool(crayfish_land_state.get("water_snake_land_slither_pose", false)) \
-		and not bool(crayfish_land_state.get("turtle_plod_pose", false)) \
-		and not bool(crayfish_land_state.get("bog_turtle_creep_pose", false)) \
-		and not bool(crayfish_land_state.get("mink_bound_pose", false)) \
-		and not bool(crayfish_land_state.get("otter_land_slide_pose", false)) \
-		and not bool(crayfish_land_state.get("duck_waddle_pose", false)) \
-		and not bool(crayfish_land_state.get("beaver_lumber_pose", false)) \
-		and not bool(crayfish_land_state.get("shrew_land_skitter_pose", false)) \
-		and not bool(crayfish_land_state.get("high_walk_pose", false)) \
-		and not bool(crayfish_land_state.get("spider_skitter_pose", false)) \
+		and _none_render_flags(crayfish_land_state, crayfish_non_crayfish_motion_flags) \
 		and float(crayfish_land_state.get("crayfish_motion_intensity", 0.0)) > 0.25
 	actor.current_environment_profile = {"surface": "water"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
@@ -1235,51 +1264,17 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	var crayfish_water_state: Dictionary = actor.get_render_motion_state()
 	var crayfish_swim: bool = bool(crayfish_water_state.get("crayfish_tail_flick_swim_pose", false)) \
 		and not bool(crayfish_water_state.get("crayfish_scuttle_pose", false)) \
-		and not bool(crayfish_water_state.get("leech_undulate_pose", false)) \
-		and not bool(crayfish_water_state.get("newt_swim_pose", false)) \
-		and not bool(crayfish_water_state.get("water_slither_pose", false)) \
-		and not bool(crayfish_water_state.get("turtle_swim_pose", false)) \
-		and not bool(crayfish_water_state.get("bog_turtle_paddle_pose", false)) \
-		and not bool(crayfish_water_state.get("duck_paddle_pose", false)) \
-		and not bool(crayfish_water_state.get("beaver_swim_pose", false)) \
-		and not bool(crayfish_water_state.get("mink_swim_pose", false)) \
-		and not bool(crayfish_water_state.get("otter_swim_pose", false)) \
-		and not bool(crayfish_water_state.get("surface_walk", false)) \
-		and not bool(crayfish_water_state.get("submerged_shrew_pose", false)) \
-		and not bool(crayfish_water_state.get("alligator_water_cruise_pose", false)) \
+		and _none_render_flags(crayfish_water_state, crayfish_non_crayfish_motion_flags) \
 		and float(crayfish_water_state.get("crayfish_motion_intensity", 0.0)) > 0.25
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
 	var crayfish_idle_state: Dictionary = actor.get_render_motion_state()
 	var crayfish_idle_clear: bool = not bool(crayfish_idle_state.get("crayfish_scuttle_pose", false)) \
 		and not bool(crayfish_idle_state.get("crayfish_tail_flick_swim_pose", false)) \
-		and not bool(crayfish_idle_state.get("leech_inchworm_pose", false)) \
-		and not bool(crayfish_idle_state.get("leech_undulate_pose", false)) \
-		and not bool(crayfish_idle_state.get("slick_crawl_pose", false)) \
-		and not bool(crayfish_idle_state.get("newt_swim_pose", false)) \
-		and not bool(crayfish_idle_state.get("water_snake_land_slither_pose", false)) \
-		and not bool(crayfish_idle_state.get("water_slither_pose", false)) \
-		and not bool(crayfish_idle_state.get("turtle_plod_pose", false)) \
-		and not bool(crayfish_idle_state.get("turtle_swim_pose", false)) \
-		and not bool(crayfish_idle_state.get("bog_turtle_creep_pose", false)) \
-		and not bool(crayfish_idle_state.get("bog_turtle_paddle_pose", false)) \
-		and not bool(crayfish_idle_state.get("mink_bound_pose", false)) \
-		and not bool(crayfish_idle_state.get("mink_swim_pose", false)) \
-		and not bool(crayfish_idle_state.get("otter_land_slide_pose", false)) \
-		and not bool(crayfish_idle_state.get("otter_swim_pose", false)) \
-		and not bool(crayfish_idle_state.get("duck_waddle_pose", false)) \
-		and not bool(crayfish_idle_state.get("duck_paddle_pose", false)) \
-		and not bool(crayfish_idle_state.get("beaver_lumber_pose", false)) \
-		and not bool(crayfish_idle_state.get("beaver_swim_pose", false)) \
-		and not bool(crayfish_idle_state.get("shrew_land_skitter_pose", false)) \
-		and not bool(crayfish_idle_state.get("surface_walk", false)) \
-		and not bool(crayfish_idle_state.get("submerged_shrew_pose", false)) \
-		and not bool(crayfish_idle_state.get("high_walk_pose", false)) \
-		and not bool(crayfish_idle_state.get("alligator_water_cruise_pose", false)) \
-		and not bool(crayfish_idle_state.get("spider_skitter_pose", false)) \
+		and _none_render_flags(crayfish_idle_state, crayfish_non_crayfish_motion_flags) \
 		and float(crayfish_idle_state.get("crayfish_motion_intensity", 1.0)) <= 0.001
 	if not crayfish_scuttle or not crayfish_swim or not crayfish_idle_clear:
-		failures.append("moving crayfish should expose sideways land scuttle and water tail-flick burst without crawler, swimmer, slider, bird, mammal, shrew, gator, turtle, or spider overlap, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
+		failures.append("moving crayfish should expose sideways land scuttle and water tail-flick burst without frog, crawler, swimmer, slider, bird, mammal, shrew, gator, turtle, duck, swarm, hover, spider, or snake overlap, then clear when idle; land=%s water=%s idle=%s state=%s/%s/%s" % [
 			str(crayfish_scuttle),
 			str(crayfish_swim),
 			str(crayfish_idle_clear),
