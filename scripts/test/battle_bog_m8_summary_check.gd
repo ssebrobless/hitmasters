@@ -9,31 +9,61 @@ func _initialize() -> void:
 	_run.call_deferred()
 
 func _run() -> void:
-	var config := get_root().get_node_or_null("GameConfig")
-	if config != null:
-		config.selected_mode = "1v1"
-		config.set_selected_squad_ids(["duck", "snapping_turtle", "mink"])
-
-	var error := change_scene_to_file(ARENA_SCENE)
-	if error != OK:
-		push_error("m8 summary check failed to boot Arena: %d" % error)
-		quit(1)
-		return
-	await process_frame
-	await process_frame
-	var arena := current_scene
 	var failures: Array[String] = []
+	var arena := await _boot_arena_mode("1v1", ["duck", "snapping_turtle", "mink"], failures)
 	if arena == null or not arena.has_method("get_match_summary_data"):
 		push_error("Arena scene did not expose M8 summary data; current_scene=%s" % str(arena))
 		quit(1)
 		return
 
 	_check_match_summary_telemetry(arena, failures)
+	await _check_summary_mode_tuning("3v3", 105, 20, 3, 2, "Pace: hunger 105s, wave 20s, 2/2 huts, 3 minions/hut", failures)
+	await _check_summary_mode_tuning("Hero Lab", 105, 18, 3, 2, "Pace: hunger 105s, wave 18s, 2/2 huts, 3 minions/hut", failures)
 
 	print("m8_summary failures=%d" % failures.size())
 	for failure in failures:
 		push_error(failure)
 	quit(0 if failures.is_empty() else 1)
+
+func _boot_arena_mode(mode: String, squad_ids: Array, failures: Array[String]) -> Node:
+	var config := get_root().get_node_or_null("GameConfig")
+	if config != null:
+		config.selected_mode = mode
+		config.clear_draft_bans()
+		config.set_selected_squad_ids(squad_ids)
+
+	var error := change_scene_to_file(ARENA_SCENE)
+	if error != OK:
+		failures.append("m8 summary check failed to boot Arena mode %s: %d" % [mode, error])
+		return null
+	await process_frame
+	await process_frame
+	return current_scene
+
+func _check_summary_mode_tuning(mode: String, expected_hunger: int, expected_wave: int, expected_minions: int, expected_huts_per_side: int, expected_line: String, failures: Array[String]) -> void:
+	var arena := await _boot_arena_mode(mode, ["snapping_turtle", "chorus_frog", "mink"], failures)
+	if arena == null or not arena.has_method("get_match_summary_data"):
+		failures.append("summary mode tuning check could not boot %s; arena=%s" % [mode, str(arena)])
+		return
+	var summary: Dictionary = arena.get_match_summary_data("Blue", "mode_tuning_check")
+	var tuning: Dictionary = summary.get("mode_tuning", {})
+	var huts: Dictionary = tuning.get("huts_per_side", {})
+	var text: String = arena._get_match_summary("Blue")
+	var ok := String(summary.get("mode", "")) == mode \
+		and int(tuning.get("hunger_full_to_empty_sec", 0)) == expected_hunger \
+		and int(tuning.get("wave_interval_sec", 0)) == expected_wave \
+		and int(tuning.get("lane_minions_per_hut", 0)) == expected_minions \
+		and int(huts.get("blue", 0)) == expected_huts_per_side \
+		and int(huts.get("red", 0)) == expected_huts_per_side \
+		and text.contains("Mode: %s" % mode) \
+		and text.contains("Draft: off") \
+		and text.contains(expected_line)
+	if not ok:
+		failures.append("summary mode tuning for %s should report shared-map pressure tuning; summary=%s text=%s" % [
+			mode,
+			str(summary),
+			text
+		])
 
 func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> void:
 	arena.elapsed = 125.0
