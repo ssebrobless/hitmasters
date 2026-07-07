@@ -8,7 +8,7 @@ extends Control
 const PANEL_WIDTH := 520.0
 const LINE_HEIGHT := 18.0
 const WRAP_CHARS := 66
-const CreatureScript := preload("res://scripts/sim/creature.gd")
+const CreatureReadFormatter := preload("res://scripts/ui/creature_read_formatter.gd")
 
 var arena: Node = null
 var was_visible := false
@@ -39,9 +39,9 @@ func get_info_lines() -> Array[String]:
 	var creature_id := String(data.get("id", player.get("creature_id")))
 	var size_read_line := "HP %s | Speed %s | Footprint %s | Height %s" % [
 		str(stats.get("health", "?")),
-		_get_speed_text(stats),
-		_get_footprint_text(footprint),
-		_get_height_read_text(creature_id)
+		CreatureReadFormatter.speed_text(stats),
+		CreatureReadFormatter.footprint_text(footprint),
+		CreatureReadFormatter.height_read_text(creature_id)
 	]
 	lines.append("%s  —  %s / %s" % [String(data.get("name", "Unknown")), String(data.get("family", "?")), String(data.get("diet", "?"))])
 	lines.append("")
@@ -80,36 +80,6 @@ func _wrap(text: String, indent: String) -> Array[String]:
 	if current.strip_edges() != "":
 		lines.append(current)
 	return lines
-
-func _get_speed_text(stats: Dictionary) -> String:
-	if stats.has("speed"):
-		return str(stats["speed"])
-	if stats.has("ground_speed") and stats.has("flight_speed"):
-		return "%s/%s" % [str(stats["ground_speed"]), str(stats["flight_speed"])]
-	if stats.has("ground_speed"):
-		return str(stats["ground_speed"])
-	if stats.has("flight_speed"):
-		return str(stats["flight_speed"])
-	return "?"
-
-func _get_footprint_text(footprint: Dictionary) -> String:
-	var shape := String(footprint.get("shape", "?"))
-	if shape == "capsule":
-		return "%s %sx%s u" % [shape, str(footprint.get("radius_units", "?")), str(footprint.get("length_units", "?"))]
-	return "%s %s u" % [shape, str(footprint.get("radius_units", "?"))]
-
-func _get_height_read_text(creature_id: String) -> String:
-	var profile := CreatureScript.visual_size_profile_for(creature_id)
-	var height_units := float(profile.get("height_units", 0.45))
-	var height_band := CreatureScript.visual_height_band_for(height_units).capitalize()
-	var height_class := _title_from_snake(String(profile.get("height_class", "mid")))
-	return "%s %s" % [height_band, height_class]
-
-func _title_from_snake(value: String) -> String:
-	var words := PackedStringArray()
-	for part in value.split("_", false):
-		words.append(part.capitalize())
-	return " ".join(words)
 
 func _draw() -> void:
 	var lines := get_info_lines()
