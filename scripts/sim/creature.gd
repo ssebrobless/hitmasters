@@ -710,6 +710,7 @@ func get_render_motion_state() -> Dictionary:
 	var visual_size_profile := _visual_size_profile()
 	var visual_height_units := _visual_height_units(visual_size_profile)
 	var low_window_t := _low_window_render_t()
+	var air_attack_cue := is_airborne() and low_window_t > 0.0
 	return {
 		"creature_id": creature_id,
 		"terrain_surface": surface,
@@ -719,7 +720,9 @@ func get_render_motion_state() -> Dictionary:
 		"height_band": _visual_height_band(visual_height_units),
 		"low_window_t": low_window_t,
 		"low_window_active": low_window_t > 0.0,
-		"air_attack_readable": is_airborne() and low_window_t > 0.0,
+		"air_attack_readable": air_attack_cue,
+		"air_attack_cue_pose": air_attack_cue,
+		"air_attack_cue_intensity": low_window_t if air_attack_cue else 0.0,
 		"in_water": surface == EnvironmentProfileScript.SURFACE_WATER,
 		"surface_walk": surface_walk,
 		"surface_wake_intensity": wake_intensity,

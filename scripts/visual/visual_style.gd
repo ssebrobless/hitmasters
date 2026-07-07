@@ -55,7 +55,8 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 	var height_units := maxf(float(anim.get("height_units", 0.45)), 0.0)
 	var air_lift_px := maxf(radius * 0.5, height_units * SimConstants.UNIT_PX) if airborne else 0.0
 	var low_window_t := clampf(float(anim.get("low_window_t", 0.0)), 0.0, 1.0)
-	var readable_air_attack := airborne and low_window_t > 0.0
+	var readable_air_attack := airborne and bool(anim.get("air_attack_cue_pose", low_window_t > 0.0))
+	var air_attack_cue_intensity := clampf(float(anim.get("air_attack_cue_intensity", low_window_t)), 0.0, 1.0) if readable_air_attack else 0.0
 	var takeoff_charge_t := clampf(float(anim.get("takeoff_charge_t", 0.0)), 0.0, 1.0)
 	var takeoff_flap_t := clampf(float(anim.get("takeoff_flap_t", 0.0)), 0.0, 1.0)
 	var landing_flap_t := clampf(float(anim.get("landing_flap_t", 0.0)), 0.0, 1.0)
@@ -160,10 +161,14 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 					maxf(1.4, visual_radius * 0.07)
 				)
 		if readable_air_attack:
-			var cue_color := _with_alpha(Color(1.0, 0.84, 0.34, 0.54 * low_window_t), alpha)
-			var cue_radius := visual_radius * (1.12 + low_window_t * 0.22)
+			var cue_color := _with_alpha(Color(1.0, 0.84, 0.34, 0.54 * air_attack_cue_intensity), alpha)
+			var cue_radius := visual_radius * (1.12 + air_attack_cue_intensity * 0.22)
 			canvas.draw_arc(Vector2.ZERO, cue_radius, 0.0, TAU, 44, cue_color, maxf(2.0, visual_radius * 0.13))
 			canvas.draw_arc(Vector2.ZERO, cue_radius * 0.62, 0.0, TAU, 36, Color(cue_color.r, cue_color.g, cue_color.b, cue_color.a * 0.48), maxf(1.4, visual_radius * 0.07))
+			for bracket_side: float in [-1.0, 1.0]:
+				var bracket_origin := side * bracket_side * cue_radius * 0.96 - forward * visual_radius * 0.1
+				canvas.draw_line(bracket_origin, bracket_origin - side * bracket_side * visual_radius * (0.32 + 0.08 * air_attack_cue_intensity), cue_color, maxf(1.6, visual_radius * 0.08))
+				canvas.draw_line(bracket_origin, bracket_origin + forward * visual_radius * (0.3 + 0.08 * air_attack_cue_intensity), cue_color, maxf(1.4, visual_radius * 0.07))
 			canvas.draw_line(
 				Vector2.ZERO,
 				Vector2(0.0, -air_lift_px + visual_radius * 0.24),

@@ -2069,10 +2069,14 @@ func _check_visual_height_profiles(arena: Node, failures: Array[String]) -> void
 	var owl_lift: bool = float(owl_air_state.get("height_units", 0.0)) > float(owl_ground_state.get("height_units", 0.0)) + 0.25
 	var owl_low_read: bool = float(owl_low_state.get("height_units", 1.0)) < float(owl_air_state.get("height_units", 0.0)) - 0.55 \
 		and bool(owl_low_state.get("air_attack_readable", false)) \
+		and bool(owl_low_state.get("air_attack_cue_pose", false)) \
+		and float(owl_low_state.get("air_attack_cue_intensity", 0.0)) > 0.9 \
 		and float(owl_low_state.get("low_window_t", 0.0)) > 0.9 \
 		and String(owl_low_state.get("height_band", "")) == "body"
 	var kingfisher_low_read: bool = float(kingfisher_low_state.get("height_units", 1.0)) < float(kingfisher_air_state.get("height_units", 0.0)) - 0.55 \
 		and bool(kingfisher_low_state.get("air_attack_readable", false)) \
+		and bool(kingfisher_low_state.get("air_attack_cue_pose", false)) \
+		and float(kingfisher_low_state.get("air_attack_cue_intensity", 0.0)) > 0.9 \
 		and String(kingfisher_low_state.get("height_band", "")) == "body"
 	var tiny_low: bool = float(bog_state.get("model_scale", 1.0)) < 0.9 and float(bog_state.get("height_units", 1.0)) < 0.3
 	var tiny_hover: bool = float(firefly_state.get("model_scale", 1.0)) < 0.85 and float(firefly_state.get("height_units", 0.0)) >= 0.9
