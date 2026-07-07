@@ -155,9 +155,11 @@ var stock_manager: RefCounted = StockManagerScript.new()
 func _ready() -> void:
 	_configure_mode()
 	var terrain_layer = TerrainLayerScript.new()
+	terrain_layer.name = "TerrainLayer"
 	add_child(terrain_layer)
 	terrain_layer.setup(terrain_map)
 	var water_layer = WaterLayerScript.new()
+	water_layer.name = "WaterLayer"
 	add_child(water_layer)
 	water_layer.setup(terrain_map)
 	_build_ui()

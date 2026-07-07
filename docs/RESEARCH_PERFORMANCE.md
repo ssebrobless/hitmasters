@@ -26,7 +26,7 @@ is the action list.
 
 | # | Action | Impact | Effort |
 | --- | --- | --- | --- |
-| 1 | Static terrain drawn ONCE on a child node (animated ripples on their own small node) | HIGH | M |
+| 1 | Static terrain drawn ONCE on a child node (animated ripples on their own small node) - DONE (M8 layer split) | HIGH | M |
 | 2 | Minions: Node2D + manual movement instead of CharacterBody2D/move_and_slide | HIGH | M-L |
 | 3 | queue_redraw only on state change; skip off-screen entity redraws | HIGH | M |
 | 4 | LOS: segment-vs-rect intersection instead of 20px point stepping - DONE (M8 slab test) | MED-HIGH | S |

@@ -16,6 +16,9 @@ func setup(next_terrain_map: RefCounted) -> void:
 	z_index = -10
 	queue_redraw()
 
+func is_static_cached_layer() -> bool:
+	return terrain_map != null and z_index == -10
+
 func _draw() -> void:
 	if terrain_map == null:
 		return

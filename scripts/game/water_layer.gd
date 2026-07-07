@@ -25,6 +25,12 @@ func setup(terrain_map: RefCounted) -> void:
 			ripple_origins.append(Vector2(rng.randf_range(rect.position.x + 10.0, rect.end.x - 10.0), rng.randf_range(rect.position.y + 6.0, rect.end.y - 6.0)))
 			ripple_rect_index.append(rect_index)
 
+func get_redraw_interval() -> float:
+	return REDRAW_INTERVAL
+
+func get_ripple_count() -> int:
+	return ripple_origins.size()
+
 func _process(delta: float) -> void:
 	elapsed += delta
 	redraw_accumulator += delta
