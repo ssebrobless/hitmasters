@@ -354,6 +354,17 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.current_environment_profile = {"surface": "land"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var cane_non_cane_motion_flags: Array[String] = [
+		"chorus_hop_pose", "bullfrog_heavy_hop_pose", "bullfrog_coil_pose", "bullfrog_lunge_pose",
+		"shrew_land_skitter_pose", "surface_walk", "submerged_shrew_pose", "slick_crawl_pose", "newt_swim_pose",
+		"leech_inchworm_pose", "leech_undulate_pose", "water_snake_land_slither_pose", "water_slither_pose",
+		"turtle_plod_pose", "turtle_swim_pose", "bog_turtle_creep_pose", "bog_turtle_paddle_pose",
+		"duck_waddle_pose", "duck_paddle_pose", "beaver_lumber_pose", "beaver_swim_pose",
+		"mink_bound_pose", "mink_swim_pose", "otter_land_slide_pose", "otter_swim_pose",
+		"crayfish_scuttle_pose", "crayfish_tail_flick_swim_pose", "spider_skitter_pose", "high_walk_pose",
+		"alligator_water_cruise_pose", "owl_glide_pose", "owl_silent_flight_pose", "kingfisher_dart_pose",
+		"wading_pose", "heron_stalk_pose", "mosquito_swarm_pose", "firefly_hover_pose"
+	]
 	var cane_hop_state: Dictionary = actor.get_render_motion_state()
 	var cane_hop: bool = bool(cane_hop_state.get("cane_squat_hop_pose", false)) \
 		and float(cane_hop_state.get("cane_squat_hop_intensity", 0.0)) > 0.25 \
@@ -362,7 +373,8 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(cane_hop_state.get("bullfrog_heavy_hop_pose", false)) \
 		and not bool(cane_hop_state.get("bullfrog_coil_pose", false)) \
 		and not bool(cane_hop_state.get("bullfrog_lunge_pose", false)) \
-		and not bool(cane_hop_state.get("camouflage_eye_cue", false))
+		and not bool(cane_hop_state.get("camouflage_eye_cue", false)) \
+		and _none_render_flags(cane_hop_state, cane_non_cane_motion_flags)
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
 	var cane_idle_state: Dictionary = actor.get_render_motion_state()
@@ -373,6 +385,7 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(cane_idle_state.get("bullfrog_coil_pose", false)) \
 		and not bool(cane_idle_state.get("bullfrog_lunge_pose", false)) \
 		and not bool(cane_idle_state.get("camouflage_eye_cue", false)) \
+		and _none_render_flags(cane_idle_state, cane_non_cane_motion_flags) \
 		and float(cane_idle_state.get("cane_squat_hop_intensity", 1.0)) <= 0.001
 	actor.add_modifier("Thanatosis", {"move_speed_mult": 0.0}, 1.0)
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
@@ -384,10 +397,11 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(cane_rooted_state.get("bullfrog_heavy_hop_pose", false)) \
 		and not bool(cane_rooted_state.get("bullfrog_coil_pose", false)) \
 		and not bool(cane_rooted_state.get("bullfrog_lunge_pose", false)) \
-		and not bool(cane_rooted_state.get("camouflage_eye_cue", false))
+		and not bool(cane_rooted_state.get("camouflage_eye_cue", false)) \
+		and _none_render_flags(cane_rooted_state, cane_non_cane_motion_flags)
 	actor.remove_modifiers_from_source("Thanatosis")
 	if not cane_hop or not cane_idle_clear or not cane_rooted_suppressed:
-		failures.append("moving cane toad should expose low warty squat-hop without rooted, chorus, or bullfrog overlap, clear when idle, and defer to Thanatosis rooted pose; moving=%s idle=%s rooted=%s state=%s/%s/%s" % [
+		failures.append("moving cane toad should expose low warty squat-hop without rooted, chorus, bullfrog, crawler, swimmer, snake, turtle, duck, mammal, gator, bird, swarm, hover, crustacean, or spider overlap, clear when idle, and defer to Thanatosis rooted pose; moving=%s idle=%s rooted=%s state=%s/%s/%s" % [
 			str(cane_hop),
 			str(cane_idle_clear),
 			str(cane_rooted_suppressed),

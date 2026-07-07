@@ -319,6 +319,7 @@ static func _base_frog(canvas: CanvasItem, radius: float, forward: Vector2, side
 			var squat_center := -forward * radius * 0.2 + side * squat_side * radius * 0.54
 			canvas.draw_arc(squat_center, radius * (0.2 + 0.06 * cane_squat_hop_intensity), PI * 0.05, PI * 0.88, 8, squat_scuff, maxf(radius * 0.045, 1.0))
 			canvas.draw_line(squat_center, squat_center - forward * radius * (0.28 + 0.1 * cane_squat_hop_intensity) + side * squat_side * radius * 0.1, Color(squat_scuff.r, squat_scuff.g, squat_scuff.b, squat_scuff.a * 0.82), maxf(radius * 0.04, 1.0))
+			canvas.draw_circle(squat_center - forward * radius * 0.1, maxf(radius * (0.045 + 0.016 * cane_squat_hop_intensity), 1.0), Color(squat_scuff.r, squat_scuff.g, squat_scuff.b, squat_scuff.a * 0.9))
 	if chorus_hop:
 		var pulse_alpha := 0.14 + 0.08 * chorus_hop_intensity
 		for pulse_side: float in [-1.0, 0.0, 1.0]:
