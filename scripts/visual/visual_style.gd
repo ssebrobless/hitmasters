@@ -774,6 +774,8 @@ static func _base_mustelid(canvas: CanvasItem, radius: float, forward: Vector2, 
 				canvas.draw_arc(paddle_center - tail_direction * radius * 0.08, radius * (0.54 + 0.1 * beaver_swim_intensity), -PI * 0.1, PI * 0.9, 16, Color(beaver_water.r, beaver_water.g, beaver_water.b, 0.24 + 0.08 * beaver_swim_intensity), maxf(radius * 0.07, 1.2))
 				canvas.draw_line(paddle_center - tail_direction * radius * 0.18, paddle_center + tail_direction * radius * (0.72 + 0.18 * beaver_swim_intensity), Color(beaver_water.r, beaver_water.g, beaver_water.b, 0.2 + 0.1 * beaver_swim_intensity), maxf(radius * 0.08, 1.2))
 				canvas.draw_circle(paddle_center + tail_direction * radius * 0.36, maxf(radius * (0.06 + 0.025 * beaver_swim_intensity), 1.1), Color(beaver_water.r, beaver_water.g, beaver_water.b, 0.22 + 0.1 * beaver_swim_intensity))
+				for slap_side: float in [-1.0, 1.0]:
+					canvas.draw_circle(paddle_center + tail_direction * radius * (0.52 + 0.08 * beaver_swim_intensity) + side * slap_side * radius * 0.24, maxf(radius * (0.04 + 0.018 * beaver_swim_intensity), 1.0), Color(beaver_water.r, beaver_water.g, beaver_water.b, 0.2 + 0.09 * beaver_swim_intensity))
 			if beaver_lumber:
 				canvas.draw_line(paddle_center, paddle_center - forward * radius * (0.38 + 0.08 * beaver_lumber_intensity), Color(beaver_dust.r, beaver_dust.g, beaver_dust.b, beaver_dust.a * 0.8), maxf(radius * 0.06, 1.1))
 				canvas.draw_arc(paddle_center - forward * radius * 0.18, radius * (0.34 + 0.06 * beaver_lumber_intensity), PI * 0.08, PI * 0.92, 10, Color(beaver_dust.r, beaver_dust.g, beaver_dust.b, beaver_dust.a * 0.62), maxf(radius * 0.045, 1.0))
