@@ -12,6 +12,9 @@ const VisualStyle := preload("res://scripts/visual/visual_style.gd")
 const PerfStats := preload("res://scripts/game/perf_stats.gd")
 const SimConstants := preload("res://scripts/sim/sim_constants.gd")
 
+const RENDER_TIMER_BUCKETS := 8.0
+const RENDER_RATIO_BUCKETS := 32.0
+const RENDER_ANGLE_BUCKETS := 32.0
 const AGGRO_RANGE := 260.0
 const DEFENDER_PATROL_RADIUS := 20.0 * SimConstants.UNIT_PX
 const DEFENDER_AGGRO_RANGE := DEFENDER_PATROL_RADIUS
@@ -37,6 +40,7 @@ var target_refresh_timer := 0.0
 var cached_target: Node = null
 var facing := Vector2.RIGHT
 var velocity := Vector2.ZERO
+var _last_render_signature := ""
 
 func setup(minion_arena: Node, minion_team: int, spawn_position: Vector2, minion_kind := "lane", lane_target := Vector2.ZERO, hut: Node = null, slot := 0) -> void:
 	arena = minion_arena
@@ -64,7 +68,8 @@ func setup(minion_arena: Node, minion_team: int, spawn_position: Vector2, minion
 		_:
 			pass
 	health = max_health
-	queue_redraw()
+	_last_render_signature = ""
+	_request_redraw(true)
 
 func is_alive() -> bool:
 	return health > 0.0
@@ -184,9 +189,46 @@ func _move_toward_point(point: Vector2, delta := SimConstants.TICK_DELTA) -> voi
 func _is_enemy_core(target: Node) -> bool:
 	return arena != null and target == arena.get_enemy_core(team)
 
-func _request_redraw() -> void:
-	if arena == null or not arena.has_method("is_near_view") or arena.is_near_view(global_position):
+func _request_redraw(force := false) -> void:
+	if not _is_near_render_view():
+		return
+	var signature := _render_signature()
+	if force or signature != _last_render_signature:
+		_last_render_signature = signature
 		queue_redraw()
+
+func _is_near_render_view() -> bool:
+	return arena == null or not arena.has_method("is_near_view") or arena.is_near_view(global_position)
+
+func get_render_signature() -> String:
+	return _render_signature()
+
+func _render_signature() -> String:
+	var parts := PackedStringArray()
+	parts.append(kind)
+	parts.append(str(team))
+	parts.append(str(_quantized_ratio(health, max_health, RENDER_RATIO_BUCKETS)))
+	parts.append(str(_timer_bucket(attack_commit_timer, 0.25)))
+	parts.append(str(_timer_bucket(attack_timer, attack_cooldown)))
+	parts.append(str(_angle_bucket(facing)))
+	parts.append(str(velocity.length() > 4.0))
+	return "|".join(parts)
+
+func _timer_bucket(value: float, duration: float) -> int:
+	if value <= 0.0 or duration <= 0.0:
+		return 0
+	return _quantized_ratio(value, duration, RENDER_TIMER_BUCKETS)
+
+func _quantized_ratio(value: float, max_value: float, buckets: float) -> int:
+	if max_value <= 0.0:
+		return 0
+	return int(round(clampf(value / max_value, 0.0, 1.0) * buckets))
+
+func _angle_bucket(direction: Vector2) -> int:
+	if direction == Vector2.ZERO:
+		return -1
+	var angle := wrapf(direction.angle(), 0.0, TAU)
+	return int(round(angle / TAU * RENDER_ANGLE_BUCKETS))
 
 func uses_manual_movement_body() -> bool:
 	return true
@@ -196,7 +238,7 @@ func take_damage(amount: float, _source_team: int = -1, _source_actor: Node = nu
 		return
 
 	health = maxf(health - amount, 0.0)
-	queue_redraw()
+	_request_redraw(true)
 
 	if health <= 0.0:
 		if leash_hut != null and is_instance_valid(leash_hut) and leash_hut.has_method("on_defender_died"):

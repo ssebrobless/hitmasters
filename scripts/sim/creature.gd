@@ -52,6 +52,10 @@ const TOXIC_RECOIL_TELL_SEC := 0.22
 const ESCAPE_CURL_TELL_SEC := 0.24
 const PLUNGE_TELL_SEC := 0.20
 const LOW_WINDOW_VISUAL_MAX_SEC := 0.7
+const RENDER_TIMER_BUCKETS := 8.0
+const RENDER_RATIO_BUCKETS := 32.0
+const RENDER_ANGLE_BUCKETS := 32.0
+const RENDER_PHASE_BUCKETS := 16.0
 const VISUAL_SIZE_PROFILES := {
 	"bullfrog": {"model_scale": 1.12, "height_units": 0.32, "height_class": "large_squat"},
 	"chorus_frog": {"model_scale": 0.88, "height_units": 0.26, "height_class": "small_hopper"},
@@ -163,6 +167,7 @@ var respawn_timer := 0.0
 var respawn_duration := 5.0
 var hunger := HUNGER_MAX
 var hunger_satiated := false
+var _last_render_signature := ""
 
 func setup(creature_arena: Node, creature_team: int, spawn_position: Vector2, next_creature_id: String, next_terrain_map: RefCounted = null) -> void:
 	arena = creature_arena
@@ -227,7 +232,8 @@ func apply_creature(next_creature_id: String) -> void:
 	alive = true
 	hunger = HUNGER_MAX
 	hunger_satiated = false
-	queue_redraw()
+	_last_render_signature = ""
+	_request_render_redraw(true)
 
 func set_input_frame(next_frame: Resource) -> void:
 	input_frame = next_frame
@@ -241,8 +247,7 @@ func _physics_process(delta: float) -> void:
 func _process(delta: float) -> void:
 	render_hitstop_timer = maxf(render_hitstop_timer - delta, 0.0)
 	if render_hitstop_timer > 0.0:
-		if arena == null or not arena.has_method("is_near_view") or arena.is_near_view(global_position):
-			queue_redraw()
+		_request_render_redraw()
 		return
 	render_flash_timer = maxf(render_flash_timer - delta, 0.0)
 	render_shake_timer = maxf(render_shake_timer - delta, 0.0)
@@ -257,8 +262,7 @@ func _process(delta: float) -> void:
 	if velocity.length() > 4.0:
 		anim_walk_phase += MovementFeelScript.gait_phase_delta(velocity.length(), delta, _active_movement_profile())
 	_update_render_landing(delta)
-	if arena == null or not arena.has_method("is_near_view") or arena.is_near_view(global_position):
-		queue_redraw()
+	_request_render_redraw()
 
 func tick_sim(delta: float) -> void:
 	if not alive:
@@ -305,31 +309,32 @@ func take_area_damage(amount: float, source_ability := "", source_actor: Node = 
 
 func begin_render_hitstop(duration := HITSTOP_SEC) -> void:
 	render_hitstop_timer = maxf(render_hitstop_timer, duration)
+	_request_render_redraw(true)
 
 func begin_counter_hit_window(duration: float) -> void:
 	counter_hit_window_timer = maxf(counter_hit_window_timer, duration)
 
 func begin_render_toxic_recoil(duration := TOXIC_RECOIL_TELL_SEC) -> void:
 	render_toxic_recoil_timer = maxf(render_toxic_recoil_timer, duration)
-	queue_redraw()
+	_request_render_redraw(true)
 
 func begin_render_escape_curl(duration := ESCAPE_CURL_TELL_SEC) -> void:
 	render_escape_curl_timer = maxf(render_escape_curl_timer, duration)
-	queue_redraw()
+	_request_render_redraw(true)
 
 func begin_render_plunge(duration := PLUNGE_TELL_SEC) -> void:
 	render_plunge_timer = maxf(render_plunge_timer, duration)
-	queue_redraw()
+	_request_render_redraw(true)
 
 func begin_render_takeoff_flap(duration := TAKEOFF_FLAP_TELL_SEC) -> void:
 	render_takeoff_flap_timer = maxf(render_takeoff_flap_timer, duration)
-	queue_redraw()
+	_request_render_redraw(true)
 
 func begin_render_landing_flap(duration := LANDING_FLAP_TELL_SEC, impact := 0.9) -> void:
 	render_landing_flap_timer = maxf(render_landing_flap_timer, duration)
 	render_landing_timer = maxf(render_landing_timer, LANDING_TELL_SEC)
 	render_landing_impact = maxf(render_landing_impact, impact)
-	queue_redraw()
+	_request_render_redraw(true)
 
 func begin_render_terrain_transition(from_surface: String, to_surface: String, duration := TERRAIN_TRANSITION_TELL_SEC) -> void:
 	if from_surface == "" or to_surface == "" or from_surface == to_surface:
@@ -337,7 +342,7 @@ func begin_render_terrain_transition(from_surface: String, to_surface: String, d
 	render_terrain_from_surface = from_surface
 	render_terrain_to_surface = to_surface
 	render_terrain_transition_timer = maxf(render_terrain_transition_timer, duration)
-	queue_redraw()
+	_request_render_redraw(true)
 
 func begin_stealth(duration: float, _source: String) -> void:
 	stealth_timer = duration
@@ -530,7 +535,7 @@ func refresh_team_breeding_buffs() -> void:
 	base_speed_px = _speed_px_for_ground()
 	terrain_speed_target_px = _terrain_target_speed_px(current_terrain_zone)
 	terrain_speed_px = terrain_speed_target_px
-	queue_redraw()
+	_request_render_redraw(true)
 
 func is_satiated() -> bool:
 	return hunger_satiated
@@ -569,7 +574,7 @@ func apply_render_hit_feedback(amount: float, region_mult := 1.0) -> void:
 	render_flash_region_mult = clampf(region_mult, 0.75, 1.35)
 	if amount >= 50.0:
 		render_shake_timer = 0.1
-	queue_redraw()
+	_request_render_redraw(true)
 
 func is_alive() -> bool:
 	return alive
@@ -1294,7 +1299,8 @@ func _respawn() -> void:
 			arena.add_circle_telegraph(global_position, body_radius + 26.0, Color(0.45, 0.72, 1.0, 0.75) if team == 0 else Color(1.0, 0.4, 0.35, 0.75), 0.6, 4.0, true)
 	hunger = HUNGER_MAX
 	hunger_satiated = false
-	queue_redraw()
+	_last_render_signature = ""
+	_request_render_redraw(true)
 
 func _tick_timers(delta: float) -> void:
 	var ability_delta := get_ability_delta(delta)
@@ -1638,6 +1644,84 @@ func _footprint_capsule_half_len_px() -> float:
 
 func get_hurtbox_hull() -> Dictionary:
 	return HurtboxScript.hull_of(self)
+
+func _request_render_redraw(force := false) -> void:
+	if not _is_near_render_view():
+		return
+	var signature := _render_signature()
+	if force or signature != _last_render_signature:
+		_last_render_signature = signature
+		queue_redraw()
+
+func _is_near_render_view() -> bool:
+	return arena == null or not arena.has_method("is_near_view") or arena.is_near_view(global_position)
+
+func get_render_signature() -> String:
+	return _render_signature()
+
+func _render_signature() -> String:
+	var parts := PackedStringArray()
+	parts.append(creature_id)
+	parts.append(str(team))
+	parts.append(str(alive))
+	parts.append(str(visible))
+	parts.append(str(state))
+	parts.append(str(_quantized_ratio(health, max_health, RENDER_RATIO_BUCKETS)))
+	parts.append(str(_quantized_ratio(hunger, HUNGER_MAX, RENDER_RATIO_BUCKETS)))
+	parts.append(str(hunger_satiated))
+	parts.append(str(_quantized_ratio(swim_time_remaining, swim_time_max, RENDER_RATIO_BUCKETS)))
+	parts.append(str(_quantized_ratio(flight_time_remaining, flight_time_max, RENDER_RATIO_BUCKETS)))
+	parts.append(str(_quantized_ratio(secondary_resource, secondary_resource_max, RENDER_RATIO_BUCKETS)))
+	parts.append(secondary_resource_label)
+	parts.append(str(is_airborne()))
+	parts.append(str(is_stealthed()))
+	parts.append(str(has_latch()))
+	parts.append(str(_quantized_ratio(latch_timer, 5.0, RENDER_RATIO_BUCKETS)))
+	parts.append(str(_timer_bucket(render_hitstop_timer, HITSTOP_SEC)))
+	parts.append(str(_timer_bucket(render_flash_timer, 0.1)))
+	parts.append(str(_timer_bucket(render_shake_timer, 0.1)))
+	parts.append(str(_timer_bucket(render_takeoff_flap_timer, TAKEOFF_FLAP_TELL_SEC)))
+	parts.append(str(_timer_bucket(render_landing_flap_timer, LANDING_FLAP_TELL_SEC)))
+	parts.append(str(_timer_bucket(render_landing_timer, LANDING_TELL_SEC)))
+	parts.append(str(_timer_bucket(render_terrain_transition_timer, TERRAIN_TRANSITION_TELL_SEC)))
+	parts.append(str(_timer_bucket(render_toxic_recoil_timer, TOXIC_RECOIL_TELL_SEC)))
+	parts.append(str(_timer_bucket(render_escape_curl_timer, ESCAPE_CURL_TELL_SEC)))
+	parts.append(str(_timer_bucket(render_plunge_timer, PLUNGE_TELL_SEC)))
+	parts.append(str(_timer_bucket(anim_attack_timer, anim_attack_duration)))
+	parts.append(str(_timer_bucket(anim_windup_timer, anim_windup_duration)))
+	parts.append(str(_timer_bucket(low_window_timer, LOW_WINDOW_VISUAL_MAX_SEC)))
+	parts.append(str(_quantized_ratio(wrong_terrain_seconds, WRONG_TERRAIN_GRACE_SEC, RENDER_TIMER_BUCKETS)))
+	parts.append(str(_angle_bucket(get_body_axis())))
+	parts.append(str(_angle_bucket(last_aim_direction)))
+	parts.append(str(velocity.length() > 4.0))
+	parts.append(str(_walk_phase_bucket()))
+	parts.append(str(_quantized_ratio(render_landing_impact, 1.5, RENDER_TIMER_BUCKETS)))
+	parts.append(str(_quantized_ratio(render_flash_region_mult, 2.0, RENDER_TIMER_BUCKETS)))
+	parts.append(render_terrain_from_surface)
+	parts.append(render_terrain_to_surface)
+	parts.append(String(current_environment_profile.get("surface", "")))
+	return "|".join(parts)
+
+func _timer_bucket(value: float, duration: float) -> int:
+	if value <= 0.0 or duration <= 0.0:
+		return 0
+	return _quantized_ratio(value, duration, RENDER_TIMER_BUCKETS)
+
+func _quantized_ratio(value: float, max_value: float, buckets: float) -> int:
+	if max_value <= 0.0:
+		return 0
+	return int(round(clampf(value / max_value, 0.0, 1.0) * buckets))
+
+func _angle_bucket(direction: Vector2) -> int:
+	if direction == Vector2.ZERO:
+		return -1
+	var angle := wrapf(direction.angle(), 0.0, TAU)
+	return int(round(angle / TAU * RENDER_ANGLE_BUCKETS))
+
+func _walk_phase_bucket() -> int:
+	if velocity.length() <= 4.0:
+		return 0
+	return int(round(wrapf(anim_walk_phase, 0.0, TAU) / TAU * RENDER_PHASE_BUCKETS))
 
 func _stat_float(key: String, fallback: float) -> float:
 	var value := _numeric_stat(key, fallback)

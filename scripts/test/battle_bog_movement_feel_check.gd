@@ -42,6 +42,7 @@ func _run() -> void:
 	_check_predator_latch_cues(arena, failures)
 	_check_visual_height_profiles(arena, failures)
 	_check_live_height_hud_read(arena, failures)
+	_check_actor_redraw_signatures(arena, failures)
 
 	print("movement_feel failures=%d" % failures.size())
 	for failure in failures:
@@ -2208,6 +2209,51 @@ func _check_live_height_hud_read(arena: Node, failures: Array[String]) -> void:
 			grounded_text,
 			airborne_text,
 			low_text
+		])
+
+func _check_actor_redraw_signatures(arena: Node, failures: Array[String]) -> void:
+	var actor: Node = arena.player
+	actor.apply_creature("snapping_turtle")
+	actor.global_position = arena.player.global_position
+	actor.velocity = Vector2.ZERO
+	actor.render_hitstop_timer = 0.0
+	actor.render_flash_timer = 0.0
+	actor.render_shake_timer = 0.0
+	actor.anim_attack_timer = 0.0
+	actor.anim_windup_timer = 0.0
+	var idle_signature: String = actor.get_render_signature()
+	actor._process(1.0 / 60.0)
+	var second_idle_signature: String = actor.get_render_signature()
+	actor.begin_render_takeoff_flap()
+	var tell_signature: String = actor.get_render_signature()
+	var bot: Node = arena.bots[0]
+	bot.apply_creature("cane_toad")
+	bot.global_position = arena.player.global_position + Vector2(2000.0, 0.0)
+	bot._last_render_signature = "offscreen-unchanged"
+	bot._request_render_redraw(true)
+	var offscreen_kept_signature: bool = String(bot._last_render_signature) == "offscreen-unchanged"
+	var minion: Node = arena.minions[0] if arena.minions.size() > 0 else null
+	var minion_idle_stable := false
+	var minion_attack_changes := false
+	if minion != null:
+		minion.global_position = arena.player.global_position
+		minion.velocity = Vector2.ZERO
+		minion.attack_commit_timer = 0.0
+		var minion_idle_a: String = minion.get_render_signature()
+		minion._request_redraw()
+		var minion_idle_b: String = minion.get_render_signature()
+		minion.attack_commit_timer = 0.25
+		var minion_attack: String = minion.get_render_signature()
+		minion_idle_stable = minion_idle_a == minion_idle_b
+		minion_attack_changes = minion_attack != minion_idle_a
+	if idle_signature != second_idle_signature or idle_signature == tell_signature or not offscreen_kept_signature or not minion_idle_stable or not minion_attack_changes:
+		failures.append("actor redraws should be gated by compact render signatures and near-view checks; idle=%s/%s tell=%s offscreen=%s minion_stable=%s minion_attack=%s" % [
+			idle_signature,
+			second_idle_signature,
+			tell_signature,
+			str(offscreen_kept_signature),
+			str(minion_idle_stable),
+			str(minion_attack_changes)
 		])
 
 func _check_bird_transition_cues(arena: Node, failures: Array[String]) -> void:
