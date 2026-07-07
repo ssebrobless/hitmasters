@@ -74,6 +74,7 @@ func _draw() -> void:
 		_draw_critter()
 
 func _draw_plant() -> void:
+	_draw_resource_marker()
 	match plant_type:
 		PLANT_TREE:
 			_draw_tree()
@@ -84,6 +85,21 @@ func _draw_plant() -> void:
 		_:
 			_draw_berry_bush()
 	_draw_harvest_pips()
+
+func _draw_resource_marker() -> void:
+	var marker_center := Vector2(0.0, 2.0)
+	var marker_radius := body_radius + (4.5 if plant_type == PLANT_TREE else 3.0)
+	var fill := Color(0.04, 0.08, 0.05, 0.22)
+	var outline := Color(0.36, 0.68, 0.34, 0.62)
+	match plant_type:
+		PLANT_TREE:
+			outline = Color(0.84, 0.66, 0.28, 0.72)
+		PLANT_SEED:
+			outline = Color(0.67, 0.52, 0.28, 0.66)
+		PLANT_FLOWER:
+			outline = Color(0.88, 0.48, 0.82, 0.68)
+	draw_circle(marker_center, marker_radius, fill)
+	draw_arc(marker_center, marker_radius, 0.0, TAU, 28, outline, 1.35, true)
 
 func _plant_body_radius() -> float:
 	match plant_type:

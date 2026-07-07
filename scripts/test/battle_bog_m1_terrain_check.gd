@@ -198,7 +198,47 @@ func _food_resources_ok(food_entries: Array) -> bool:
 	for blue_entry: Dictionary in blue_plants:
 		if not _has_mirrored_food_entry(food_entries, blue_entry):
 			return false
-	return critter_count >= 8
+	return critter_count >= 8 and _plant_scatter_ok(blue_plants)
+
+func _plant_scatter_ok(blue_plants: Array[Dictionary]) -> bool:
+	if blue_plants.size() != 40:
+		return false
+	var unit := SimConstants.UNIT_PX
+	for i in blue_plants.size():
+		var plant: Dictionary = blue_plants[i]
+		var nearest: Array[Dictionary] = blue_plants.duplicate()
+		nearest.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+			var plant_position: Vector2 = plant.get("position", Vector2.ZERO)
+			return plant_position.distance_squared_to(a.get("position", Vector2.ZERO)) < plant_position.distance_squared_to(b.get("position", Vector2.ZERO))
+		)
+		var nearby_types := {}
+		for n in mini(4, nearest.size()):
+			nearby_types[String(nearest[n].get("plant_type", ""))] = true
+		if nearby_types.size() < 2:
+			return false
+		for j in range(i + 1, blue_plants.size()):
+			var other: Dictionary = blue_plants[j]
+			var plant_position: Vector2 = plant.get("position", Vector2.ZERO)
+			var other_position: Vector2 = other.get("position", Vector2.ZERO)
+			var distance_units := plant_position.distance_to(other_position) / unit
+			if distance_units < 12.0:
+				return false
+	var spatial_order: Array[Dictionary] = blue_plants.duplicate()
+	spatial_order.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return a.get("position", Vector2.ZERO).x < b.get("position", Vector2.ZERO).x
+	)
+	var previous_type := ""
+	var run_length := 0
+	for plant: Dictionary in spatial_order:
+		var plant_type := String(plant.get("plant_type", ""))
+		if plant_type == previous_type:
+			run_length += 1
+		else:
+			previous_type = plant_type
+			run_length = 1
+		if run_length > 2:
+			return false
+	return true
 
 func _environmental_obstacles_ok(obstacles: Array) -> bool:
 	if obstacles.size() < 20:
