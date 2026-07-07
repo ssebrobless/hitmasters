@@ -29,7 +29,7 @@ is the action list.
 | 1 | Static terrain drawn ONCE on a child node (animated ripples on their own small node) | HIGH | M |
 | 2 | Minions: Node2D + manual movement instead of CharacterBody2D/move_and_slide | HIGH | M-L |
 | 3 | queue_redraw only on state change; skip off-screen entity redraws | HIGH | M |
-| 4 | LOS: segment-vs-rect intersection instead of 20px point stepping | MED-HIGH | S |
+| 4 | LOS: segment-vs-rect intersection instead of 20px point stepping - DONE (M8 slab test) | MED-HIGH | S |
 | 5 | Cache compiled RegEx / pre-parse ability numbers at kit load - DONE (M8 parse cache) | MED | S |
 | 6 | Minimap at 5-10 Hz with baked background - DONE (M8 static backdrop) | MED | S |
 | 7 | Bot/minion target queries on 0.1-0.2s timers | MED | S |

@@ -51,6 +51,7 @@ func _run() -> void:
 		return
 
 	var failures: Array[String] = []
+	_check_exact_los_segments(arena, failures)
 	_check_area_delivery(arena, failures)
 	_check_environment_delivery(arena, failures)
 	_check_region_hit_feedback(arena, failures)
@@ -90,6 +91,24 @@ func _check_area_delivery(arena: Node, failures: Array[String]) -> void:
 			owl.state,
 			str(not no_melee_retaliation),
 			toad.health
+		])
+
+func _check_exact_los_segments(arena: Node, failures: Array[String]) -> void:
+	var original_cover_rects: Array = arena.cover_rects.duplicate()
+	arena.cover_rects = [Rect2(Vector2(40.0, 40.0), Vector2(30.0, 30.0))]
+	var diagonal_blocked: bool = not bool(arena.has_line_of_sight(Vector2.ZERO, Vector2(100.0, 100.0), 0.0))
+	var endpoint_blocked: bool = not bool(arena.has_line_of_sight(Vector2.ZERO, Vector2(45.0, 45.0), 0.0))
+	var near_miss_clear: bool = bool(arena.has_line_of_sight(Vector2(0.0, 35.0), Vector2(100.0, 35.0), 0.0))
+	var radius_grow_blocked: bool = not bool(arena.has_line_of_sight(Vector2(0.0, 35.0), Vector2(100.0, 35.0), 6.0))
+	var projectile_blocked: bool = bool(arena.projectile_crosses_cover(Vector2.ZERO, Vector2(100.0, 100.0), 0.0))
+	arena.cover_rects = original_cover_rects
+	if not diagonal_blocked or not endpoint_blocked or not near_miss_clear or not radius_grow_blocked or not projectile_blocked:
+		failures.append("LOS should use exact segment-vs-cover, with clear tangent misses, radius-grown blocking, endpoint blocking, and projectile blocking; diagonal=%s endpoint=%s near_miss=%s radius=%s projectile=%s" % [
+			str(diagonal_blocked),
+			str(endpoint_blocked),
+			str(near_miss_clear),
+			str(radius_grow_blocked),
+			str(projectile_blocked)
 		])
 
 func _check_environment_delivery(arena: Node, failures: Array[String]) -> void:
