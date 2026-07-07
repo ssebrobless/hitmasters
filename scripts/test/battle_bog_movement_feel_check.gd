@@ -2399,7 +2399,15 @@ func _all_roster_creatures_have_silhouette_contract(arena: Node) -> bool:
 		var mass_ok := filled_mult > 0.0 and filled_mult <= float(state.get("wide_filled_overhang_limit_mult", 1.15))
 		var overhang_ok := thin_mult >= filled_mult and thin_mult <= 1.65
 		var shadow_ok := bool(state.get("contact_shadow_ellipse", false))
-		if not archetype_ok or not mass_ok or not overhang_ok or not shadow_ok or features.is_empty():
+		var capsule_half_len := float(state.get("capsule_half_len_px", 0.0))
+		var footprint_length := float(state.get("footprint_length_px", 0.0))
+		var long_body_length := float(state.get("long_body_visual_length_px", 0.0))
+		var long_body_ok := true
+		if creature_id == "water_snake" or creature_id == "alligator":
+			long_body_ok = capsule_half_len > 0.0 and long_body_length >= footprint_length and footprint_length > float(state.get("combat_radius_px", 0.0)) * 2.0
+		elif capsule_half_len > 0.0:
+			long_body_ok = false
+		if not archetype_ok or not mass_ok or not overhang_ok or not shadow_ok or features.is_empty() or not long_body_ok:
 			return false
 	return true
 

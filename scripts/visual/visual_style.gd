@@ -59,7 +59,7 @@ static func creature_color(creature_id: String) -> Color:
 	var creature_hash: int = abs(hash(creature_id))
 	return Color.from_hsv(float(creature_hash % 360) / 360.0, 0.58, 0.92)
 
-static func creature_silhouette_contract(creature_id: String, body_radius: float, model_scale := 1.0) -> Dictionary:
+static func creature_silhouette_contract(creature_id: String, body_radius: float, model_scale := 1.0, capsule_half_len_px := 0.0) -> Dictionary:
 	var skin: Dictionary = SKINS.get(creature_id, {})
 	var base := String(skin.get("base", "blob"))
 	var contract: Dictionary = SILHOUETTE_CONTRACTS.get(base, {
@@ -70,6 +70,10 @@ static func creature_silhouette_contract(creature_id: String, body_radius: float
 	var visual_radius := body_radius * clampf(model_scale, 0.72, 1.35)
 	var filled_mass_mult := float(contract.get("filled_mass_mult", 1.0))
 	var thin_overhang_mult := float(contract.get("thin_overhang_mult", 1.0))
+	var footprint_length_px := body_radius * 2.0 + maxf(capsule_half_len_px, 0.0) * 2.0
+	var long_body_visual_length_px := visual_radius * thin_overhang_mult * 2.0
+	if capsule_half_len_px > 0.0 and (base == "serpent" or base == "croc"):
+		long_body_visual_length_px = maxf(long_body_visual_length_px, footprint_length_px)
 	return {
 		"creature_id": creature_id,
 		"archetype": base,
@@ -82,6 +86,9 @@ static func creature_silhouette_contract(creature_id: String, body_radius: float
 		"wide_filled_overhang_limit_mult": 1.15,
 		"thin_overhang_radius_px": body_radius * thin_overhang_mult,
 		"thin_overhang_radius_mult": thin_overhang_mult,
+		"capsule_half_len_px": maxf(capsule_half_len_px, 0.0),
+		"footprint_length_px": footprint_length_px,
+		"long_body_visual_length_px": long_body_visual_length_px,
 		"contact_shadow_ellipse": true
 	}
 
@@ -1269,6 +1276,10 @@ static func _base_serpent(canvas: CanvasItem, radius: float, forward: Vector2, s
 	var mud_slither := land_slither and bool(anim.get("water_snake_mud_slither", false))
 	var coil_pose := String(anim.get("creature_id", "")) == "water_snake" and bool(anim.get("water_snake_coil_pose", false))
 	var slither := slither_amp if moving else 0.3 * slither_amp
+	var visual_length := maxf(float(anim.get("long_body_visual_length_px", radius * 3.1)), radius * 3.1)
+	var point_span := maxf(radius * 3.1, visual_length - radius * 0.8)
+	var head_along := point_span * 0.34
+	var tail_along := -point_span * 0.66
 	if water_slither:
 		slither += 0.42 * water_slither_intensity
 	if land_slither:
@@ -1278,7 +1289,7 @@ static func _base_serpent(canvas: CanvasItem, radius: float, forward: Vector2, s
 	var points: Array[Vector2] = []
 	for i in segments:
 		var t := float(i) / float(segments - 1)
-		var along := lerpf(0.9, -2.2, t) * radius
+		var along := lerpf(head_along, tail_along, t)
 		var sway := sin(walk_phase * 1.6 + t * 4.2) * radius * 0.3 * slither * t
 		points.append(forward * along + side * sway)
 	if water_slither:

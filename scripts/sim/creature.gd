@@ -729,7 +729,7 @@ func get_render_motion_state() -> Dictionary:
 	var air_attack_scale_bonus := float(visual_size_profile.get("air_attack_model_scale_bonus", 0.0)) * air_attack_release_t
 	var visual_model_scale := minf(1.35, base_model_scale + low_window_scale_bonus + air_attack_scale_bonus)
 	var visual_radius_px := body_radius * visual_model_scale
-	var silhouette_contract := VisualStyle.creature_silhouette_contract(creature_id, body_radius, visual_model_scale)
+	var silhouette_contract := VisualStyle.creature_silhouette_contract(creature_id, body_radius, visual_model_scale, body_capsule_half_len_px)
 	var air_attack_cue_radius_px := visual_radius_px * (1.12 + air_attack_cue_t * 0.22) if air_attack_cue else 0.0
 	var airborne_visual := is_airborne() or state == CreatureStateScript.State.PERCHED
 	var height_shadow_alpha := _height_shadow_alpha(visual_height_units, low_window_t, airborne_visual)
@@ -749,6 +749,9 @@ func get_render_motion_state() -> Dictionary:
 		"wide_filled_overhang_limit_mult": float(silhouette_contract.get("wide_filled_overhang_limit_mult", 1.15)),
 		"thin_overhang_radius_px": float(silhouette_contract.get("thin_overhang_radius_px", 0.0)),
 		"thin_overhang_radius_mult": float(silhouette_contract.get("thin_overhang_radius_mult", 0.0)),
+		"capsule_half_len_px": float(silhouette_contract.get("capsule_half_len_px", 0.0)),
+		"footprint_length_px": float(silhouette_contract.get("footprint_length_px", body_radius * 2.0)),
+		"long_body_visual_length_px": float(silhouette_contract.get("long_body_visual_length_px", visual_radius_px * 2.0)),
 		"contact_shadow_ellipse": bool(silhouette_contract.get("contact_shadow_ellipse", false)),
 		"low_window_model_scale_bonus": low_window_scale_bonus,
 		"air_attack_model_scale_bonus": air_attack_scale_bonus,
