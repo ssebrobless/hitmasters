@@ -72,6 +72,7 @@ const BREEDING_BUFF_LABEL_BY_FAMILY := {
 	"mammal": "MAMM",
 	"crawly": "CRAW"
 }
+const MATCH_SUMMARY_SCHEMA := "battle_bog_match_summary_v1"
 const MATCH_LOG_DIR := "user://battle_bog_match_logs"
 
 var entities: Array[Node] = []
@@ -2597,6 +2598,7 @@ func _get_match_summary(winner: String) -> String:
 
 func get_match_summary_data(winner := "", reason := "") -> Dictionary:
 	return {
+		"schema": MATCH_SUMMARY_SCHEMA,
 		"winner": winner,
 		"reason": reason,
 		"time": _format_match_time(elapsed),
@@ -2609,6 +2611,7 @@ func get_match_summary_data(winner := "", reason := "") -> Dictionary:
 			"blue": _team_match_summary_data(BLUE),
 			"red": _team_match_summary_data(RED)
 		},
+		"balance_deltas": _match_balance_deltas(),
 		"players": _player_match_summary_rows()
 	}
 
@@ -2672,6 +2675,23 @@ func _team_match_summary_data(team: int) -> Dictionary:
 		"wildlife_defeats": int(stats.get("wildlife_defeats", 0)),
 		"buffs": _format_breeding_buff_line(team),
 		"buff_summary": get_team_breeding_buff_summary(team)
+	}
+
+func _match_balance_deltas() -> Dictionary:
+	var blue := _team_match_summary_data(BLUE)
+	var red := _team_match_summary_data(RED)
+	var blue_buffs: Dictionary = blue.get("buff_summary", {})
+	var red_buffs: Dictionary = red.get("buff_summary", {})
+	return {
+		"stock_remaining_delta": int(blue.get("stocks_remaining", 0)) - int(red.get("stocks_remaining", 0)),
+		"stock_loss_delta": int(blue.get("stock_losses", 0)) - int(red.get("stock_losses", 0)),
+		"deposit_delta": int(blue.get("deposits", 0)) - int(red.get("deposits", 0)),
+		"breed_complete_delta": int(blue.get("breeds_completed", 0)) - int(red.get("breeds_completed", 0)),
+		"breed_deny_delta": int(blue.get("breeds_denied", 0)) - int(red.get("breeds_denied", 0)),
+		"hut_damage_delta": float(blue.get("hut_damage", 0.0)) - float(red.get("hut_damage", 0.0)),
+		"core_damage_delta": float(blue.get("core_damage", 0.0)) - float(red.get("core_damage", 0.0)),
+		"wildlife_delta": int(blue.get("wildlife_defeats", 0)) - int(red.get("wildlife_defeats", 0)),
+		"buff_stack_delta": int(blue_buffs.get("total_stacks", 0)) - int(red_buffs.get("total_stacks", 0))
 	}
 
 func _team_stock_totals(team: int) -> Dictionary:
