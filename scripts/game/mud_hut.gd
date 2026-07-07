@@ -19,6 +19,8 @@ var lane_index := 0
 var max_health := 800.0
 var health := 800.0
 var body_radius := 30.0
+var last_damage_source_team := -1
+var last_damage_source_actor: Node = null
 var respawn_queue: Array[Dictionary] = []
 var defenders: Array[Node] = []
 
@@ -46,7 +48,14 @@ func get_team_accent_color(alpha := 1.0) -> Color:
 func take_damage(amount: float, _source_team: int = -1, _source_actor: Node = null) -> void:
 	if health <= 0.0:
 		return
+	var previous_health := health
 	health = maxf(health - amount, 0.0)
+	var actual_damage := previous_health - health
+	if actual_damage > 0.0:
+		last_damage_source_team = _source_team
+		last_damage_source_actor = _source_actor
+		if arena != null and arena.has_method("record_hut_damage"):
+			arena.record_hut_damage(_source_team, actual_damage, _source_actor)
 	queue_redraw()
 	if health <= 0.0:
 		_destroyed()

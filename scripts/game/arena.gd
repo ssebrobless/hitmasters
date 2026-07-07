@@ -115,8 +115,8 @@ const CAMERA_LEAD_FRACTION := 0.32
 const CAMERA_LEAD_MAX := 150.0
 var actor_stats: Dictionary = {}
 var team_stats := {
-	BLUE: {"kills": 0, "deaths": 0, "core_damage": 0.0},
-	RED: {"kills": 0, "deaths": 0, "core_damage": 0.0}
+	BLUE: {"kills": 0, "deaths": 0, "core_damage": 0.0, "hut_damage": 0.0, "huts_destroyed": 0, "stock_losses": 0, "deposits": 0, "breeds_completed": 0, "breeds_denied": 0, "wildlife_defeats": 0},
+	RED: {"kills": 0, "deaths": 0, "core_damage": 0.0, "hut_damage": 0.0, "huts_destroyed": 0, "stock_losses": 0, "deposits": 0, "breeds_completed": 0, "breeds_denied": 0, "wildlife_defeats": 0}
 }
 var kill_feed: Array[Dictionary] = []
 var terrain_map: RefCounted = TerrainMapScript.new()
@@ -362,6 +362,7 @@ func _build_ui() -> void:
 
 func _spawn_match() -> void:
 	_seed_match_rng()
+	_reset_match_telemetry()
 	_clear_breeding_actors()
 	stock_manager.reset()
 	_reset_breeding_buffs()
@@ -627,6 +628,8 @@ func on_breeding_actor_defeated(actor: Node, source_actor: Node = null) -> void:
 		return
 	var cue_id := String(actor.get("cue_id"))
 	var cue: Dictionary = stock_manager.remove_breeding_cue(cue_id)
+	if source_actor != null and is_instance_valid(source_actor) and source_actor.get("team") != null:
+		_record_team_actor_stat(int(source_actor.team), "breeds_denied", 1, source_actor)
 	breeding_actors.erase(actor)
 	unregister_entity(actor)
 	var attacker_name: String = source_actor.get_actor_name() if source_actor != null and is_instance_valid(source_actor) and source_actor.has_method("get_actor_name") else "Raiders"
@@ -678,6 +681,8 @@ func _complete_breeding_cue(cue: Dictionary) -> void:
 	var family := String(cue.get("family", ""))
 	var creature_id := String(cue.get("creature_id", "animal"))
 	var result := _add_breeding_buff_stack(team, family)
+	var cue_actor: Node = cue.get("actor", null)
+	_record_team_actor_stat(team, "breeds_completed", 1, cue_actor)
 	_record_bred_animal()
 	if bool(result.get("accepted", false)):
 		add_kill_feed("%s breeding complete: %s +%d%% %s" % [
@@ -846,6 +851,7 @@ func on_wildlife_defeated(encounter: Node, source_actor: Node = null) -> void:
 	wildlife_encounters.erase(encounter)
 	unregister_entity(encounter)
 	var defeat_team := _wildlife_defeat_team(source_actor)
+	_record_team_actor_stat(defeat_team, "wildlife_defeats", 1, source_actor)
 	var zone_index := _animal_zone_index(String(encounter.get("zone_id")))
 	if zone_index >= 0:
 		var zone: Dictionary = animal_zone_states[zone_index]
@@ -1453,6 +1459,9 @@ func _team_has_huts(defending_team: int) -> bool:
 func on_hut_destroyed(hut: Node) -> void:
 	huts.erase(hut)
 	huts_lost[hut.team] = int(huts_lost.get(hut.team, 0)) + 1
+	var attacking_team := int(hut.get("last_damage_source_team")) if hut.get("last_damage_source_team") != null else -1
+	if attacking_team == BLUE or attacking_team == RED:
+		team_stats[attacking_team]["huts_destroyed"] += 1
 	var team_name := _team_name(hut.team)
 	add_kill_feed("%s mud hut destroyed — %s habitat exposed!" % [team_name, team_name])
 	add_circle_telegraph(cores[hut.team].global_position, 90.0, Color(1.0, 0.6, 0.2, 0.8), 1.0, 5.0, true)
@@ -1656,6 +1665,8 @@ func _consume_stock_for_death(victim: Node) -> void:
 		return
 	var respawn_duration := float(victim.get("respawn_duration") if victim.get("respawn_duration") != null else 5.0)
 	var slot: Dictionary = stock_manager.record_ko(victim, respawn_duration)
+	if not slot.is_empty():
+		_record_team_actor_stat(victim.team, "stock_losses", 1, victim)
 	var remaining := int(slot.get("stocks_remaining", 0))
 	var max_stocks := int(slot.get("max_stocks", StockManagerScript.MAX_STOCKS))
 	if String(slot.get("state", "")) == StockManagerScript.STATE_EXHAUSTED:
@@ -1713,10 +1724,10 @@ func _show_core_shielded(core: Node) -> void:
 	})
 
 func record_core_damage(source_team: int, amount: float, source_actor: Node = null) -> void:
-	team_stats[source_team]["core_damage"] += amount
-	if source_actor != null and is_instance_valid(source_actor) and source_actor.has_method("is_scored_actor") and source_actor.is_scored_actor():
-		_ensure_actor_stats(source_actor)
-		actor_stats[_get_actor_key(source_actor)]["core_damage"] += amount
+	_record_team_actor_stat(source_team, "core_damage", amount, source_actor)
+
+func record_hut_damage(source_team: int, amount: float, source_actor: Node = null) -> void:
+	_record_team_actor_stat(source_team, "hut_damage", amount, source_actor)
 
 func get_core_damage_multiplier(_team: int) -> float:
 	return 1.0
@@ -2465,11 +2476,51 @@ func _ensure_actor_stats(actor: Node) -> void:
 		"team": actor.team,
 		"kills": 0,
 		"deaths": 0,
-		"core_damage": 0.0
+		"core_damage": 0.0,
+		"hut_damage": 0.0,
+		"stock_losses": 0,
+		"deposits": 0,
+		"breeds_completed": 0,
+		"breeds_denied": 0,
+		"wildlife_defeats": 0
 	}
 
 func _get_actor_key(actor: Node) -> String:
 	return str(actor.get_instance_id())
+
+func _reset_match_telemetry() -> void:
+	actor_stats.clear()
+	team_stats = {
+		BLUE: _new_team_stats(),
+		RED: _new_team_stats()
+	}
+
+func _new_team_stats() -> Dictionary:
+	return {
+		"kills": 0,
+		"deaths": 0,
+		"core_damage": 0.0,
+		"hut_damage": 0.0,
+		"huts_destroyed": 0,
+		"stock_losses": 0,
+		"deposits": 0,
+		"breeds_completed": 0,
+		"breeds_denied": 0,
+		"wildlife_defeats": 0
+	}
+
+func _record_team_actor_stat(team: int, stat: String, amount: Variant, actor: Node = null) -> void:
+	if team != BLUE and team != RED:
+		return
+	if not team_stats[team].has(stat):
+		team_stats[team][stat] = 0
+	team_stats[team][stat] += amount
+	if actor != null and is_instance_valid(actor) and actor.has_method("is_scored_actor") and actor.is_scored_actor():
+		_ensure_actor_stats(actor)
+		var key := _get_actor_key(actor)
+		if not actor_stats[key].has(stat):
+			actor_stats[key][stat] = 0
+		actor_stats[key][stat] += amount
 
 func _get_scoreboard_text() -> String:
 	var blue: Dictionary = team_stats[BLUE]
@@ -2509,16 +2560,84 @@ func _format_breeding_buff_line(team: int) -> String:
 	return " ".join(chunks)
 
 func _get_match_summary(winner: String) -> String:
-	var blue: Dictionary = team_stats[BLUE]
-	var red: Dictionary = team_stats[RED]
-	return "Match Summary: %s victory at %s | Blue %dK %dDmg | Red %dK %dDmg" % [
-		winner,
-		_format_match_time(elapsed),
-		blue["kills"],
-		int(blue["core_damage"]),
-		red["kills"],
-		int(red["core_damage"]),
+	return "\n".join([
+		"Match Summary: %s victory at %s" % [winner, _format_match_time(elapsed)],
+		_format_team_match_summary_line(BLUE),
+		_format_team_match_summary_line(RED)
+	])
+
+func get_match_summary_data(winner := "") -> Dictionary:
+	return {
+		"winner": winner,
+		"time": _format_match_time(elapsed),
+		"teams": {
+			"blue": _team_match_summary_data(BLUE),
+			"red": _team_match_summary_data(RED)
+		},
+		"players": _player_match_summary_rows()
+	}
+
+func _format_team_match_summary_line(team: int) -> String:
+	var data := _team_match_summary_data(team)
+	return "%s: %dK/%dD | Stocks lost %d/%d | Deposits %d | Breeds %d/%d denied | HutDmg %d | CoreDmg %d | Wildlife %d | Buffs %s" % [
+		String(data.get("name", "")),
+		int(data.get("kills", 0)),
+		int(data.get("deaths", 0)),
+		int(data.get("stock_losses", 0)),
+		int(data.get("max_stocks", 0)),
+		int(data.get("deposits", 0)),
+		int(data.get("breeds_completed", 0)),
+		int(data.get("breeds_denied", 0)),
+		int(data.get("hut_damage", 0)),
+		int(data.get("core_damage", 0)),
+		int(data.get("wildlife_defeats", 0)),
+		String(data.get("buffs", "none"))
 	]
+
+func _team_match_summary_data(team: int) -> Dictionary:
+	var stats: Dictionary = team_stats[team]
+	var stocks := _team_stock_totals(team)
+	return {
+		"name": _team_name(team),
+		"kills": int(stats.get("kills", 0)),
+		"deaths": int(stats.get("deaths", 0)),
+		"core_damage": float(stats.get("core_damage", 0.0)),
+		"hut_damage": float(stats.get("hut_damage", 0.0)),
+		"huts_destroyed": int(stats.get("huts_destroyed", 0)),
+		"stock_losses": int(stats.get("stock_losses", 0)),
+		"stocks_remaining": int(stocks.get("remaining", 0)),
+		"max_stocks": int(stocks.get("max", 0)),
+		"deposits": int(stats.get("deposits", 0)),
+		"breeds_completed": int(stats.get("breeds_completed", 0)),
+		"breeds_denied": int(stats.get("breeds_denied", 0)),
+		"wildlife_defeats": int(stats.get("wildlife_defeats", 0)),
+		"buffs": _format_breeding_buff_line(team),
+		"buff_summary": get_team_breeding_buff_summary(team)
+	}
+
+func _team_stock_totals(team: int) -> Dictionary:
+	var totals := {"remaining": 0, "max": 0}
+	if stock_manager == null or not stock_manager.has_method("get_team_slots"):
+		return totals
+	for slot: Dictionary in stock_manager.get_team_slots(team):
+		totals["remaining"] = int(totals["remaining"]) + int(slot.get("stocks_remaining", 0))
+		totals["max"] = int(totals["max"]) + int(slot.get("max_stocks", 0))
+	return totals
+
+func _player_match_summary_rows() -> Array[Dictionary]:
+	var rows: Array[Dictionary] = []
+	for key in actor_stats.keys():
+		var stats: Dictionary = actor_stats[key]
+		rows.append(stats.duplicate(true))
+	rows.sort_custom(Callable(self, "_sort_player_summary_rows"))
+	return rows
+
+func _sort_player_summary_rows(a: Dictionary, b: Dictionary) -> bool:
+	var team_a := int(a.get("team", 0))
+	var team_b := int(b.get("team", 0))
+	if team_a != team_b:
+		return team_a < team_b
+	return String(a.get("name", "")) < String(b.get("name", ""))
 
 func _format_match_time(seconds: float) -> String:
 	var total_seconds := int(floor(seconds))
@@ -2561,6 +2680,7 @@ func _try_manual_habitat_deposit(actor: Node) -> bool:
 	if actor.has_method("reset_hunger_after_deposit") and actor.has_method("is_satiated") and actor.is_satiated():
 		actor.reset_hunger_after_deposit()
 	habitat_deposit_prompt_state = "accepted"
+	_record_team_actor_stat(actor.team, "deposits", 1, actor)
 	var duration := float(cue.get("duration", StockManagerScript.BREEDING_DURATION_SEC)) if not cue.is_empty() else StockManagerScript.BREEDING_DURATION_SEC
 	add_kill_feed("%s deposited at habitat; breeding %.0fs" % [actor.get_actor_name(), duration])
 	return true
