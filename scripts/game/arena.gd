@@ -322,6 +322,7 @@ func _build_ui() -> void:
 	root.add_child(help_label)
 
 	var minimap := MinimapScript.new()
+	minimap.name = "Minimap"
 	minimap.arena = self
 	minimap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	minimap.offset_left = -252.0

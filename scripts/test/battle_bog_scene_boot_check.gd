@@ -92,9 +92,11 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 	var player: Node = scene.get("player")
 	var camera: Camera2D = scene.get("camera")
 	var status_label: Label = scene.get("status_label")
+	var minimap: Node = scene.find_child("Minimap", true, false)
 	var lane_minions := _count_lane_minions(minions)
 	var wave_interval := float(scene.get("wave_interval"))
 	var hunger_sec := float(scene.get_hunger_full_to_empty_sec()) if scene.has_method("get_hunger_full_to_empty_sec") else -1.0
+	var minimap_backdrop_ok := minimap != null and minimap.has_method("has_static_backdrop") and bool(minimap.call("has_static_backdrop"))
 
 	var ok := squad.size() == expected_squad_size \
 		and bots.size() == expected_bot_count \
@@ -105,9 +107,12 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 		and absf(hunger_sec - expected_hunger_sec) < 0.001 \
 		and player != null \
 		and camera != null \
-		and status_label != null
+		and status_label != null \
+		and minimap != null \
+		and minimap.has_method("has_static_backdrop") \
+		and minimap_backdrop_ok
 	if not ok:
-		failures.append("Arena %s expected squad=%d bots=%d cores=2 huts=%d lane_minions=%d wave=%.1f hunger=%.1f player/camera/status; got squad=%d bots=%d cores=%d huts=%d lane_minions=%d wave=%.1f hunger=%.1f player=%s camera=%s status=%s" % [
+		failures.append("Arena %s expected squad=%d bots=%d cores=2 huts=%d lane_minions=%d wave=%.1f hunger=%.1f player/camera/status/minimap backdrop; got squad=%d bots=%d cores=%d huts=%d lane_minions=%d wave=%.1f hunger=%.1f player=%s camera=%s status=%s minimap=%s backdrop=%s" % [
 			mode,
 			expected_squad_size,
 			expected_bot_count,
@@ -124,7 +129,9 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 			hunger_sec,
 			str(player != null),
 			str(camera != null),
-			str(status_label != null)
+			str(status_label != null),
+			str(minimap != null),
+			str(minimap_backdrop_ok)
 		])
 	return ok
 

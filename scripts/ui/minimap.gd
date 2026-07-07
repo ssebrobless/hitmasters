@@ -1,12 +1,16 @@
 extends Control
 
-const TerrainMapScript := preload("res://scripts/sim/terrain_map.gd")
 const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
+const MinimapBackdropScript := preload("res://scripts/ui/minimap_backdrop.gd")
 
 const MAP_WIDTH := 232.0
 
 var arena: Node = null
 var redraw_accumulator := 0.0
+var static_backdrop: Control = null
+
+func _ready() -> void:
+	_ensure_static_backdrop()
 
 func _process(delta: float) -> void:
 	# 8 Hz is plenty for a minimap.
@@ -15,21 +19,18 @@ func _process(delta: float) -> void:
 		redraw_accumulator = 0.0
 		queue_redraw()
 
+func has_static_backdrop() -> bool:
+	return static_backdrop != null and is_instance_valid(static_backdrop)
+
 func _draw() -> void:
 	if arena == null or not is_instance_valid(arena):
 		return
+	_ensure_static_backdrop()
 	var world: Rect2 = arena.arena_rect
 	if world.size.x <= 0.0:
 		return
 	var map_scale := MAP_WIDTH / world.size.x
 	var map_size := world.size * map_scale
-	draw_rect(Rect2(Vector2.ZERO, map_size).grow(3.0), Color(0.03, 0.04, 0.03, 0.9))
-	for layer in arena.terrain_map.zone_layers:
-		var zone := String(layer["zone"])
-		for rect: Rect2 in layer["rects"]:
-			var mini := Rect2((rect.position - world.position) * map_scale, rect.size * map_scale)
-			draw_rect(mini, VisualGrammar.terrain_color(zone, 1.0, true))
-	_draw_bridge_overlays(world, map_scale)
 	_draw_animal_zone_overlays(world, map_scale)
 	_draw_food_overlays(world, map_scale)
 
@@ -83,13 +84,15 @@ func _draw() -> void:
 
 	draw_rect(Rect2(Vector2.ZERO, map_size), Color(0.5, 0.55, 0.45, 0.7), false, 1.5)
 
-func _draw_bridge_overlays(world: Rect2, map_scale: float) -> void:
-	if arena.terrain_map == null or not arena.terrain_map.has_method("get_land_bridge_rects"):
+func _ensure_static_backdrop() -> void:
+	if has_static_backdrop():
 		return
-	for rect: Rect2 in arena.terrain_map.get_land_bridge_rects():
-		var mini := Rect2((rect.position - world.position) * map_scale, rect.size * map_scale)
-		draw_rect(mini.grow(1.0), Color(0.08, 0.08, 0.04, 0.48))
-		draw_rect(mini, Color(0.48, 0.42, 0.24, 0.72))
+	static_backdrop = MinimapBackdropScript.new()
+	static_backdrop.name = "StaticBackdrop"
+	static_backdrop.set("arena", arena)
+	static_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	static_backdrop.show_behind_parent = true
+	add_child(static_backdrop)
 
 func _draw_animal_zone_overlays(world: Rect2, map_scale: float) -> void:
 	if arena == null or arena.get("animal_zone_states") == null:
