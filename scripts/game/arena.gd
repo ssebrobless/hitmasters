@@ -2602,6 +2602,9 @@ func get_match_summary_data(winner := "", reason := "") -> Dictionary:
 		"time": _format_match_time(elapsed),
 		"elapsed_sec": elapsed,
 		"mode": GameConfig.selected_mode,
+		"selected_creature_id": GameConfig.selected_creature_id,
+		"selected_squad_ids": GameConfig.get_selected_squad_ids() if GameConfig.has_method("get_selected_squad_ids") else [GameConfig.selected_creature_id],
+		"draft": GameConfig.get_draft_stub_state() if GameConfig.has_method("get_draft_stub_state") else {},
 		"teams": {
 			"blue": _team_match_summary_data(BLUE),
 			"red": _team_match_summary_data(RED)

@@ -66,6 +66,8 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 	var teams: Dictionary = summary.get("teams", {})
 	var blue: Dictionary = teams.get("blue", {})
 	var red: Dictionary = teams.get("red", {})
+	var draft: Dictionary = summary.get("draft", {})
+	var selected_squad: Array = summary.get("selected_squad_ids", [])
 	var text: String = arena._get_match_summary("Blue")
 	var scoreboard_text: String = arena._get_scoreboard_text()
 	var player_rows: Array = summary.get("players", [])
@@ -80,7 +82,12 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and float(blue.get("hut_damage", 0.0)) >= 799.0 \
 		and int(blue.get("core_damage", 0)) == 123 \
 		and int(blue.get("max_stocks", 0)) == 9 \
-		and int(blue.get("stocks_remaining", 0)) == 8
+		and int(blue.get("stocks_remaining", 0)) == 8 \
+		and String(summary.get("selected_creature_id", "")) == "duck" \
+		and selected_squad.size() == 3 \
+		and selected_squad.has("duck") \
+		and bool(draft.get("enabled", false)) \
+		and int(draft.get("ban_slots_per_team", 0)) == 1
 	var text_ok: bool = text.contains("Stocks lost 1/9") \
 		and text.contains("Deposits 2") \
 		and text.contains("Breeds 1/0 denied") \
@@ -108,10 +115,16 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 	var log_teams: Dictionary = log_data.get("teams", {})
 	var log_blue: Dictionary = log_teams.get("blue", {})
 	var log_red: Dictionary = log_teams.get("red", {})
+	var log_draft: Dictionary = log_data.get("draft", {})
+	var log_squad: Array = log_data.get("selected_squad_ids", [])
 	var log_ok := bool(log_state.get("ok", false)) \
 		and bool(arena.match_over) \
 		and String(log_data.get("winner", "")) == "Blue" \
 		and String(log_data.get("reason", "")) == "test_summary" \
+		and String(log_data.get("selected_creature_id", "")) == "duck" \
+		and log_squad.has("snapping_turtle") \
+		and bool(log_draft.get("enabled", false)) \
+		and int(log_draft.get("pick_slots_per_team", 0)) == 3 \
 		and int(log_blue.get("stock_losses", 0)) == 1 \
 		and int(log_blue.get("deposits", 0)) == 2 \
 		and int(log_blue.get("breeds_completed", 0)) == 1 \
