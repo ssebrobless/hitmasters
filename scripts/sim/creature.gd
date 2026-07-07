@@ -22,6 +22,7 @@ const MinkKitScript := preload("res://scripts/sim/kits/mink.gd")
 const BullfrogKitScript := preload("res://scripts/sim/kits/bullfrog.gd")
 const CaneToadKitScript := preload("res://scripts/sim/kits/cane_toad.gd")
 const CrayfishKitScript := preload("res://scripts/sim/kits/crayfish.gd")
+const BogTurtleKitScript := preload("res://scripts/sim/kits/bog_turtle.gd")
 const WaterShrewKitScript := preload("res://scripts/sim/kits/water_shrew.gd")
 const BeaverKitScript := preload("res://scripts/sim/kits/beaver.gd")
 const OtterKitScript := preload("res://scripts/sim/kits/otter.gd")
@@ -1486,6 +1487,8 @@ func _make_kit() -> RefCounted:
 			return CaneToadKitScript.new()
 		"crayfish":
 			return CrayfishKitScript.new()
+		"bog_turtle":
+			return BogTurtleKitScript.new()
 		"water_shrew":
 			return WaterShrewKitScript.new()
 		"beaver":

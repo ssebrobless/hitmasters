@@ -13,6 +13,7 @@ const MinkHook := preload("res://scripts/ai/bot_kit_hooks/mink_bot.gd")
 const BullfrogHook := preload("res://scripts/ai/bot_kit_hooks/bullfrog_bot.gd")
 const CaneToadHook := preload("res://scripts/ai/bot_kit_hooks/cane_toad_bot.gd")
 const CrayfishHook := preload("res://scripts/ai/bot_kit_hooks/crayfish_bot.gd")
+const BogTurtleHook := preload("res://scripts/ai/bot_kit_hooks/bog_turtle_bot.gd")
 const WaterShrewHook := preload("res://scripts/ai/bot_kit_hooks/water_shrew_bot.gd")
 const BeaverHook := preload("res://scripts/ai/bot_kit_hooks/beaver_bot.gd")
 const OtterHook := preload("res://scripts/ai/bot_kit_hooks/otter_bot.gd")
@@ -373,6 +374,8 @@ func _hook(actor: Node) -> RefCounted:
 			hook = CaneToadHook.new()
 		"crayfish":
 			hook = CrayfishHook.new()
+		"bog_turtle":
+			hook = BogTurtleHook.new()
 		"water_shrew":
 			hook = WaterShrewHook.new()
 		"beaver":
@@ -420,6 +423,8 @@ func _preferred_range(actor: Node) -> float:
 			return 58.0
 		"crayfish":
 			return 28.0
+		"bog_turtle":
+			return 20.0
 		"water_shrew":
 			return 20.0
 		"beaver":

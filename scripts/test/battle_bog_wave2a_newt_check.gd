@@ -42,8 +42,12 @@ func _run() -> void:
 func _check_unken_reflex(arena: Node, failures: Array[String]) -> void:
 	var actor: Node = arena.player
 	var attacker: Node = arena.bots[0]
+	attacker.apply_creature("mink")
 	actor.global_position = Vector2.ZERO
 	attacker.global_position = Vector2(22.0, 0.0)
+	attacker.health = attacker.max_health
+	attacker.modifiers.clear()
+	attacker.damage_ticks.clear()
 	actor.health = actor.max_health
 	actor.q_timer = 0.0
 	var frame := InputFrameScript.new()
@@ -71,6 +75,7 @@ func _check_unken_reflex(arena: Node, failures: Array[String]) -> void:
 func _check_toxic_secretion(arena: Node, failures: Array[String]) -> void:
 	var actor: Node = arena.player
 	var attacker: Node = arena.bots[0]
+	attacker.apply_creature("mink")
 	actor.health = actor.max_health
 	actor.e_timer = 0.0
 	attacker.damage_ticks.clear()
@@ -92,6 +97,7 @@ func _check_toxic_secretion(arena: Node, failures: Array[String]) -> void:
 func _check_rib_exudation(arena: Node, failures: Array[String]) -> void:
 	var actor: Node = arena.player
 	var attacker: Node = arena.bots[0]
+	attacker.apply_creature("mink")
 	actor.modifiers.clear()
 	attacker.damage_ticks.clear()
 	actor.health = actor.max_health * 0.12
@@ -138,6 +144,7 @@ func _check_slick_crawl_render(arena: Node, failures: Array[String]) -> void:
 func _check_caudal_autotomy(arena: Node, failures: Array[String]) -> void:
 	var actor: Node = arena.player
 	var target: Node = arena.bots[0]
+	target.apply_creature("mink")
 	actor.modifiers.clear()
 	actor.kit.autotomy_timer = 0.0
 	actor.kit.tail_lost_timer = 0.0

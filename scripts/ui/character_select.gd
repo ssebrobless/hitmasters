@@ -14,6 +14,7 @@ const SLICE_CREATURE_IDS := [
 	"bullfrog",
 	"cane_toad",
 	"crayfish",
+	"bog_turtle",
 	"water_shrew",
 	"newt",
 	"great_blue_heron",
