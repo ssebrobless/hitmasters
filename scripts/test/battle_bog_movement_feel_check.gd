@@ -734,6 +734,17 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 			str(newt_idle_state)
 		])
 	actor.apply_creature("water_snake")
+	var snake_non_snake_motion_flags: Array[String] = [
+		"hop_pose", "chorus_hop_pose", "cane_squat_hop_pose", "rooted_pose",
+		"slick_crawl_pose", "newt_swim_pose", "leech_inchworm_pose", "leech_undulate_pose",
+		"crayfish_scuttle_pose", "crayfish_tail_flick_swim_pose", "turtle_plod_pose", "turtle_swim_pose",
+		"bog_turtle_creep_pose", "bog_turtle_paddle_pose", "duck_waddle_pose", "duck_paddle_pose",
+		"beaver_lumber_pose", "beaver_swim_pose", "mink_bound_pose", "mink_swim_pose",
+		"otter_land_slide_pose", "otter_swim_pose", "surface_walk", "submerged_shrew_pose",
+		"shrew_land_skitter_pose", "high_walk_pose", "alligator_water_cruise_pose",
+		"owl_glide_pose", "owl_silent_flight_pose", "kingfisher_dart_pose", "wading_pose",
+		"heron_stalk_pose", "mosquito_swarm_pose", "firefly_hover_pose", "spider_skitter_pose"
+	]
 	actor.current_environment_profile = {"surface": "land"}
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
@@ -750,6 +761,7 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(snake_land_state.get("beaver_lumber_pose", false)) \
 		and not bool(snake_land_state.get("mink_bound_pose", false)) \
 		and not bool(snake_land_state.get("otter_land_slide_pose", false)) \
+		and _none_render_flags(snake_land_state, snake_non_snake_motion_flags) \
 		and float(snake_land_state.get("water_snake_land_slither_intensity", 0.0)) > 0.25 \
 		and float(snake_land_state.get("water_slither_intensity", 1.0)) <= 0.001
 	actor.current_environment_profile = {"surface": "mud"}
@@ -768,6 +780,7 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(snake_mud_state.get("beaver_lumber_pose", false)) \
 		and not bool(snake_mud_state.get("mink_bound_pose", false)) \
 		and not bool(snake_mud_state.get("otter_land_slide_pose", false)) \
+		and _none_render_flags(snake_mud_state, snake_non_snake_motion_flags) \
 		and float(snake_mud_state.get("water_snake_land_slither_intensity", 0.0)) > 0.25 \
 		and float(snake_mud_state.get("water_slither_intensity", 1.0)) <= 0.001
 	actor.current_environment_profile = {"surface": "water"}
@@ -786,6 +799,7 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(snake_water_state.get("beaver_swim_pose", false)) \
 		and not bool(snake_water_state.get("mink_swim_pose", false)) \
 		and not bool(snake_water_state.get("otter_swim_pose", false)) \
+		and _none_render_flags(snake_water_state, snake_non_snake_motion_flags) \
 		and float(snake_water_state.get("water_slither_intensity", 0.0)) > 0.25 \
 		and float(snake_water_state.get("water_snake_land_slither_intensity", 1.0)) <= 0.001
 	actor.velocity = Vector2.ZERO
@@ -812,10 +826,11 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(snake_idle_state.get("mink_swim_pose", false)) \
 		and not bool(snake_idle_state.get("otter_land_slide_pose", false)) \
 		and not bool(snake_idle_state.get("otter_swim_pose", false)) \
+		and _none_render_flags(snake_idle_state, snake_non_snake_motion_flags) \
 		and float(snake_idle_state.get("water_snake_land_slither_intensity", 1.0)) <= 0.001 \
 		and float(snake_idle_state.get("water_slither_intensity", 1.0)) <= 0.001
 	if not snake_land or not snake_mud or not snake_water or not snake_idle_clear:
-		failures.append("moving water snake should expose dry belly-track slither, muddy scuff, and S-ripple water wake without crawler, turtle, bird, mammal, or crustacean overlap, then clear when idle; land=%s mud=%s water=%s idle=%s state=%s/%s/%s/%s" % [
+		failures.append("moving water snake should expose dry belly-track slither, muddy scuff, and S-ripple water wake without frog, crawler, turtle, bird, mammal, shrew, gator, swarm, hover, spider, or crustacean overlap, then clear when idle; land=%s mud=%s water=%s idle=%s state=%s/%s/%s/%s" % [
 			str(snake_land),
 			str(snake_mud),
 			str(snake_water),

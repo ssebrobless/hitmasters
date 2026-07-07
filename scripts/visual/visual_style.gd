@@ -1213,7 +1213,10 @@ static func _base_serpent(canvas: CanvasItem, radius: float, forward: Vector2, s
 			var s_ripple_start := points[wake_index] - forward * radius * 0.14
 			var s_ripple_end := points[min(wake_index + 1, segments - 1)] - forward * radius * (0.28 + 0.08 * water_slither_intensity)
 			canvas.draw_line(s_ripple_start, s_ripple_end, Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.72), maxf(radius * 0.04, 1.0))
+			canvas.draw_circle(wake_center - forward * radius * 0.12, maxf(radius * (0.035 + t * 0.018), 1.0), Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.58))
 		canvas.draw_line(points[0] - forward * radius * 0.2, points[segments - 1] - forward * radius * 0.35, Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.45), maxf(radius * 0.05, 1.0))
+		canvas.draw_line(points[0] + side * radius * 0.22, points[0] + forward * radius * 0.58 + side * radius * 0.46, Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.64), maxf(radius * 0.045, 1.0))
+		canvas.draw_line(points[0] - side * radius * 0.22, points[0] + forward * radius * 0.58 - side * radius * 0.46, Color(water_color.r, water_color.g, water_color.b, water_color.a * 0.64), maxf(radius * 0.045, 1.0))
 	if land_slither:
 		var scuff_color := Color(0.34, 0.25, 0.17, 0.18 + 0.10 * land_slither_intensity)
 		if mud_slither:
@@ -1227,6 +1230,7 @@ static func _base_serpent(canvas: CanvasItem, radius: float, forward: Vector2, s
 			canvas.draw_arc(scuff_center, radius * (0.14 + t * 0.08 + land_slither_intensity * 0.03), PI * 0.1, PI * 0.9, 8, scuff_color, maxf(radius * 0.04, 1.0))
 			var belly_dash_color := Color(scuff_color.r, scuff_color.g, scuff_color.b, scuff_color.a * (0.68 if mud_slither else 0.54))
 			canvas.draw_line(contact - forward * radius * 0.08, contact + forward * radius * (0.14 + 0.04 * land_slither_intensity), belly_dash_color, maxf(radius * 0.035, 1.0))
+			canvas.draw_circle(contact + side * scuff_side * radius * 0.1, maxf(radius * (0.035 + 0.015 * land_slither_intensity), 1.0), Color(scuff_color.r, scuff_color.g, scuff_color.b, scuff_color.a * (0.72 if mud_slither else 0.5)))
 			if mud_slither:
 				canvas.draw_line(contact - forward * radius * 0.1, contact - forward * radius * (0.34 + 0.12 * land_slither_intensity) + side * scuff_side * radius * 0.1, Color(scuff_color.r, scuff_color.g, scuff_color.b, scuff_color.a * 0.8), maxf(radius * 0.04, 1.0))
 	for i in range(segments - 1, -1, -1):
