@@ -1255,6 +1255,16 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 	actor.state = CreatureStateScript.State.NORMAL
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
 	actor.set_input_frame(_move_frame(Vector2.RIGHT))
+	var spider_non_spider_motion_flags: Array[String] = [
+		"crayfish_scuttle_pose", "crayfish_tail_flick_swim_pose", "shrew_land_skitter_pose", "surface_walk",
+		"submerged_shrew_pose", "leech_inchworm_pose", "leech_undulate_pose", "slick_crawl_pose", "newt_swim_pose",
+		"water_snake_land_slither_pose", "water_slither_pose", "turtle_plod_pose", "turtle_swim_pose",
+		"bog_turtle_creep_pose", "bog_turtle_paddle_pose", "duck_waddle_pose", "duck_paddle_pose",
+		"beaver_lumber_pose", "beaver_swim_pose", "mink_bound_pose", "mink_swim_pose",
+		"otter_land_slide_pose", "otter_swim_pose", "high_walk_pose", "alligator_water_cruise_pose",
+		"owl_glide_pose", "owl_silent_flight_pose", "kingfisher_dart_pose", "wading_pose", "heron_stalk_pose",
+		"mosquito_swarm_pose", "firefly_hover_pose"
+	]
 	var spider_skitter_state: Dictionary = actor.get_render_motion_state()
 	var spider_skitter: bool = bool(spider_skitter_state.get("spider_skitter_pose", false)) \
 		and float(spider_skitter_state.get("spider_skitter_intensity", 0.0)) > 0.25 \
@@ -1268,20 +1278,23 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(spider_skitter_state.get("water_snake_land_slither_pose", false)) \
 		and not bool(spider_skitter_state.get("turtle_plod_pose", false)) \
 		and not bool(spider_skitter_state.get("mink_bound_pose", false)) \
-		and not bool(spider_skitter_state.get("otter_land_slide_pose", false))
+		and not bool(spider_skitter_state.get("otter_land_slide_pose", false)) \
+		and _none_render_flags(spider_skitter_state, spider_non_spider_motion_flags)
 	actor.kit.lunge_active = true
 	var spider_lunge_state: Dictionary = actor.get_render_motion_state()
 	var spider_lunge_suppresses: bool = bool(spider_lunge_state.get("spider_lunge_pose", false)) \
 		and not bool(spider_lunge_state.get("spider_skitter_pose", false)) \
 		and not bool(spider_lunge_state.get("crayfish_scuttle_pose", false)) \
-		and not bool(spider_lunge_state.get("shrew_land_skitter_pose", false))
+		and not bool(spider_lunge_state.get("shrew_land_skitter_pose", false)) \
+		and _none_render_flags(spider_lunge_state, spider_non_spider_motion_flags)
 	actor.kit.lunge_active = false
 	actor.state = CreatureStateScript.State.BURROWED
 	var spider_burrow_state: Dictionary = actor.get_render_motion_state()
 	var spider_burrow_suppresses: bool = bool(spider_burrow_state.get("spider_burrowed_pose", false)) \
 		and not bool(spider_burrow_state.get("spider_skitter_pose", false)) \
 		and not bool(spider_burrow_state.get("crayfish_scuttle_pose", false)) \
-		and not bool(spider_burrow_state.get("shrew_land_skitter_pose", false))
+		and not bool(spider_burrow_state.get("shrew_land_skitter_pose", false)) \
+		and _none_render_flags(spider_burrow_state, spider_non_spider_motion_flags)
 	actor.state = CreatureStateScript.State.NORMAL
 	actor.velocity = Vector2.ZERO
 	actor.set_input_frame(InputFrameScript.new())
@@ -1298,9 +1311,10 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(spider_idle_state.get("turtle_plod_pose", false)) \
 		and not bool(spider_idle_state.get("mink_bound_pose", false)) \
 		and not bool(spider_idle_state.get("otter_land_slide_pose", false)) \
+		and _none_render_flags(spider_idle_state, spider_non_spider_motion_flags) \
 		and float(spider_idle_state.get("spider_skitter_intensity", 1.0)) <= 0.001
 	if not spider_skitter or not spider_lunge_suppresses or not spider_burrow_suppresses or not spider_idle_clear:
-		failures.append("wolf spider should expose staccato eight-leg skitter without crayfish, shrew, crawler, snake, turtle, or mammal overlap, suppress it during lunge/burrow, then clear when idle; skitter=%s lunge=%s burrow=%s idle=%s state=%s/%s/%s/%s" % [
+		failures.append("wolf spider should expose staccato eight-leg skitter without crayfish, shrew, crawler, swimmer, snake, turtle, duck, mammal, gator, bird, swarm, or hover overlap, suppress it during lunge/burrow, then clear when idle; skitter=%s lunge=%s burrow=%s idle=%s state=%s/%s/%s/%s" % [
 			str(spider_skitter),
 			str(spider_lunge_suppresses),
 			str(spider_burrow_suppresses),

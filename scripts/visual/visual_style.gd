@@ -1517,6 +1517,7 @@ static func _base_spider(canvas: CanvasItem, radius: float, forward: Vector2, si
 		if skitter_pose and pair % 2 == 0:
 			canvas.draw_line(foot, foot - forward * radius * (0.18 + 0.1 * skitter_intensity), Color(accent.r, accent.g, accent.b, 0.2 + 0.08 * skitter_intensity), maxf(radius * 0.035, 1.0))
 			canvas.draw_line(foot, foot + side * leg_side * radius * (0.16 + 0.08 * skitter_intensity), Color(accent.r, accent.g, accent.b, 0.18 + 0.07 * skitter_intensity), maxf(radius * 0.035, 1.0))
+			canvas.draw_circle(foot + forward * radius * 0.05, maxf(radius * (0.035 + 0.014 * skitter_intensity), 1.0), Color(accent.r, accent.g, accent.b, 0.22 + 0.08 * skitter_intensity))
 
 	# Abdomen + cephalothorax with dorsal stripe.
 	var body_push := forward * radius * (0.18 if lunge_pose else 0.0)
