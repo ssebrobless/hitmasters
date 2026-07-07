@@ -183,15 +183,23 @@ func _check_boss_activation(arena: Node, failures: Array[String]) -> void:
 			accepted += 1
 		arena._tick_breeding(StockManagerScript.BREEDING_DURATION_SEC + 0.1)
 	var progress: Dictionary = arena.get_boss_progress_state()
+	var teams: Dictionary = progress.get("teams", {})
+	var blue_state: Dictionary = teams.get(0, {})
+	var red_state: Dictionary = teams.get(1, {})
 	var blue_boss := _zone(arena.get_animal_zone_state(), "blue", "Boss")
 	var red_boss := _zone(arena.get_animal_zone_state(), "red", "Boss")
-	var bosses_active := bool(blue_boss.get("active", false)) and bool(red_boss.get("active", false))
-	var occupants_spawned := not (blue_boss.get("occupants", []) as Array).is_empty() and not (red_boss.get("occupants", []) as Array).is_empty()
-	var boss_wildlife_spawned := _wildlife_for_zone(arena, "blue:Boss") != null and _wildlife_for_zone(arena, "red:Boss") != null
+	var bosses_active := bool(blue_boss.get("active", false)) and not bool(red_boss.get("active", false))
+	var occupants_spawned := not (blue_boss.get("occupants", []) as Array).is_empty() and (red_boss.get("occupants", []) as Array).is_empty()
+	var boss_wildlife_spawned := _wildlife_for_zone(arena, "blue:Boss") != null and _wildlife_for_zone(arena, "red:Boss") == null
 	var progress_ok := accepted == 5 \
 		and int(progress.get("bred_count", 0)) == 5 \
 		and int(progress.get("activations", 0)) == 1 \
-		and bool(progress.get("boss_active", false))
+		and bool(progress.get("boss_active", false)) \
+		and int(blue_state.get("activations", 0)) == 1 \
+		and bool(blue_state.get("active", false)) \
+		and int(blue_state.get("meter", -1)) == 0 \
+		and not bool(red_state.get("active", true)) \
+		and int(red_state.get("activations", -1)) == 0
 	if not progress_ok or not bosses_active or not occupants_spawned or not boss_wildlife_spawned:
 		failures.append("five breeding deposits should activate boss animal zones; accepted=%d progress=%s blue=%s red=%s boss_wildlife=%s" % [
 			accepted,

@@ -66,10 +66,10 @@ func _check_breeding_raid_window(arena: Node, failures: Array[String]) -> void:
 	_attack_from(raider, target, habitat.get_center() + Vector2(8.0, 0.0), starting_health + 20.0)
 	var denied: bool = not arena.breeding_actors.has(target) \
 		and arena.stock_manager.get_breeding_cues(breeder.team).is_empty() \
-		and int(arena.get_boss_progress_state().get("bred_count", -1)) == 0
+		and int(arena.get_side_boss_state(breeder.team).get("meter", -1)) == 0
 
 	arena._tick_breeding(StockManagerScript.BREEDING_DURATION_SEC + 0.1)
-	var stayed_denied := int(arena.get_boss_progress_state().get("bred_count", -1)) == 0 \
+	var stayed_denied := int(arena.get_side_boss_state(breeder.team).get("meter", -1)) == 0 \
 		and int(arena.get_team_breeding_buff_summary(breeder.team).get("total_stacks", -1)) == 0
 
 	if not closed_blocked or not outside_blocked or not denied or not stayed_denied:

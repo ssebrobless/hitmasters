@@ -50,7 +50,7 @@ func _check_timed_breeding_completion(arena: Node, failures: Array[String]) -> v
 		and post_deposit_hunger \
 		and first_cues.size() == 1 \
 		and int(immediate_summary.get("total_stacks", -1)) == 0 \
-		and int(arena.get_boss_progress_state().get("bred_count", -1)) == 0
+		and int(arena.get_side_boss_state(0).get("meter", -1)) == 0
 
 	arena.habitat_deposit_feedback_timer = 0.0
 	_satiate(actor)
@@ -162,14 +162,22 @@ func _check_boss_activation_after_completed_breeds(arena: Node, failures: Array[
 			accepted += 1
 		arena._tick_breeding(StockManagerScript.BREEDING_DURATION_SEC + 0.1)
 	var progress: Dictionary = arena.get_boss_progress_state()
+	var teams: Dictionary = progress.get("teams", {})
+	var blue_team: Dictionary = teams.get(0, {})
+	var red_team: Dictionary = teams.get(1, {})
 	var blue_boss := _zone(arena.get_animal_zone_state(), "blue", "Boss")
 	var red_boss := _zone(arena.get_animal_zone_state(), "red", "Boss")
+	# Per-team meters: five Blue deposits activate ONLY the Blue side boss; Red stays dormant.
 	var boss_ok := accepted == 4 \
 		and int(progress.get("bred_count", 0)) == 5 \
 		and int(progress.get("activations", 0)) == 1 \
 		and bool(progress.get("boss_active", false)) \
 		and bool(blue_boss.get("active", false)) \
-		and bool(red_boss.get("active", false))
+		and not bool(red_boss.get("active", false)) \
+		and int(blue_team.get("activations", -1)) == 1 \
+		and bool(blue_team.get("active", false)) \
+		and int(red_team.get("activations", -1)) == 0 \
+		and not bool(red_team.get("active", true))
 	if not boss_ok:
 		failures.append("boss zones should activate after five completed breeding cues, not raw deposits; accepted=%d progress=%s blue=%s red=%s" % [
 			accepted,

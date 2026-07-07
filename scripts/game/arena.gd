@@ -49,6 +49,7 @@ const SQUAD_DANGER_RANGE := 360.0
 const DAY_LENGTH_SEC := 120.0
 const FOOD_EAT_RADIUS_PAD := 8.0
 const BOSS_BREED_INTERVAL := 5
+const SIDE_BOSS_ORDER := ["champsosaurus", "platyhystrix", "american_mastodon", "arthropleura", "teratornis"]
 const ANIMAL_ZONE_TICK_SEC := 0.2
 const WILDLIFE_HUNGER_REWARD := 24.0
 const WILDLIFE_HEAL_FRACTION := 0.05
@@ -103,6 +104,9 @@ var wildlife_encounters: Array[Node] = []
 var breeding_actors: Array[Node] = []
 var bred_animal_count := 0
 var boss_activation_count := 0
+var side_boss_meter := {BLUE: 0, RED: 0}
+var side_boss_activations := {BLUE: 0, RED: 0}
+var side_boss_index := {BLUE: 0, RED: 0}
 var animal_zone_tick_timer := 0.0
 var team_breeding_buffs: Dictionary = {}
 var huts_lost := {0: 0, 1: 0}
@@ -536,7 +540,22 @@ func get_boss_progress_state() -> Dictionary:
 		"interval": BOSS_BREED_INTERVAL,
 		"toward_next": bred_animal_count % BOSS_BREED_INTERVAL,
 		"activations": boss_activation_count,
-		"boss_active": _boss_zones_active()
+		"boss_active": _boss_zones_active(),
+		"teams": {
+			BLUE: get_side_boss_state(BLUE),
+			RED: get_side_boss_state(RED)
+		}
+	}
+
+func get_side_boss_state(team: int) -> Dictionary:
+	var idx := int(side_boss_index.get(team, 0))
+	return {
+		"team": team,
+		"meter": int(side_boss_meter.get(team, 0)),
+		"interval": BOSS_BREED_INTERVAL,
+		"activations": int(side_boss_activations.get(team, 0)),
+		"next_family": String(SIDE_BOSS_ORDER[idx % SIDE_BOSS_ORDER.size()]),
+		"active": _team_has_active_side_boss(team)
 	}
 
 func get_team_breeding_buff_summary(team: int) -> Dictionary:
@@ -576,6 +595,9 @@ func _setup_animal_zones() -> void:
 	animal_zone_states.clear()
 	bred_animal_count = 0
 	boss_activation_count = 0
+	side_boss_meter = {BLUE: 0, RED: 0}
+	side_boss_activations = {BLUE: 0, RED: 0}
+	side_boss_index = {BLUE: 0, RED: 0}
 	animal_zone_tick_timer = 0.0
 	var terrain_zones: Array = terrain_map.get_animal_zones() if terrain_map.has_method("get_animal_zones") else []
 	for source_zone in terrain_zones:
@@ -716,7 +738,7 @@ func _complete_breeding_cue(cue: Dictionary) -> void:
 	var result := _add_breeding_buff_stack(team, family)
 	var cue_actor: Node = cue.get("actor", null)
 	_record_team_actor_stat(team, "breeds_completed", 1, cue_actor)
-	_record_bred_animal()
+	_record_bred_animal(team)
 	if bool(result.get("accepted", false)):
 		add_kill_feed("%s breeding complete: %s +%d%% %s" % [
 			_team_name(team),
@@ -754,10 +776,25 @@ func _add_breeding_buff_stack(team: int, family: String) -> Dictionary:
 		"value": BREEDING_STACK_VALUE
 	}
 
-func _record_bred_animal(_actor: Node = null) -> void:
+func _team_side_string(team: int) -> String:
+	return "blue" if team == BLUE else "red"
+
+func _team_has_active_side_boss(team: int) -> bool:
+	var side := _team_side_string(team)
+	for zone: Dictionary in animal_zone_states:
+		if bool(zone.get("boss", false)) and String(zone.get("side", "")) == side and bool(zone.get("active", false)):
+			return true
+	return false
+
+func _record_bred_animal(team: int, _actor: Node = null) -> void:
 	bred_animal_count += 1
-	if bred_animal_count % BOSS_BREED_INTERVAL == 0:
-		_activate_boss_zones()
+	if not (team == BLUE or team == RED):
+		return
+	if _team_has_active_side_boss(team):
+		return
+	side_boss_meter[team] = int(side_boss_meter[team]) + 1
+	if int(side_boss_meter[team]) >= BOSS_BREED_INTERVAL:
+		_activate_side_boss_for_team(team)
 
 func _reset_breeding_buffs() -> void:
 	team_breeding_buffs = {
@@ -808,11 +845,18 @@ func _refresh_team_breeding_buffs(team: int) -> void:
 		if entity.has_method("refresh_team_breeding_buffs"):
 			entity.refresh_team_breeding_buffs()
 
-func _activate_boss_zones() -> void:
+func _activate_side_boss_for_team(team: int) -> void:
+	if not (team == BLUE or team == RED):
+		return
 	boss_activation_count += 1
+	side_boss_activations[team] = int(side_boss_activations[team]) + 1
+	side_boss_meter[team] = 0
+	var family := String(SIDE_BOSS_ORDER[int(side_boss_index[team]) % SIDE_BOSS_ORDER.size()])
+	side_boss_index[team] = (int(side_boss_index[team]) + 1) % SIDE_BOSS_ORDER.size()
+	var side := _team_side_string(team)
 	for i in animal_zone_states.size():
 		var zone: Dictionary = animal_zone_states[i]
-		if not bool(zone.get("boss", false)):
+		if not bool(zone.get("boss", false)) or String(zone.get("side", "")) != side:
 			continue
 		_clear_wildlife_for_zone(String(zone.get("id", "")))
 		zone["active"] = true
@@ -827,9 +871,10 @@ func _activate_boss_zones() -> void:
 		zone["last_defeat_team"] = -1
 		zone["cleared_team"] = -1
 		zone["last_bred_count"] = bred_animal_count
+		zone["boss_family"] = family
 		_spawn_wildlife_for_zone(zone)
 		animal_zone_states[i] = zone
-	add_kill_feed("Boss animal zones stirred after %d breeding deposits" % bred_animal_count)
+	add_kill_feed("%s boss stirs: %s" % [_team_name(team), family.capitalize()])
 
 func _spawn_wildlife_for_zone(zone: Dictionary) -> void:
 	if not bool(zone.get("active", false)):
