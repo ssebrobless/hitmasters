@@ -1020,9 +1020,11 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 			var dart_color := Color(0.42, 0.76, 1.0, 0.18 + 0.1 * kingfisher_dart_intensity)
 			canvas.draw_line(-forward * radius * 0.28, -forward * radius * (1.18 + 0.32 * kingfisher_dart_intensity), dart_color, maxf(radius * 0.08, 1.2))
 			canvas.draw_line(forward * radius * 0.54, forward * radius * (1.22 + 0.24 * kingfisher_dart_intensity), Color(0.86, 0.96, 1.0, 0.26 + 0.08 * kingfisher_dart_intensity), maxf(radius * 0.07, 1.1))
+			canvas.draw_circle(forward * radius * (0.82 + 0.12 * kingfisher_dart_intensity), maxf(radius * (0.055 + 0.018 * kingfisher_dart_intensity), 1.0), Color(0.86, 0.96, 1.0, 0.28 + 0.08 * kingfisher_dart_intensity))
 			for streak_side: float in [-1.0, 1.0]:
 				var streak_start := -forward * radius * 0.18 + side * streak_side * radius * 0.36
 				canvas.draw_line(streak_start, streak_start - forward * radius * (0.78 + 0.28 * kingfisher_dart_intensity) + side * streak_side * radius * 0.12, Color(dart_color.r, dart_color.g, dart_color.b, dart_color.a * 0.78), maxf(radius * 0.045, 1.0))
+				canvas.draw_circle(streak_start - forward * radius * (0.44 + 0.1 * kingfisher_dart_intensity), maxf(radius * 0.04, 1.0), Color(dart_color.r, dart_color.g, dart_color.b, dart_color.a * 0.72))
 	else:
 		# Folded wings hugging the body.
 		for wing_side: float in [-1.0, 1.0]:
