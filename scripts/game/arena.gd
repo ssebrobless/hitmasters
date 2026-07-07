@@ -2614,6 +2614,7 @@ func get_match_summary_data(winner := "", reason := "") -> Dictionary:
 		"time": _format_match_time(elapsed),
 		"elapsed_sec": elapsed,
 		"mode": GameConfig.selected_mode,
+		"mode_tuning": _match_mode_tuning_data(),
 		"selected_creature_id": GameConfig.selected_creature_id,
 		"selected_squad_ids": GameConfig.get_selected_squad_ids() if GameConfig.has_method("get_selected_squad_ids") else [GameConfig.selected_creature_id],
 		"draft": GameConfig.get_draft_stub_state() if GameConfig.has_method("get_draft_stub_state") else {},
@@ -2688,7 +2689,35 @@ func _format_match_context_line() -> String:
 		var ban_text := _format_draft_bans(draft_state)
 		if not ban_text.is_empty():
 			draft_text += " (%s)" % ban_text
-	return "Mode: %s | Squad: %s | %s" % [String(GameConfig.selected_mode), squad_text, draft_text]
+	return "Mode: %s | Squad: %s | %s | %s" % [String(GameConfig.selected_mode), squad_text, draft_text, _format_mode_tuning_line()]
+
+func _format_mode_tuning_line() -> String:
+	var tuning := _match_mode_tuning_data()
+	var huts: Dictionary = tuning.get("huts_per_side", {})
+	var hut_text := "%d/%d huts" % [int(huts.get("blue", 0)), int(huts.get("red", 0))]
+	return "Pace: hunger %ds, wave %ds, %s, %d minions/hut" % [
+		int(tuning.get("hunger_full_to_empty_sec", 0)),
+		int(tuning.get("wave_interval_sec", 0)),
+		hut_text,
+		int(tuning.get("lane_minions_per_hut", 0))
+	]
+
+func _match_mode_tuning_data() -> Dictionary:
+	return {
+		"hunger_full_to_empty_sec": hunger_full_to_empty_sec,
+		"wave_interval_sec": wave_interval,
+		"lane_minions_per_hut": wave_minion_offsets.size(),
+		"huts_per_side": {
+			"blue": _configured_hut_count_for_team(BLUE),
+			"red": _configured_hut_count_for_team(RED)
+		}
+	}
+
+func _configured_hut_count_for_team(team: int) -> int:
+	if terrain_map != null and terrain_map.get("hut_positions") != null:
+		var positions: Dictionary = terrain_map.get("hut_positions")
+		return (positions.get(team, []) as Array).size()
+	return 0
 
 func _format_draft_bans(draft_state: Dictionary) -> String:
 	var chunks: Array[String] = []

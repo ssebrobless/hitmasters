@@ -71,6 +71,8 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 	var review_priority := int(summary.get("balance_review_priority", -1))
 	var review_focus: Array = summary.get("balance_review_focus", [])
 	var review_summary := String(summary.get("balance_review_summary", ""))
+	var mode_tuning: Dictionary = summary.get("mode_tuning", {})
+	var mode_huts: Dictionary = mode_tuning.get("huts_per_side", {})
 	var draft: Dictionary = summary.get("draft", {})
 	var selected_squad: Array = summary.get("selected_squad_ids", [])
 	var text: String = arena._get_match_summary("Blue")
@@ -93,6 +95,11 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and int(blue.get("max_stocks", 0)) == 9 \
 		and int(blue.get("stocks_remaining", 0)) == 8 \
 		and String(summary.get("selected_creature_id", "")) == "duck" \
+		and int(mode_tuning.get("hunger_full_to_empty_sec", 0)) == 90 \
+		and int(mode_tuning.get("wave_interval_sec", 0)) == 18 \
+		and int(mode_tuning.get("lane_minions_per_hut", 0)) == 2 \
+		and int(mode_huts.get("blue", 0)) == 1 \
+		and int(mode_huts.get("red", 0)) == 1 \
 		and selected_squad.size() == 3 \
 		and selected_squad.has("duck") \
 		and bool(draft.get("enabled", false)) \
@@ -135,6 +142,7 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and text.contains("Mode: 1v1") \
 		and text.contains("Squad: Duck / Snapping Turtle / Mink") \
 		and text.contains("Draft: pick 3, ban 1/team") \
+		and text.contains("Pace: hunger 90s, wave 18s, 1/1 huts, 2 minions/hut") \
 		and text.contains("Review flags:") \
 		and text.contains("Blue objective pressure") \
 		and text.contains("Blue breeding tempo") \
@@ -177,6 +185,8 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 	var log_review_priority := int(log_data.get("balance_review_priority", -1))
 	var log_review_focus: Array = log_data.get("balance_review_focus", [])
 	var log_review_summary := String(log_data.get("balance_review_summary", ""))
+	var log_mode_tuning: Dictionary = log_data.get("mode_tuning", {})
+	var log_mode_huts: Dictionary = log_mode_tuning.get("huts_per_side", {})
 	var log_draft: Dictionary = log_data.get("draft", {})
 	var log_squad: Array = log_data.get("selected_squad_ids", [])
 	var log_top_players: Dictionary = log_data.get("top_players", {})
@@ -190,6 +200,11 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and String(log_data.get("reason", "")) == "test_summary" \
 		and log_path.contains("_p5_test_summary.json") \
 		and String(log_data.get("selected_creature_id", "")) == "duck" \
+		and int(log_mode_tuning.get("hunger_full_to_empty_sec", 0)) == 90 \
+		and int(log_mode_tuning.get("wave_interval_sec", 0)) == 18 \
+		and int(log_mode_tuning.get("lane_minions_per_hut", 0)) == 2 \
+		and int(log_mode_huts.get("blue", 0)) == 1 \
+		and int(log_mode_huts.get("red", 0)) == 1 \
 		and log_squad.has("snapping_turtle") \
 		and bool(log_draft.get("enabled", false)) \
 		and int(log_draft.get("pick_slots_per_team", 0)) == 3 \
