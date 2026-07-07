@@ -1133,6 +1133,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 				var paddle_water := Color(0.48, 0.74, 0.86, 0.24 + duck_paddle_intensity * 0.08)
 				canvas.draw_line(hip, foot, beak.darkened(0.25), 1.4)
 				canvas.draw_arc(foot - forward * radius * 0.08, radius * (0.2 + 0.06 * duck_paddle_intensity), -0.35, TAU * 0.72, 14, paddle_water, maxf(radius * 0.045, 1.0))
+				canvas.draw_circle(foot - forward * radius * (0.28 + 0.06 * duck_paddle_intensity), maxf(radius * (0.04 + 0.014 * duck_paddle_intensity), 1.0), Color(paddle_water.r, paddle_water.g, paddle_water.b, paddle_water.a * 0.82))
 				canvas.draw_colored_polygon(PackedVector2Array([
 					foot + forward * radius * 0.08,
 					foot - forward * radius * 0.12 + side * leg_side * radius * 0.18,
