@@ -2612,6 +2612,7 @@ func get_match_summary_data(winner := "", reason := "") -> Dictionary:
 			"red": _team_match_summary_data(RED)
 		},
 		"balance_deltas": _match_balance_deltas(),
+		"balance_flags": _match_balance_flags(),
 		"players": _player_match_summary_rows()
 	}
 
@@ -2693,6 +2694,41 @@ func _match_balance_deltas() -> Dictionary:
 		"wildlife_delta": int(blue.get("wildlife_defeats", 0)) - int(red.get("wildlife_defeats", 0)),
 		"buff_stack_delta": int(blue_buffs.get("total_stacks", 0)) - int(red_buffs.get("total_stacks", 0))
 	}
+
+func _match_balance_flags() -> Array[String]:
+	var deltas := _match_balance_deltas()
+	var flags: Array[String] = []
+	var stock_delta := int(deltas.get("stock_remaining_delta", 0))
+	var deposit_delta := int(deltas.get("deposit_delta", 0))
+	var breed_complete_delta := int(deltas.get("breed_complete_delta", 0))
+	var breed_deny_delta := int(deltas.get("breed_deny_delta", 0))
+	var hut_damage_delta := float(deltas.get("hut_damage_delta", 0.0))
+	var core_damage_delta := float(deltas.get("core_damage_delta", 0.0))
+	var buff_stack_delta := int(deltas.get("buff_stack_delta", 0))
+
+	if stock_delta >= 2:
+		flags.append("blue_stock_advantage")
+	elif stock_delta <= -2:
+		flags.append("red_stock_advantage")
+	if hut_damage_delta >= 250.0 or core_damage_delta >= 250.0:
+		flags.append("blue_objective_pressure")
+	elif hut_damage_delta <= -250.0 or core_damage_delta <= -250.0:
+		flags.append("red_objective_pressure")
+	if deposit_delta >= 2 or breed_complete_delta >= 2:
+		flags.append("blue_breeding_tempo")
+	elif deposit_delta <= -2 or breed_complete_delta <= -2:
+		flags.append("red_breeding_tempo")
+	if breed_deny_delta >= 1:
+		flags.append("blue_raid_pressure")
+	elif breed_deny_delta <= -1:
+		flags.append("red_raid_pressure")
+	if buff_stack_delta >= 2:
+		flags.append("blue_buff_lead")
+	elif buff_stack_delta <= -2:
+		flags.append("red_buff_lead")
+	if flags.is_empty():
+		flags.append("balanced_flow")
+	return flags
 
 func _team_stock_totals(team: int) -> Dictionary:
 	var totals := {"remaining": 0, "max": 0}
