@@ -106,6 +106,7 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 	var edge_detail_ok := terrain_layer != null and terrain_layer.has_method("uses_edge_detail_budget") and bool(terrain_layer.call("uses_edge_detail_budget"))
 	var prop_treatment_ok := terrain_layer != null and terrain_layer.has_method("has_environmental_prop_treatment") and bool(terrain_layer.call("has_environmental_prop_treatment"))
 	var habitat_ground_ok := terrain_layer != null and terrain_layer.has_method("has_habitat_ground_treatment") and bool(terrain_layer.call("has_habitat_ground_treatment"))
+	var debug_hurtbox_ok := _check_debug_hurtbox_overlay(scene)
 	var water_layer_ok := water_layer != null \
 		and water_layer.has_method("get_redraw_interval") \
 		and water_layer.has_method("get_ripple_count") \
@@ -136,11 +137,12 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 		and edge_detail_ok \
 		and prop_treatment_ok \
 		and habitat_ground_ok \
+		and debug_hurtbox_ok \
 		and water_layer_ok \
 		and collision_hygiene_ok \
 		and renderer_ok
 	if not ok:
-		failures.append("Arena %s expected squad=%d bots=%d cores=2 huts=%d lane_minions=%d wave=%.1f hunger=%.1f player/camera/status/minimap/static terrain/shoreline/edge detail/props/habitat ground/water/collision hygiene/mobile renderer; got squad=%d bots=%d cores=%d huts=%d lane_minions=%d wave=%.1f hunger=%.1f player=%s camera=%s status=%s minimap=%s backdrop=%s terrain=%s shoreline=%s edge_detail=%s props=%s habitat_ground=%s water=%s collision=%s renderer=%s" % [
+		failures.append("Arena %s expected squad=%d bots=%d cores=2 huts=%d lane_minions=%d wave=%.1f hunger=%.1f player/camera/status/minimap/static terrain/shoreline/edge detail/props/habitat ground/debug hurtbox/water/collision hygiene/mobile renderer; got squad=%d bots=%d cores=%d huts=%d lane_minions=%d wave=%.1f hunger=%.1f player=%s camera=%s status=%s minimap=%s backdrop=%s terrain=%s shoreline=%s edge_detail=%s props=%s habitat_ground=%s debug_hurtbox=%s water=%s collision=%s renderer=%s" % [
 			mode,
 			expected_squad_size,
 			expected_bot_count,
@@ -165,6 +167,7 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 			str(edge_detail_ok),
 			str(prop_treatment_ok),
 			str(habitat_ground_ok),
+			str(debug_hurtbox_ok),
 			str(water_layer_ok),
 			str(collision_hygiene_ok),
 			str(renderer_ok)
@@ -175,6 +178,33 @@ func _check_renderer_mode() -> bool:
 	var rendering_method: String = String(ProjectSettings.get_setting("rendering/renderer/rendering_method", ""))
 	var mobile_method: String = String(ProjectSettings.get_setting("rendering/renderer/rendering_method.mobile", ""))
 	return rendering_method == "mobile" and mobile_method == "mobile"
+
+func _check_debug_hurtbox_overlay(scene: Node) -> bool:
+	if scene == null \
+		or not scene.has_method("has_debug_hurtbox_overlay_contract") \
+		or not bool(scene.call("has_debug_hurtbox_overlay_contract")) \
+		or not scene.has_method("get_hurtbox_debug_overlays"):
+		return false
+	var overlays: Array = scene.call("get_hurtbox_debug_overlays")
+	var hull_ok := false
+	var region_ok := false
+	for overlay_value in overlays:
+		if typeof(overlay_value) != TYPE_DICTIONARY:
+			continue
+		var overlay: Dictionary = overlay_value
+		match String(overlay.get("type", "")):
+			"hull":
+				hull_ok = hull_ok \
+					or (overlay.get("center", Vector2.INF) is Vector2 \
+					and float(overlay.get("radius", 0.0)) > 0.0 \
+					and String(overlay.get("shape", "")) in ["circle", "capsule"])
+			"region":
+				region_ok = region_ok \
+					or (String(overlay.get("region", "")) != "" \
+					and overlay.get("center", Vector2.INF) is Vector2 \
+					and float(overlay.get("radius", 0.0)) > 0.0 \
+					and float(overlay.get("region_mult", 0.0)) >= 0.75)
+	return hull_ok and region_ok
 
 func _check_collision_hygiene(scene: Node, failures: Array[String]) -> bool:
 	var movers_ok := true

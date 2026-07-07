@@ -75,6 +75,7 @@ const BREEDING_BUFF_LABEL_BY_FAMILY := {
 const MATCH_SUMMARY_SCHEMA := "battle_bog_match_summary_v1"
 const MATCH_LOG_DIR := "user://battle_bog_match_logs"
 const ONE_V_ONE_HUNGER_FULL_TO_EMPTY_SEC := 90.0
+const DEBUG_HURTBOX_OVERLAY := false
 
 var entities: Array[Node] = []
 var minions: Array[Node] = []
@@ -257,6 +258,8 @@ func _draw() -> void:
 	# contested water while huts and habitats carry the match contract.
 	_draw_animal_zones()
 	_draw_telegraphs()
+	if DEBUG_HURTBOX_OVERLAY:
+		_draw_hurtbox_debug_overlays()
 
 	draw_string(ThemeDB.fallback_font, blue_core_position + Vector2(-42.0, -110.0), "BLUE HABITAT", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, Color(0.45, 0.72, 1.0))
 	draw_string(ThemeDB.fallback_font, red_core_position + Vector2(-42.0, -110.0), "RED HABITAT", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, Color(1.0, 0.45, 0.4))
@@ -1508,6 +1511,40 @@ func unregister_entity(entity: Node) -> void:
 	entities.erase(entity)
 	minions.erase(entity)
 
+func has_debug_hurtbox_overlay_contract() -> bool:
+	return true
+
+func get_hurtbox_debug_overlays() -> Array[Dictionary]:
+	var overlays: Array[Dictionary] = []
+	for entity: Node in entities:
+		if entity == null or not is_instance_valid(entity):
+			continue
+		if entity.has_method("is_alive") and not entity.is_alive():
+			continue
+		var radius_value: Variant = entity.get("body_radius")
+		if typeof(radius_value) != TYPE_FLOAT and typeof(radius_value) != TYPE_INT:
+			continue
+		var hull: Dictionary = HurtboxScript.hull_of(entity)
+		overlays.append({
+			"type": "hull",
+			"actor": entity,
+			"shape": String(hull.get("kind", "circle")),
+			"center": hull.get("center", Vector2.ZERO),
+			"radius": float(hull.get("radius", 0.0)),
+			"half_len": float(hull.get("half_len", 0.0)),
+			"axis": hull.get("axis", Vector2.RIGHT)
+		})
+		for region: Dictionary in HurtboxScript.open_regions(entity):
+			overlays.append({
+				"type": "region",
+				"actor": entity,
+				"region": String(region.get("region", "hull")),
+				"center": region.get("center", Vector2.ZERO),
+				"radius": float(region.get("radius", 0.0)),
+				"region_mult": float(region.get("region_mult", 1.0))
+			})
+	return overlays
+
 func spawn_projectile(projectile_team: int, start_position: Vector2, direction: Vector2, damage: float, speed: float, color: Color, pierce := false, radius := 7.0, lifetime := 1.6, source_actor: Node = null) -> void:
 	var projectile: Node = ProjectileScript.new()
 	add_child(projectile)
@@ -1992,6 +2029,30 @@ func _draw_telegraphs() -> void:
 					fill_color.a *= 0.18
 					draw_circle(center, radius, fill_color)
 				draw_arc(center, radius, 0.0, TAU, 48, color, width)
+
+func _draw_hurtbox_debug_overlays() -> void:
+	for overlay: Dictionary in get_hurtbox_debug_overlays():
+		match String(overlay.get("type", "")):
+			"hull":
+				var center: Vector2 = overlay.get("center", Vector2.ZERO)
+				var radius := float(overlay.get("radius", 0.0))
+				var axis: Vector2 = overlay.get("axis", Vector2.RIGHT)
+				var half_len := float(overlay.get("half_len", 0.0))
+				var color := Color(0.52, 0.82, 1.0, 0.28)
+				if half_len > 0.0:
+					var cap_a := center - axis.normalized() * half_len
+					var cap_b := center + axis.normalized() * half_len
+					draw_line(cap_a, cap_b, color, 1.6)
+					draw_arc(cap_a, radius, 0.0, TAU, 32, color, 1.2)
+					draw_arc(cap_b, radius, 0.0, TAU, 32, color, 1.2)
+				else:
+					draw_arc(center, radius, 0.0, TAU, 32, color, 1.2)
+			"region":
+				var center: Vector2 = overlay.get("center", Vector2.ZERO)
+				var radius := float(overlay.get("radius", 0.0))
+				var mult := clampf(float(overlay.get("region_mult", 1.0)), 0.75, 1.35)
+				var color := Color(1.0, 0.66, 0.24, 0.34) if mult > 1.0 else Color(0.62, 0.82, 1.0, 0.3)
+				draw_arc(center, radius, 0.0, TAU, 28, color, 1.6)
 
 func _spawn_vfx_for_event(event: Dictionary) -> void:
 	match String(event.get("type", "")):
