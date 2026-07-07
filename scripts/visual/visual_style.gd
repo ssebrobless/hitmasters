@@ -7,9 +7,6 @@ extends RefCounted
 const SimConstants := preload("res://scripts/sim/sim_constants.gd")
 const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
 
-static func team_color(team: int) -> Color:
-	return VisualGrammar.team_color(team)
-
 # base: which body archetype draws this creature.
 # main/dark/accent/belly: real-life palette. Extra keys tune the base.
 const SKINS := {
@@ -96,7 +93,7 @@ static func draw_battle_creature(canvas: CanvasItem, creature_id: String, team: 
 	var forward := facing.normalized()
 	if forward == Vector2.ZERO:
 		forward = Vector2.RIGHT
-	var outline := _with_alpha(team_color(team), alpha)
+	var outline := _with_alpha(VisualGrammar.team_color(team), alpha)
 	var skin: Dictionary = SKINS.get(creature_id, {})
 	var model_scale := clampf(float(anim.get("model_scale", 1.0)), 0.72, 1.35)
 	var visual_radius := maxf(radius * model_scale, radius * 0.5)
@@ -1890,7 +1887,7 @@ static func draw_minion(canvas: CanvasItem, kind: String, team: int, body_radius
 	var moving := bool(anim.get("moving", false))
 	var metrics := minion_render_metrics(kind, body_radius)
 	var radius := float(metrics.get("visual_radius_px", body_radius))
-	var team_col := _with_alpha(team_color(team), alpha)
+	var team_col := _with_alpha(VisualGrammar.team_color(team), alpha)
 	var mud := _with_alpha(Color(0.28, 0.22, 0.13), alpha)
 	var mud_dark := _with_alpha(Color(0.13, 0.1, 0.06), alpha)
 	var mud_light := _with_alpha(Color(0.44, 0.36, 0.2), alpha)
@@ -1953,7 +1950,7 @@ static func _draw_minion_pebble(canvas: CanvasItem, radius: float, forward: Vect
 	canvas.draw_circle(center + forward * radius * 0.48 - side * radius * 0.18, maxf(radius * 0.08, 1.1), eye)
 
 static func draw_pixel_core(canvas: CanvasItem, team: int, pixel_size := 8.0, alpha := 1.0) -> void:
-	var team_col := _with_alpha(team_color(team), alpha)
+	var team_col := _with_alpha(VisualGrammar.team_color(team), alpha)
 	var dark_col := _with_alpha(Color(0.04, 0.045, 0.055), alpha)
 	var core_col := _with_alpha(team_col.darkened(0.12), alpha)
 	var glow_col := _with_alpha(team_col.lightened(0.3), alpha)

@@ -32,7 +32,7 @@ func _draw() -> void:
 	var length_px := float(footprint["length_px"])
 	var is_capsule := String(footprint["shape"]) == "capsule"
 	var max_radius := float(footprint["reference_radius_px"])
-	var team_ring := VisualStyle.team_color(team)
+	var team_ring := VisualGrammar.team_color(team)
 	team_ring.a = 0.42
 	draw_arc(center, max_radius + 3.0, 0.0, TAU, 44, Color(0.62, 0.68, 0.62, 0.22), 1.0)
 	if is_capsule:
