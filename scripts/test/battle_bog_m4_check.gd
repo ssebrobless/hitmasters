@@ -137,11 +137,23 @@ func _initialize() -> void:
 	var pebble_style: Dictionary = pebble.get_render_style_state()
 	var melee_style: Dictionary = melee.get_render_style_state()
 	var lane_style: Dictionary = lane.get_render_style_state()
+	var lane_idle_signature := lane.get_render_signature()
+	lane._move_toward_point(Vector2.RIGHT * 200.0, 0.25)
+	var lane_walk_signature := lane.get_render_signature()
 	var minion_visual_ok: bool = _all_truth_rings_match([tank_style, pebble_style, melee_style, lane_style]) \
 		and String(tank_style.get("kind", "")) == "tank" \
 		and String(pebble_style.get("kind", "")) == "pebble" \
 		and String(melee_style.get("kind", "")) == "melee" \
 		and String(lane_style.get("kind", "")) == "lane" \
+		and String(tank_style.get("silhouette", "")) == "dome_tank" \
+		and String(pebble_style.get("silhouette", "")) == "sling_thrower" \
+		and String(melee_style.get("silhouette", "")) == "mandible_chomper" \
+		and String(lane_style.get("silhouette", "")) == "lane_chomper" \
+		and _features_have(tank_style, ["team_shell_arc", "wide_body", "slow_bob"]) \
+		and _features_have(pebble_style, ["team_back_stripe", "sling_arm", "held_pebble"]) \
+		and _features_have(melee_style, ["team_back_stripe", "mandibles"]) \
+		and _features_have(lane_style, ["team_back_stripe", "mandibles", "march_bob"]) \
+		and lane_walk_signature != lane_idle_signature \
 		and float(tank_style.get("visual_radius_px", 0.0)) > float(tank_style.get("combat_radius_px", 0.0)) \
 		and float(pebble_style.get("visual_radius_px", 99.0)) < float(pebble_style.get("combat_radius_px", 0.0)) \
 		and float(melee_style.get("visual_radius_px", 99.0)) < float(melee_style.get("combat_radius_px", 0.0)) \
@@ -161,6 +173,13 @@ func _truth_ring_matches(state: Dictionary) -> bool:
 func _all_truth_rings_match(states: Array) -> bool:
 	for state: Dictionary in states:
 		if not _truth_ring_matches(state):
+			return false
+	return true
+
+func _features_have(state: Dictionary, expected: Array) -> bool:
+	var features: Array = state.get("role_features", [])
+	for feature: String in expected:
+		if not features.has(feature):
 			return false
 	return true
 

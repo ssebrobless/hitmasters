@@ -40,6 +40,7 @@ var target_refresh_timer := 0.0
 var cached_target: Node = null
 var facing := Vector2.RIGHT
 var velocity := Vector2.ZERO
+var visual_walk_phase := 0.0
 var _last_render_signature := ""
 
 func setup(minion_arena: Node, minion_team: int, spawn_position: Vector2, minion_kind := "lane", lane_target := Vector2.ZERO, hut: Node = null, slot := 0) -> void:
@@ -183,6 +184,8 @@ func _move_toward_point(point: Vector2, delta := SimConstants.TICK_DELTA) -> voi
 		move_direction = arena.get_steering_direction(global_position, point, body_radius, team)
 	velocity = move_direction * speed
 	global_position += velocity * delta
+	if velocity.length() > 4.0:
+		visual_walk_phase = wrapf(visual_walk_phase + delta * speed * 0.08, 0.0, TAU)
 	if arena != null:
 		global_position = arena.resolve_body_position(global_position, body_radius)
 
@@ -211,7 +214,9 @@ func _render_signature() -> String:
 	parts.append(str(_timer_bucket(attack_commit_timer, 0.25)))
 	parts.append(str(_timer_bucket(attack_timer, attack_cooldown)))
 	parts.append(str(_angle_bucket(facing)))
-	parts.append(str(velocity.length() > 4.0))
+	var moving := velocity.length() > 4.0
+	parts.append(str(moving))
+	parts.append(str(_timer_bucket(visual_walk_phase, TAU) if moving else 0))
 	return "|".join(parts)
 
 func _timer_bucket(value: float, duration: float) -> int:
@@ -262,7 +267,8 @@ func _draw() -> void:
 	draw_set_transform(lunge, 0.0, Vector2.ONE)
 	VisualStyle.draw_minion(self, kind, team, body_radius, facing, {
 		"attack_commit_t": clampf(attack_commit_timer / 0.25, 0.0, 1.0),
-		"moving": velocity.length() > 4.0
+		"moving": velocity.length() > 4.0,
+		"walk_phase": visual_walk_phase
 	})
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	draw_rect(Rect2(Vector2(-body_radius, -body_radius - 8.0), Vector2(body_radius * 2.0, 4.0)), Color(0.08, 0.08, 0.08))

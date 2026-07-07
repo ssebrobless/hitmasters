@@ -1784,17 +1784,28 @@ static func draw_aim_indicator(canvas: CanvasItem, radius: float, facing: Vector
 
 static func minion_render_metrics(kind: String, body_radius: float) -> Dictionary:
 	var visual_scale := 0.92
+	var silhouette := "mandible_chomper"
+	var role_features := ["truth_ring", "team_back_stripe", "mandibles"]
 	match kind:
 		"tank":
 			visual_scale = 1.08
+			silhouette = "dome_tank"
+			role_features = ["truth_ring", "team_shell_arc", "wide_body", "slow_bob"]
 		"pebble":
 			visual_scale = 0.82
+			silhouette = "sling_thrower"
+			role_features = ["truth_ring", "team_back_stripe", "sling_arm", "held_pebble"]
 		"melee":
 			visual_scale = 0.95
+			role_features = ["truth_ring", "team_back_stripe", "mandibles"]
 		_:
 			visual_scale = 0.9
+			silhouette = "lane_chomper"
+			role_features = ["truth_ring", "team_back_stripe", "mandibles", "march_bob"]
 	return {
 		"kind": kind,
+		"silhouette": silhouette,
+		"role_features": role_features,
 		"combat_radius_px": body_radius,
 		"truth_ring_radius_px": body_radius,
 		"visual_radius_px": body_radius * visual_scale
@@ -1806,6 +1817,8 @@ static func draw_minion(canvas: CanvasItem, kind: String, team: int, body_radius
 		forward = Vector2.RIGHT
 	var side := Vector2(-forward.y, forward.x)
 	var alpha := clampf(float(anim.get("alpha", 1.0)), 0.0, 1.0)
+	var walk_phase := float(anim.get("walk_phase", 0.0))
+	var moving := bool(anim.get("moving", false))
 	var metrics := minion_render_metrics(kind, body_radius)
 	var radius := float(metrics.get("visual_radius_px", body_radius))
 	var team_col := _with_alpha(team_color(team), alpha)
@@ -1816,47 +1829,59 @@ static func draw_minion(canvas: CanvasItem, kind: String, team: int, body_radius
 	_draw_ground_truth_footprint(canvas, Vector2.ZERO, body_radius, team_col, alpha)
 	match kind:
 		"tank":
-			_draw_minion_tank(canvas, radius, forward, side, mud, mud_dark, mud_light, team_col, eye)
+			_draw_minion_tank(canvas, radius, forward, side, mud, mud_dark, mud_light, team_col, eye, walk_phase, moving)
 		"pebble":
-			_draw_minion_pebble(canvas, radius, forward, side, mud, mud_dark, mud_light, team_col, eye, anim, alpha)
+			_draw_minion_pebble(canvas, radius, forward, side, mud, mud_dark, mud_light, team_col, eye, anim, alpha, walk_phase, moving)
 		_:
-			_draw_minion_chomper(canvas, radius, forward, side, mud, mud_dark, mud_light, team_col, eye, kind == "lane")
+			_draw_minion_chomper(canvas, radius, forward, side, mud, mud_dark, mud_light, team_col, eye, kind == "lane", walk_phase, moving)
 
-static func _draw_minion_tank(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, mud: Color, mud_dark: Color, mud_light: Color, team_col: Color, eye: Color) -> void:
-	canvas.draw_circle(Vector2.ZERO, radius, mud_dark)
-	canvas.draw_circle(-forward * radius * 0.08, radius * 0.86, mud)
-	canvas.draw_arc(-forward * radius * 0.08, radius * 0.62, PI * 1.05, PI * 1.95, 18, mud_light, maxf(radius * 0.09, 1.5))
+static func _draw_minion_tank(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, mud: Color, mud_dark: Color, mud_light: Color, team_col: Color, eye: Color, walk_phase: float, moving: bool) -> void:
+	var bob := absf(sin(walk_phase)) * radius * 0.06 if moving else 0.0
+	var center := Vector2(0.0, -bob)
+	canvas.draw_circle(center, radius, mud_dark)
+	canvas.draw_circle(center - forward * radius * 0.08, radius * 0.86, mud)
+	canvas.draw_arc(center - forward * radius * 0.08, radius * 0.62, PI * 1.05, PI * 1.95, 18, mud_light, maxf(radius * 0.09, 1.5))
 	canvas.draw_arc(Vector2.ZERO, radius * 0.74, PI * 0.12, PI * 0.88, 18, Color(team_col.r, team_col.g, team_col.b, team_col.a * 0.52), maxf(radius * 0.12, 2.0))
 	for rib: float in [-0.46, 0.0, 0.46]:
-		canvas.draw_line(-forward * radius * 0.35 + side * radius * rib, forward * radius * 0.45 + side * radius * rib * 0.7, Color(mud_light.r, mud_light.g, mud_light.b, mud_light.a * 0.6), maxf(radius * 0.055, 1.0))
-	canvas.draw_circle(forward * radius * 0.52 + side * radius * 0.24, maxf(radius * 0.11, 1.4), eye)
-	canvas.draw_circle(forward * radius * 0.52 - side * radius * 0.24, maxf(radius * 0.11, 1.4), eye)
+		canvas.draw_line(center - forward * radius * 0.35 + side * radius * rib, center + forward * radius * 0.45 + side * radius * rib * 0.7, Color(mud_light.r, mud_light.g, mud_light.b, mud_light.a * 0.6), maxf(radius * 0.055, 1.0))
+	for foot_side: float in [-1.0, 1.0]:
+		var foot_lift := sin(walk_phase + foot_side * PI) * radius * 0.07 if moving else 0.0
+		canvas.draw_circle(-forward * radius * 0.26 + side * foot_side * radius * 0.62 + Vector2(0.0, foot_lift), maxf(radius * 0.11, 1.3), mud_dark)
+	canvas.draw_circle(center + forward * radius * 0.52 + side * radius * 0.24, maxf(radius * 0.11, 1.4), eye)
+	canvas.draw_circle(center + forward * radius * 0.52 - side * radius * 0.24, maxf(radius * 0.11, 1.4), eye)
 
-static func _draw_minion_chomper(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, mud: Color, mud_dark: Color, mud_light: Color, team_col: Color, eye: Color, lane := false) -> void:
+static func _draw_minion_chomper(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, mud: Color, mud_dark: Color, mud_light: Color, team_col: Color, eye: Color, lane := false, walk_phase := 0.0, moving := false) -> void:
 	var body_radius := radius * (0.86 if lane else 0.94)
-	canvas.draw_circle(Vector2.ZERO, body_radius, mud_dark)
-	canvas.draw_circle(-forward * radius * 0.08, body_radius * 0.9, mud)
-	canvas.draw_circle(forward * radius * 0.42, radius * 0.5, mud_light)
+	var bob := absf(sin(walk_phase)) * radius * (0.1 if lane else 0.06) if moving else 0.0
+	var center := Vector2(0.0, -bob)
+	canvas.draw_circle(center, body_radius, mud_dark)
+	canvas.draw_circle(center - forward * radius * 0.08, body_radius * 0.9, mud)
+	canvas.draw_circle(center + forward * radius * 0.42, radius * 0.5, mud_light)
 	for jaw_side: float in [-1.0, 1.0]:
-		var jaw_root := forward * radius * 0.72 + side * jaw_side * radius * 0.18
-		var jaw_tip := forward * radius * 1.16 + side * jaw_side * radius * 0.36
+		var jaw_root := center + forward * radius * 0.72 + side * jaw_side * radius * 0.18
+		var jaw_tip := center + forward * radius * 1.16 + side * jaw_side * radius * 0.36
 		canvas.draw_line(jaw_root, jaw_tip, mud_dark, maxf(radius * 0.14, 2.0))
 		canvas.draw_circle(jaw_tip, maxf(radius * 0.1, 1.4), mud_dark)
-	canvas.draw_line(-forward * radius * 0.35, forward * radius * 0.35, Color(team_col.r, team_col.g, team_col.b, team_col.a * 0.5), maxf(radius * 0.12, 1.6))
-	canvas.draw_circle(forward * radius * 0.58 + side * radius * 0.18, maxf(radius * 0.09, 1.2), eye)
-	canvas.draw_circle(forward * radius * 0.58 - side * radius * 0.18, maxf(radius * 0.09, 1.2), eye)
+	canvas.draw_line(center - forward * radius * 0.35, center + forward * radius * 0.35, Color(team_col.r, team_col.g, team_col.b, team_col.a * 0.5), maxf(radius * 0.12, 1.6))
+	for foot_side: float in [-1.0, 1.0]:
+		var stride := sin(walk_phase + foot_side * PI) * radius * 0.1 if moving else 0.0
+		canvas.draw_line(center - forward * radius * 0.22 + side * foot_side * radius * 0.52, center - forward * radius * 0.32 + side * foot_side * radius * 0.64 + Vector2(0.0, stride), mud_dark, maxf(radius * 0.055, 1.0))
+	canvas.draw_circle(center + forward * radius * 0.58 + side * radius * 0.18, maxf(radius * 0.09, 1.2), eye)
+	canvas.draw_circle(center + forward * radius * 0.58 - side * radius * 0.18, maxf(radius * 0.09, 1.2), eye)
 
-static func _draw_minion_pebble(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, mud: Color, mud_dark: Color, mud_light: Color, team_col: Color, eye: Color, anim: Dictionary, alpha: float) -> void:
-	canvas.draw_circle(Vector2.ZERO, radius * 0.9, mud_dark)
-	canvas.draw_circle(-forward * radius * 0.08, radius * 0.78, mud)
-	canvas.draw_circle(forward * radius * 0.42, radius * 0.38, mud_light)
+static func _draw_minion_pebble(canvas: CanvasItem, radius: float, forward: Vector2, side: Vector2, mud: Color, mud_dark: Color, mud_light: Color, team_col: Color, eye: Color, anim: Dictionary, alpha: float, walk_phase: float, moving: bool) -> void:
+	var bob := absf(sin(walk_phase)) * radius * 0.05 if moving else 0.0
+	var center := Vector2(0.0, -bob)
+	canvas.draw_circle(center, radius * 0.9, mud_dark)
+	canvas.draw_circle(center - forward * radius * 0.08, radius * 0.78, mud)
+	canvas.draw_circle(center + forward * radius * 0.42, radius * 0.38, mud_light)
 	var sling_t := clampf(float(anim.get("attack_commit_t", 0.0)), 0.0, 1.0)
-	var arm_back := -forward * radius * (0.34 + sling_t * 0.2) + side * radius * 0.55
-	var arm_tip := forward * radius * (0.82 + sling_t * 0.25) + side * radius * (0.42 - sling_t * 0.18)
+	var arm_back := center - forward * radius * (0.34 + sling_t * 0.2) + side * radius * 0.55
+	var arm_tip := center + forward * radius * (0.82 + sling_t * 0.25) + side * radius * (0.42 - sling_t * 0.18)
 	canvas.draw_line(arm_back, arm_tip, mud_dark, maxf(radius * 0.1, 1.4))
 	canvas.draw_circle(arm_tip, maxf(radius * 0.14, 1.6), Color(0.56, 0.5, 0.38, alpha))
-	canvas.draw_line(-forward * radius * 0.35, forward * radius * 0.25, Color(team_col.r, team_col.g, team_col.b, team_col.a * 0.5), maxf(radius * 0.1, 1.4))
-	canvas.draw_circle(forward * radius * 0.48 - side * radius * 0.18, maxf(radius * 0.08, 1.1), eye)
+	canvas.draw_line(center - forward * radius * 0.35, center + forward * radius * 0.25, Color(team_col.r, team_col.g, team_col.b, team_col.a * 0.5), maxf(radius * 0.1, 1.4))
+	canvas.draw_circle(center + forward * radius * 0.48 - side * radius * 0.18, maxf(radius * 0.08, 1.1), eye)
 
 static func draw_pixel_core(canvas: CanvasItem, team: int, pixel_size := 8.0, alpha := 1.0) -> void:
 	var team_col := _with_alpha(team_color(team), alpha)
