@@ -1394,6 +1394,16 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		failures.append("perched birds should expose perched render pose")
 	actor.state = CreatureStateScript.State.AIRBORNE
 	actor.velocity = Vector2.RIGHT * actor.get_speed_px()
+	var owl_non_owl_motion_flags: Array[String] = [
+		"kingfisher_dart_pose", "wading_pose", "heron_stalk_pose", "duck_paddle_pose", "duck_waddle_pose",
+		"mosquito_swarm_pose", "firefly_hover_pose", "surface_walk", "submerged_shrew_pose", "shrew_land_skitter_pose",
+		"slick_crawl_pose", "newt_swim_pose", "leech_inchworm_pose", "leech_undulate_pose",
+		"water_snake_land_slither_pose", "water_slither_pose", "turtle_plod_pose", "turtle_swim_pose",
+		"bog_turtle_creep_pose", "bog_turtle_paddle_pose", "beaver_lumber_pose", "beaver_swim_pose",
+		"mink_bound_pose", "mink_swim_pose", "otter_land_slide_pose", "otter_swim_pose",
+		"crayfish_scuttle_pose", "crayfish_tail_flick_swim_pose", "spider_skitter_pose", "high_walk_pose",
+		"alligator_water_cruise_pose"
+	]
 	var owl_glide_state: Dictionary = actor.get_render_motion_state()
 	var owl_glide: bool = bool(owl_glide_state.get("owl_glide_pose", false)) \
 		and float(owl_glide_state.get("owl_glide_intensity", 0.0)) > 0.25 \
@@ -1404,14 +1414,16 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(owl_glide_state.get("duck_paddle_pose", false)) \
 		and not bool(owl_glide_state.get("duck_waddle_pose", false)) \
 		and not bool(owl_glide_state.get("mosquito_swarm_pose", false)) \
-		and not bool(owl_glide_state.get("firefly_hover_pose", false))
+		and not bool(owl_glide_state.get("firefly_hover_pose", false)) \
+		and _none_render_flags(owl_glide_state, owl_non_owl_motion_flags)
 	actor.begin_stealth(2.0, "Silent Flight")
 	var owl_silent_state: Dictionary = actor.get_render_motion_state()
 	var owl_silent: bool = bool(owl_silent_state.get("owl_silent_flight_pose", false)) \
 		and bool(owl_silent_state.get("owl_glide_pose", false)) \
 		and not bool(owl_silent_state.get("kingfisher_dart_pose", false)) \
 		and not bool(owl_silent_state.get("mosquito_swarm_pose", false)) \
-		and not bool(owl_silent_state.get("firefly_hover_pose", false))
+		and not bool(owl_silent_state.get("firefly_hover_pose", false)) \
+		and _none_render_flags(owl_silent_state, owl_non_owl_motion_flags)
 	actor.break_stealth()
 	var owl_plain_state: Dictionary = actor.get_render_motion_state()
 	var owl_silent_clear: bool = bool(owl_plain_state.get("owl_glide_pose", false)) \
@@ -1423,9 +1435,10 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 		and not bool(owl_plain_state.get("duck_waddle_pose", false)) \
 		and not bool(owl_plain_state.get("mosquito_swarm_pose", false)) \
 		and not bool(owl_plain_state.get("firefly_hover_pose", false)) \
+		and _none_render_flags(owl_plain_state, owl_non_owl_motion_flags) \
 		and float(owl_plain_state.get("owl_glide_intensity", 0.0)) > 0.25
 	if not owl_glide or not owl_silent or not owl_silent_clear:
-		failures.append("airborne owl should expose broad quiet glide and Silent Flight without dart, wade, paddle, swarm, or hover overlap, then return to plain glide when stealth breaks; glide=%s silent=%s clear=%s state=%s/%s/%s" % [
+		failures.append("airborne owl should expose broad quiet glide and Silent Flight without dart, wade, paddle, swarm, hover, crawler, swimmer, shrew, turtle, mammal, snake, gator, crustacean, or spider overlap, then return to plain glide when stealth breaks; glide=%s silent=%s clear=%s state=%s/%s/%s" % [
 			str(owl_glide),
 			str(owl_silent),
 			str(owl_silent_clear),
@@ -2007,6 +2020,12 @@ func _all_roster_creatures_have_height_profile(arena: Node) -> bool:
 		actor.apply_creature(creature_id)
 		var state: Dictionary = actor.get_render_motion_state()
 		if String(state.get("height_class", "mid")) == "mid" or String(state.get("height_band", "")) == "" or float(state.get("height_units", 0.0)) <= 0.0:
+			return false
+	return true
+
+func _none_render_flags(state: Dictionary, flags: Array[String]) -> bool:
+	for flag: String in flags:
+		if bool(state.get(flag, false)):
 			return false
 	return true
 
