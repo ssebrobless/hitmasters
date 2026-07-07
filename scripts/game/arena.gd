@@ -2936,7 +2936,32 @@ func _top_player_summary_entry(team: int) -> Dictionary:
 		return {}
 	var entry := top.duplicate(true)
 	entry["summary_score"] = snappedf(_player_summary_score(top), 0.1)
+	entry["summary_score_breakdown"] = _player_summary_score_breakdown(top)
 	return entry
+
+func _player_summary_score_breakdown(row: Dictionary) -> Array[Dictionary]:
+	var breakdown: Array[Dictionary] = []
+	_append_summary_score_component(breakdown, "kills", "Kills", float(row.get("kills", 0)), 120.0)
+	_append_summary_score_component(breakdown, "breeds_completed", "Breeds completed", float(row.get("breeds_completed", 0)), 90.0)
+	_append_summary_score_component(breakdown, "breeds_denied", "Breeds denied", float(row.get("breeds_denied", 0)), 80.0)
+	_append_summary_score_component(breakdown, "deposits", "Deposits", float(row.get("deposits", 0)), 50.0)
+	_append_summary_score_component(breakdown, "wildlife_defeats", "Wildlife defeats", float(row.get("wildlife_defeats", 0)), 30.0)
+	_append_summary_score_component(breakdown, "stock_losses", "Stock losses", float(row.get("stock_losses", 0)), 20.0)
+	_append_summary_score_component(breakdown, "hut_damage", "Hut damage", float(row.get("hut_damage", 0.0)), 0.1)
+	_append_summary_score_component(breakdown, "core_damage", "Core damage", float(row.get("core_damage", 0.0)), 0.1)
+	_append_summary_score_component(breakdown, "deaths", "Deaths", float(row.get("deaths", 0)), -5.0)
+	return breakdown
+
+func _append_summary_score_component(breakdown: Array[Dictionary], key: String, label: String, value: float, weight: float) -> void:
+	if absf(value) < 0.001:
+		return
+	breakdown.append({
+		"key": key,
+		"label": label,
+		"value": snappedf(value, 0.1),
+		"weight": weight,
+		"score": snappedf(value * weight, 0.1)
+	})
 
 func _player_summary_score(row: Dictionary) -> float:
 	return float(row.get("kills", 0)) * 120.0 \

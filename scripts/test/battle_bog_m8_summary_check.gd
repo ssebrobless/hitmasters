@@ -115,9 +115,12 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and String(top_blue.get("name", "")).contains("Duck") \
 		and int(top_blue.get("hut_damage", 0)) >= 799 \
 		and float(top_blue.get("summary_score", 0.0)) > 140.0 \
+		and _score_breakdown_has(top_blue, "hut_damage", 79.0) \
+		and _score_breakdown_has(top_blue, "deposits", 50.0) \
 		and String(top_red.get("name", "")).contains("Red") \
 		and int(top_red.get("breeds_denied", 0)) == 1 \
-		and float(top_red.get("summary_score", 0.0)) >= 80.0
+		and float(top_red.get("summary_score", 0.0)) >= 80.0 \
+		and _score_breakdown_has(top_red, "breeds_denied", 80.0)
 	var text_ok: bool = text.contains("Stocks lost 1/9") \
 		and text.contains("Deposits 2") \
 		and text.contains("Breeds 1/0 denied") \
@@ -195,9 +198,12 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and String(log_top_blue.get("name", "")).contains("Duck") \
 		and int(log_top_blue.get("hut_damage", 0)) >= 799 \
 		and float(log_top_blue.get("summary_score", 0.0)) > 140.0 \
+		and _score_breakdown_has(log_top_blue, "hut_damage", 79.0) \
+		and _score_breakdown_has(log_top_blue, "deposits", 50.0) \
 		and String(log_top_red.get("name", "")).contains("Red") \
 		and int(log_top_red.get("breeds_denied", 0)) == 1 \
-		and float(log_top_red.get("summary_score", 0.0)) >= 80.0
+		and float(log_top_red.get("summary_score", 0.0)) >= 80.0 \
+		and _score_breakdown_has(log_top_red, "breeds_denied", 80.0)
 
 	if not deposited or not denied or not data_ok or not text_ok or not player_rows_ok or not scoreboard_ok or not log_ok:
 		failures.append("M8 summary should report stocks, deposits, breeding, hut damage, core damage, player rows, live scoreboard flow, and a JSON match log; deposited=%s denied=%s data_ok=%s text_ok=%s player_rows_ok=%s scoreboard_ok=%s log_ok=%s summary=%s text=%s scoreboard=%s rows=%s log=%s" % [
@@ -241,6 +247,13 @@ func _focus_has(focus: Array, key: String, side: String, value: int) -> bool:
 		if String(entry.get("key", "")) == key \
 			and String(entry.get("side", "")) == side \
 			and int(entry.get("value", -1)) == value:
+			return true
+	return false
+
+func _score_breakdown_has(row: Dictionary, key: String, minimum_score: float) -> bool:
+	var breakdown: Array = row.get("summary_score_breakdown", [])
+	for entry: Dictionary in breakdown:
+		if String(entry.get("key", "")) == key and float(entry.get("score", 0.0)) >= minimum_score:
 			return true
 	return false
 
