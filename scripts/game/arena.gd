@@ -2884,9 +2884,15 @@ func _player_match_summary_rows() -> Array[Dictionary]:
 	var rows: Array[Dictionary] = []
 	for key in actor_stats.keys():
 		var stats: Dictionary = actor_stats[key]
-		rows.append(stats.duplicate(true))
+		rows.append(_player_match_summary_entry(stats))
 	rows.sort_custom(Callable(self, "_sort_player_summary_rows"))
 	return rows
+
+func _player_match_summary_entry(stats: Dictionary) -> Dictionary:
+	var entry := stats.duplicate(true)
+	entry["summary_score"] = snappedf(_player_summary_score(entry), 0.1)
+	entry["summary_score_breakdown"] = _player_summary_score_breakdown(entry)
+	return entry
 
 func _sort_player_summary_rows(a: Dictionary, b: Dictionary) -> bool:
 	var team_a := int(a.get("team", 0))

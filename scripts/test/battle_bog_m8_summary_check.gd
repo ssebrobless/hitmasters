@@ -147,7 +147,9 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 	var player_rows_ok := _row_has_stat(player_rows, "Duck", "deposits", 1) \
 		and _row_has_stat(player_rows, "Duck", "stock_losses", 1) \
 		and _row_has_stat(player_rows, "Duck", "hut_damage", 799.0) \
-		and _row_has_stat(player_rows, "Red", "breeds_denied", 1)
+		and _row_has_stat(player_rows, "Red", "breeds_denied", 1) \
+		and _row_has_score_component(player_rows, "Duck", "hut_damage", 79.0) \
+		and _row_has_score_component(player_rows, "Red", "breeds_denied", 80.0)
 	var scoreboard_ok := scoreboard_text.contains("Flow") \
 		and scoreboard_text.contains("Stocks 8/9") \
 		and scoreboard_text.contains("Lost1") \
@@ -170,6 +172,7 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 	var log_top_players: Dictionary = log_data.get("top_players", {})
 	var log_top_blue: Dictionary = log_top_players.get("blue", {})
 	var log_top_red: Dictionary = log_top_players.get("red", {})
+	var log_player_rows: Array = log_data.get("players", [])
 	var log_ok := bool(log_state.get("ok", false)) \
 		and bool(arena.match_over) \
 		and String(log_data.get("schema", "")) == "battle_bog_match_summary_v1" \
@@ -187,6 +190,8 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and int(log_blue.get("core_damage", 0)) == 123 \
 		and int(log_deltas.get("deposit_delta", 0)) == 2 \
 		and int(log_deltas.get("breed_deny_delta", 0)) == -1 \
+		and _row_has_score_component(log_player_rows, "Duck", "hut_damage", 79.0) \
+		and _row_has_score_component(log_player_rows, "Red", "breeds_denied", 80.0) \
 		and log_flags.has("blue_objective_pressure") \
 		and log_flags.has("blue_breeding_tempo") \
 		and log_flags.has("red_raid_pressure") \
@@ -255,6 +260,15 @@ func _score_breakdown_has(row: Dictionary, key: String, minimum_score: float) ->
 	for entry: Dictionary in breakdown:
 		if String(entry.get("key", "")) == key and float(entry.get("score", 0.0)) >= minimum_score:
 			return true
+	return false
+
+func _row_has_score_component(rows: Array, name_part: String, key: String, minimum_score: float) -> bool:
+	for row: Dictionary in rows:
+		if not String(row.get("name", "")).contains(name_part):
+			continue
+		if float(row.get("summary_score", 0.0)) <= 0.0:
+			return false
+		return _score_breakdown_has(row, key, minimum_score)
 	return false
 
 func _read_summary_log(path: String) -> Dictionary:
