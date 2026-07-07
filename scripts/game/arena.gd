@@ -2588,6 +2588,7 @@ func _get_match_summary(winner: String) -> String:
 		_format_team_match_summary_line(BLUE),
 		_format_team_match_summary_line(RED)
 	]
+	lines.append(_format_balance_flags_line())
 	var blue_top := _format_top_player_summary_line(BLUE)
 	if not blue_top.is_empty():
 		lines.append(blue_top)
@@ -2656,6 +2657,37 @@ func _format_team_match_summary_line(team: int) -> String:
 		int(data.get("wildlife_defeats", 0)),
 		String(data.get("buffs", "none"))
 	]
+
+func _format_balance_flags_line() -> String:
+	var labels: Array[String] = []
+	for flag in _match_balance_flags():
+		labels.append(_balance_flag_label(flag))
+	return "Review flags: %s" % ", ".join(labels)
+
+func _balance_flag_label(flag: String) -> String:
+	match flag:
+		"blue_stock_advantage":
+			return "Blue stock advantage"
+		"red_stock_advantage":
+			return "Red stock advantage"
+		"blue_objective_pressure":
+			return "Blue objective pressure"
+		"red_objective_pressure":
+			return "Red objective pressure"
+		"blue_breeding_tempo":
+			return "Blue breeding tempo"
+		"red_breeding_tempo":
+			return "Red breeding tempo"
+		"blue_raid_pressure":
+			return "Blue raid pressure"
+		"red_raid_pressure":
+			return "Red raid pressure"
+		"blue_buff_lead":
+			return "Blue buff lead"
+		"red_buff_lead":
+			return "Red buff lead"
+		_:
+			return "Balanced flow"
 
 func _team_match_summary_data(team: int) -> Dictionary:
 	var stats: Dictionary = team_stats[team]

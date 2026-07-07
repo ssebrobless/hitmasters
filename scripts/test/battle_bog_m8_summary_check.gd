@@ -110,6 +110,10 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and text.contains("HutDmg") \
 		and text.contains("CoreDmg 123") \
 		and text.contains("Buffs") \
+		and text.contains("Review flags:") \
+		and text.contains("Blue objective pressure") \
+		and text.contains("Blue breeding tempo") \
+		and text.contains("Red raid pressure") \
 		and text.contains("Top Blue:") \
 		and text.contains("Top Red:") \
 		and text.contains("Dep 1") \
