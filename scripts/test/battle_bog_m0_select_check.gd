@@ -46,6 +46,7 @@ func _run() -> void:
 		and matchup_label.text.begins_with("Wins:") \
 		and matchup_label.text.contains("\nFears:")
 	var preview_ok := _check_preview_scale_read(preview)
+	var height_text_ok := _check_height_text(scene)
 	var roster_identity_ok := true
 	for creature_id in ["snapping_turtle", "chorus_frog", "mink", "beaver", "owl", "duck"]:
 		var creature: Dictionary = catalog.get_creature(creature_id)
@@ -55,16 +56,17 @@ func _run() -> void:
 			and not Array(creature.get("wins", [])).is_empty() \
 			and creature.get("fears", []) is Array \
 			and not Array(creature.get("fears", [])).is_empty()
-	print("select_creatures=%d selectable=%d remembered=%s selected=%s select_text=%s preview=%s roster_identity=%s" % [
+	print("select_creatures=%d selectable=%d remembered=%s selected=%s select_text=%s preview=%s height_text=%s roster_identity=%s" % [
 		creature_buttons,
 		selectable_buttons,
 		str(remembered),
 		config.selected_creature_id,
 		str(select_text_ok),
 		str(preview_ok),
+		str(height_text_ok),
 		str(roster_identity_ok)
 	])
-	quit(0 if creature_buttons == 21 and selectable_buttons == 21 and remembered and select_text_ok and preview_ok and roster_identity_ok else 1)
+	quit(0 if creature_buttons == 21 and selectable_buttons == 21 and remembered and select_text_ok and preview_ok and height_text_ok and roster_identity_ok else 1)
 
 func _check_preview_scale_read(preview: Node) -> bool:
 	if preview == null or not preview.has_method("set_creature"):
@@ -88,3 +90,23 @@ func _check_preview_scale_read(preview: Node) -> bool:
 		and String(firefly.get("height_class", "")) == "tiny_hoverer" \
 		and String(gator_footprint.get("shape", "")) == "capsule" \
 		and float(gator_footprint.get("length_px", 0.0)) > float(gator_footprint.get("radius_px", 0.0)) * 2.5
+
+func _check_height_text(scene: Node) -> bool:
+	if scene == null or not scene.has_method("_select_creature") or not scene.has_method("_find_creature_index"):
+		return false
+	var stat_label := scene.get_node("Root/Content/Details/StatLabel") as Label
+	if stat_label == null:
+		return false
+	var heron_index := int(scene.call("_find_creature_index", "great_blue_heron"))
+	scene.call("_select_creature", heron_index)
+	var heron_text := stat_label.text
+	var bog_index := int(scene.call("_find_creature_index", "bog_turtle"))
+	scene.call("_select_creature", bog_index)
+	var bog_text := stat_label.text
+	var firefly_index := int(scene.call("_find_creature_index", "firefly"))
+	scene.call("_select_creature", firefly_index)
+	var firefly_text := stat_label.text
+	return heron_text.contains("Footprint circle") \
+		and heron_text.contains("Height High Tall Wader") \
+		and bog_text.contains("Height Low Tiny Low") \
+		and firefly_text.contains("Height Raised Tiny Hoverer")

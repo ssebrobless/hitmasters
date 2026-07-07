@@ -2,6 +2,7 @@ extends Control
 
 const ARENA_SCENE := "res://scenes/Arena.tscn"
 const MAIN_MENU_SCENE := "res://scenes/MainMenu.tscn"
+const CreatureScript := preload("res://scripts/sim/creature.gd")
 const SLICE_CREATURE_IDS := [
 	"snapping_turtle",
 	"chorus_frog",
@@ -156,11 +157,12 @@ func _select_creature(index: int) -> void:
 	identity_label.text = String(creature.get("identity_blurb", "Playable Wave 1 creature."))
 	var stats: Dictionary = creature.get("stats", {})
 	var footprint: Dictionary = creature.get("footprint", {})
-	stat_label.text = "HP %s    Speed %s    Diet %s    Footprint %s" % [
+	stat_label.text = "HP %s    Speed %s    Diet %s\nFootprint %s    Height %s" % [
 		str(stats.get("health", "?")),
 		_get_speed_text(stats),
 		String(creature.get("diet", "?")).capitalize(),
-		_get_footprint_text(footprint)
+		_get_footprint_text(footprint),
+		_get_height_read_text(creature_id)
 	]
 	matchup_label.text = "Wins: %s\nFears: %s" % [
 		_format_short_list(creature.get("wins", [])),
@@ -304,6 +306,19 @@ func _get_footprint_text(footprint: Dictionary) -> String:
 	if shape == "capsule":
 		return "%s %sx%s u" % [shape, str(footprint.get("radius_units", "?")), str(footprint.get("length_units", "?"))]
 	return "%s %s u" % [shape, str(footprint.get("radius_units", "?"))]
+
+func _get_height_read_text(creature_id: String) -> String:
+	var profile := CreatureScript.visual_size_profile_for(creature_id)
+	var height_units := float(profile.get("height_units", 0.45))
+	var height_band := CreatureScript.visual_height_band_for(height_units).capitalize()
+	var height_class := _title_from_snake(String(profile.get("height_class", "mid")))
+	return "%s %s" % [height_band, height_class]
+
+func _title_from_snake(value: String) -> String:
+	var words := PackedStringArray()
+	for part in value.split("_", false):
+		words.append(part.capitalize())
+	return " ".join(words)
 
 func _format_short_list(value: Variant) -> String:
 	if value is Array:
