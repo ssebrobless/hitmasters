@@ -58,9 +58,9 @@ const VISUAL_SIZE_PROFILES := {
 	"water_snake": {"model_scale": 0.96, "height_units": 0.16, "height_class": "long_low"},
 	"bog_turtle": {"model_scale": 0.82, "height_units": 0.2, "height_class": "tiny_low"},
 	"alligator": {"model_scale": 1.18, "height_units": 0.35, "height_class": "long_low"},
-	"owl": {"model_scale": 1.08, "height_units": 0.85, "flight_height_units": 1.45, "low_window_height_units": 0.42, "height_class": "raptor"},
+	"owl": {"model_scale": 1.08, "height_units": 0.85, "flight_height_units": 1.45, "low_window_height_units": 0.42, "low_window_model_scale_bonus": 0.12, "height_class": "raptor"},
 	"great_blue_heron": {"model_scale": 1.28, "height_units": 1.55, "flight_height_units": 1.8, "low_window_height_units": 0.72, "height_class": "tall_wader"},
-	"kingfisher": {"model_scale": 0.92, "height_units": 0.55, "flight_height_units": 1.22, "low_window_height_units": 0.34, "height_class": "small_diver"},
+	"kingfisher": {"model_scale": 0.92, "height_units": 0.55, "flight_height_units": 1.22, "low_window_height_units": 0.34, "low_window_model_scale_bonus": 0.12, "height_class": "small_diver"},
 	"duck": {"model_scale": 1.0, "height_units": 0.45, "flight_height_units": 0.95, "low_window_height_units": 0.36, "height_class": "low_paddler"},
 	"water_shrew": {"model_scale": 0.85, "height_units": 0.22, "height_class": "tiny_low"},
 	"beaver": {"model_scale": 1.18, "height_units": 0.35, "height_class": "heavy_swimmer"},
@@ -711,10 +711,15 @@ func get_render_motion_state() -> Dictionary:
 	var visual_height_units := _visual_height_units(visual_size_profile)
 	var low_window_t := _low_window_render_t()
 	var air_attack_cue := is_airborne() and low_window_t > 0.0
+	var base_model_scale := float(visual_size_profile.get("model_scale", 1.0))
+	var low_window_scale_bonus := float(visual_size_profile.get("low_window_model_scale_bonus", 0.08)) * low_window_t if air_attack_cue else 0.0
+	var visual_model_scale := minf(1.35, base_model_scale + low_window_scale_bonus)
 	return {
 		"creature_id": creature_id,
 		"terrain_surface": surface,
-		"model_scale": float(visual_size_profile.get("model_scale", 1.0)),
+		"model_scale": visual_model_scale,
+		"base_model_scale": base_model_scale,
+		"low_window_model_scale_bonus": low_window_scale_bonus,
 		"height_units": visual_height_units,
 		"height_class": String(visual_size_profile.get("height_class", "mid")),
 		"height_band": _visual_height_band(visual_height_units),
