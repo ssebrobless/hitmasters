@@ -105,6 +105,7 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 	var shoreline_ok := terrain_layer != null and terrain_layer.has_method("has_shoreline_treatment") and bool(terrain_layer.call("has_shoreline_treatment"))
 	var edge_detail_ok := terrain_layer != null and terrain_layer.has_method("uses_edge_detail_budget") and bool(terrain_layer.call("uses_edge_detail_budget"))
 	var prop_treatment_ok := terrain_layer != null and terrain_layer.has_method("has_environmental_prop_treatment") and bool(terrain_layer.call("has_environmental_prop_treatment"))
+	var habitat_ground_ok := terrain_layer != null and terrain_layer.has_method("has_habitat_ground_treatment") and bool(terrain_layer.call("has_habitat_ground_treatment"))
 	var water_layer_ok := water_layer != null \
 		and water_layer.has_method("get_redraw_interval") \
 		and water_layer.has_method("get_ripple_count") \
@@ -134,11 +135,12 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 		and shoreline_ok \
 		and edge_detail_ok \
 		and prop_treatment_ok \
+		and habitat_ground_ok \
 		and water_layer_ok \
 		and collision_hygiene_ok \
 		and renderer_ok
 	if not ok:
-		failures.append("Arena %s expected squad=%d bots=%d cores=2 huts=%d lane_minions=%d wave=%.1f hunger=%.1f player/camera/status/minimap/static terrain/shoreline/edge detail/props/water/collision hygiene/mobile renderer; got squad=%d bots=%d cores=%d huts=%d lane_minions=%d wave=%.1f hunger=%.1f player=%s camera=%s status=%s minimap=%s backdrop=%s terrain=%s shoreline=%s edge_detail=%s props=%s water=%s collision=%s renderer=%s" % [
+		failures.append("Arena %s expected squad=%d bots=%d cores=2 huts=%d lane_minions=%d wave=%.1f hunger=%.1f player/camera/status/minimap/static terrain/shoreline/edge detail/props/habitat ground/water/collision hygiene/mobile renderer; got squad=%d bots=%d cores=%d huts=%d lane_minions=%d wave=%.1f hunger=%.1f player=%s camera=%s status=%s minimap=%s backdrop=%s terrain=%s shoreline=%s edge_detail=%s props=%s habitat_ground=%s water=%s collision=%s renderer=%s" % [
 			mode,
 			expected_squad_size,
 			expected_bot_count,
@@ -162,6 +164,7 @@ func _check_arena_mode(mode: String, expected_squad_size: int, expected_bot_coun
 			str(shoreline_ok),
 			str(edge_detail_ok),
 			str(prop_treatment_ok),
+			str(habitat_ground_ok),
 			str(water_layer_ok),
 			str(collision_hygiene_ok),
 			str(renderer_ok)

@@ -28,6 +28,9 @@ func uses_edge_detail_budget() -> bool:
 func has_environmental_prop_treatment() -> bool:
 	return true
 
+func has_habitat_ground_treatment() -> bool:
+	return true
+
 func _draw() -> void:
 	if terrain_map == null:
 		return
@@ -80,8 +83,7 @@ func _draw_zone_detail(zone: String, rect: Rect2) -> void:
 			draw_rect(rect, VisualGrammar.BOG_LAND_DARK.darkened(0.45), false, 2.0)
 			_draw_cover_rim_tufts(rect, rng)
 		TerrainMapScript.HABITAT_BLUE, TerrainMapScript.HABITAT_RED:
-			var team_tint := Color(0.3, 0.55, 0.85, 0.5) if zone == TerrainMapScript.HABITAT_BLUE else Color(0.85, 0.4, 0.35, 0.5)
-			draw_rect(rect, team_tint, false, 4.0)
+			_draw_habitat_ground(zone, rect, rng)
 			var post_gap := 28.0
 			var x := rect.position.x
 			while x <= rect.end.x:
@@ -96,6 +98,33 @@ func _draw_zone_detail(zone: String, rect: Rect2) -> void:
 			for i in 7:
 				var patch := Vector2(rng.randf_range(rect.position.x + 12.0, rect.end.x - 12.0), rng.randf_range(rect.position.y + 12.0, rect.end.y - 12.0))
 				draw_circle(patch, rng.randf_range(6.0, 12.0), Color(VisualGrammar.BOG_MUD_DARK.r, VisualGrammar.BOG_MUD_DARK.g, VisualGrammar.BOG_MUD_DARK.b, 0.55))
+
+func _draw_habitat_ground(zone: String, rect: Rect2, rng: RandomNumberGenerator) -> void:
+	var team := 0 if zone == TerrainMapScript.HABITAT_BLUE else 1
+	var team_moss := VisualGrammar.team_color(team, 0.22)
+	draw_rect(rect.grow(-6.0), Color(VisualGrammar.BOG_MUD.r, VisualGrammar.BOG_MUD.g, VisualGrammar.BOG_MUD.b, 0.22))
+	draw_rect(rect.grow(-11.0), Color(VisualGrammar.BOG_MUD_DARK.r, VisualGrammar.BOG_MUD_DARK.g, VisualGrammar.BOG_MUD_DARK.b, 0.32), false, 2.5)
+	draw_rect(rect.grow(-3.0), team_moss, false, 4.0)
+	draw_rect(rect.grow(-8.0), Color(team_moss.r, team_moss.g, team_moss.b, 0.14), false, 2.0)
+
+	var center := rect.get_center()
+	var ring_radius := minf(rect.size.x, rect.size.y) * 0.28
+	draw_circle(center + Vector2(2.0, 3.0), ring_radius * 0.86, Color(VisualGrammar.BOG_MUD_DARK.r, VisualGrammar.BOG_MUD_DARK.g, VisualGrammar.BOG_MUD_DARK.b, 0.18))
+	draw_arc(center, ring_radius, 0.0, TAU, 28, Color(VisualGrammar.BOG_REED.r, VisualGrammar.BOG_REED.g, VisualGrammar.BOG_REED.b, 0.82), 2.2)
+	draw_arc(center + Vector2(1.5, -0.8), ring_radius * 0.78, 0.0, TAU, 24, Color(VisualGrammar.BOG_MUD.r, VisualGrammar.BOG_MUD.g, VisualGrammar.BOG_MUD.b, 0.72), 1.6)
+	for i in 13:
+		var angle := (float(i) / 13.0) * TAU + rng.randf_range(-0.16, 0.16)
+		var radial := Vector2(cos(angle), sin(angle))
+		var tangent := Vector2(-radial.y, radial.x)
+		var stick_center := center + radial * rng.randf_range(ring_radius * 0.72, ring_radius * 1.08)
+		var half_length := rng.randf_range(4.5, 8.0)
+		var drift := radial * rng.randf_range(-1.4, 1.8)
+		draw_line(stick_center - tangent * half_length, stick_center + tangent * half_length + drift, VisualGrammar.BOG_MUD_DARK.lightened(0.1), 1.5)
+
+	for i in 11:
+		var foot := Vector2(rng.randf_range(rect.position.x + 10.0, rect.end.x - 10.0), rng.randf_range(rect.position.y + 10.0, rect.end.y - 10.0))
+		var radius := rng.randf_range(2.0, 4.4)
+		draw_circle(foot, radius, Color(VisualGrammar.BOG_MUD_DARK.r, VisualGrammar.BOG_MUD_DARK.g, VisualGrammar.BOG_MUD_DARK.b, 0.28))
 
 func _draw_zone_edge(zone: String, rect: Rect2) -> void:
 	match zone:
