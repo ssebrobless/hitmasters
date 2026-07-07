@@ -2615,6 +2615,7 @@ func get_match_summary_data(winner := "", reason := "") -> Dictionary:
 		},
 		"balance_deltas": _match_balance_deltas(),
 		"balance_flags": _match_balance_flags(),
+		"balance_review_priority": _match_balance_review_priority(),
 		"players": _player_match_summary_rows()
 	}
 
@@ -2699,7 +2700,7 @@ func _format_balance_flags_line() -> String:
 	var labels: Array[String] = []
 	for flag in _match_balance_flags():
 		labels.append(_balance_flag_label(flag))
-	return "Review flags: %s" % ", ".join(labels)
+	return "Review flags: %s | Priority %d/5" % [", ".join(labels), _match_balance_review_priority()]
 
 func _balance_flag_label(flag: String) -> String:
 	match flag:
@@ -2798,6 +2799,35 @@ func _match_balance_flags() -> Array[String]:
 	if flags.is_empty():
 		flags.append("balanced_flow")
 	return flags
+
+func _match_balance_review_priority() -> int:
+	var deltas := _match_balance_deltas()
+	var score := 0
+	var stock_delta := absi(int(deltas.get("stock_remaining_delta", 0)))
+	var deposit_delta := absi(int(deltas.get("deposit_delta", 0)))
+	var breed_complete_delta := absi(int(deltas.get("breed_complete_delta", 0)))
+	var breed_deny_delta := absi(int(deltas.get("breed_deny_delta", 0)))
+	var hut_damage_delta := absf(float(deltas.get("hut_damage_delta", 0.0)))
+	var core_damage_delta := absf(float(deltas.get("core_damage_delta", 0.0)))
+	var buff_stack_delta := absi(int(deltas.get("buff_stack_delta", 0)))
+
+	if stock_delta >= 4:
+		score += 3
+	elif stock_delta >= 2:
+		score += 2
+	if hut_damage_delta >= 600.0 or core_damage_delta >= 600.0:
+		score += 3
+	elif hut_damage_delta >= 250.0 or core_damage_delta >= 250.0:
+		score += 2
+	if deposit_delta >= 4 or breed_complete_delta >= 4:
+		score += 2
+	elif deposit_delta >= 2 or breed_complete_delta >= 2:
+		score += 1
+	if breed_deny_delta >= 1:
+		score += 1
+	if buff_stack_delta >= 2:
+		score += 1
+	return mini(score, 5)
 
 func _team_stock_totals(team: int) -> Dictionary:
 	var totals := {"remaining": 0, "max": 0}

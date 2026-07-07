@@ -68,6 +68,7 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 	var red: Dictionary = teams.get("red", {})
 	var deltas: Dictionary = summary.get("balance_deltas", {})
 	var flags: Array = summary.get("balance_flags", [])
+	var review_priority := int(summary.get("balance_review_priority", -1))
 	var draft: Dictionary = summary.get("draft", {})
 	var selected_squad: Array = summary.get("selected_squad_ids", [])
 	var text: String = arena._get_match_summary("Blue")
@@ -102,7 +103,8 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and flags.has("blue_objective_pressure") \
 		and flags.has("blue_breeding_tempo") \
 		and flags.has("red_raid_pressure") \
-		and not flags.has("balanced_flow")
+		and not flags.has("balanced_flow") \
+		and review_priority == 5
 	var text_ok: bool = text.contains("Stocks lost 1/9") \
 		and text.contains("Deposits 2") \
 		and text.contains("Breeds 1/0 denied") \
@@ -117,6 +119,7 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and text.contains("Blue objective pressure") \
 		and text.contains("Blue breeding tempo") \
 		and text.contains("Red raid pressure") \
+		and text.contains("Priority 5/5") \
 		and text.contains("Top Blue:") \
 		and text.contains("Top Red:") \
 		and text.contains("Dep 1") \
@@ -139,6 +142,7 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 	var log_red: Dictionary = log_teams.get("red", {})
 	var log_deltas: Dictionary = log_data.get("balance_deltas", {})
 	var log_flags: Array = log_data.get("balance_flags", [])
+	var log_review_priority := int(log_data.get("balance_review_priority", -1))
 	var log_draft: Dictionary = log_data.get("draft", {})
 	var log_squad: Array = log_data.get("selected_squad_ids", [])
 	var log_ok := bool(log_state.get("ok", false)) \
@@ -160,7 +164,8 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and log_flags.has("blue_objective_pressure") \
 		and log_flags.has("blue_breeding_tempo") \
 		and log_flags.has("red_raid_pressure") \
-		and not log_flags.has("balanced_flow")
+		and not log_flags.has("balanced_flow") \
+		and log_review_priority == 5
 
 	if not deposited or not denied or not data_ok or not text_ok or not player_rows_ok or not scoreboard_ok or not log_ok:
 		failures.append("M8 summary should report stocks, deposits, breeding, hut damage, core damage, player rows, live scoreboard flow, and a JSON match log; deposited=%s denied=%s data_ok=%s text_ok=%s player_rows_ok=%s scoreboard_ok=%s log_ok=%s summary=%s text=%s scoreboard=%s rows=%s log=%s" % [
