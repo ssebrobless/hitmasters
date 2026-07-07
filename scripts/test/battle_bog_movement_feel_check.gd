@@ -28,7 +28,7 @@ func _run() -> void:
 
 	_check_profile_ramp(arena, failures)
 	_check_turn_inertia(arena, failures)
-	_check_capsule_body_heading(arena, failures)
+	_check_profile_body_heading(arena, failures)
 	_check_directional_scuttle(arena, failures)
 	_check_dash_bypass(arena, failures)
 	_check_dash_residual_bleed(arena, failures)
@@ -80,7 +80,7 @@ func _check_turn_inertia(arena: Node, failures: Array[String]) -> void:
 	if not (turtle.velocity.x > 8.0 and turtle.velocity.y < -1.0):
 		failures.append("heavy turtle profile should keep forward momentum while beginning a turn; velocity=%s" % str(turtle.velocity))
 
-func _check_capsule_body_heading(arena: Node, failures: Array[String]) -> void:
+func _check_profile_body_heading(arena: Node, failures: Array[String]) -> void:
 	var gator: Node = arena.player
 	gator.apply_creature("alligator")
 	gator.global_position = Vector2.ZERO
@@ -98,13 +98,29 @@ func _check_capsule_body_heading(arena: Node, failures: Array[String]) -> void:
 	frog.last_aim_direction = Vector2.RIGHT
 	frog.body_heading = Vector2.RIGHT
 	frog.set_input_frame(_aim_frame(Vector2.LEFT))
-	frog.tick_sim(1.0 / 60.0)
-	var circle_snapped: bool = frog.body_heading.dot(Vector2.LEFT) > 0.99
-	if not gator_lagged or not circle_snapped:
-		failures.append("capsule body heading should lag aim flips while circles snap; gator_aim=%s gator_body=%s frog_body=%s" % [
+	for i in 6:
+		frog.tick_sim(1.0 / 60.0)
+	var frog_lagged: bool = frog.last_aim_direction.dot(Vector2.LEFT) > 0.99 \
+		and frog.body_heading.dot(Vector2.RIGHT) > 0.65 \
+		and frog.get_body_axis().dot(frog.body_heading.normalized()) > 0.99 \
+		and float(frog.movement_profile.get("body_turn_rate_deg", 0.0)) > 0.0
+	var shrew: Node = arena.bots[1]
+	shrew.apply_creature("water_shrew")
+	shrew.global_position = Vector2.ZERO
+	shrew.velocity = Vector2.ZERO
+	shrew.last_aim_direction = Vector2.RIGHT
+	shrew.body_heading = Vector2.RIGHT
+	shrew.set_input_frame(_aim_frame(Vector2.LEFT))
+	shrew.tick_sim(1.0 / 60.0)
+	var shrew_snapped: bool = shrew.body_heading.dot(Vector2.LEFT) > 0.99 and shrew.get_body_axis().dot(Vector2.LEFT) > 0.99
+	if not gator_lagged or not frog_lagged or not shrew_snapped:
+		failures.append("profile body heading should lag heavy capsule/round bodies while twitchy bodies snap; gator=%s/%s frog=%s/%s shrew=%s/%s" % [
 			str(gator.last_aim_direction),
 			str(gator.body_heading),
-			str(frog.body_heading)
+			str(frog.last_aim_direction),
+			str(frog.body_heading),
+			str(shrew.last_aim_direction),
+			str(shrew.body_heading)
 		])
 
 func _check_directional_scuttle(arena: Node, failures: Array[String]) -> void:
@@ -175,6 +191,8 @@ func _check_render_profile_keys(arena: Node, failures: Array[String]) -> void:
 		failures.append("cane toad should keep longer ground contact than bullfrog")
 	if not float(frog.movement_profile.get("landing_thump", 0.0)) > float(toad.movement_profile.get("landing_thump", 0.0)):
 		failures.append("bullfrog should expose heavier landing thump metadata than cane toad")
+	if not float(frog.movement_profile.get("body_turn_rate_deg", 0.0)) > 0.0:
+		failures.append("bullfrog should expose profile-driven round-body heading lag metadata")
 	var crayfish: Node = arena.bots[1]
 	crayfish.apply_creature("crayfish")
 	if not float(crayfish.movement_profile.get("scuttle_stride", 0.0)) > 1.0:
@@ -219,10 +237,14 @@ func _check_render_profile_keys(arena: Node, failures: Array[String]) -> void:
 	duck.apply_creature("duck")
 	if not float(duck.movement_profile.get("waddle_sway", 0.0)) > 0.0:
 		failures.append("duck should expose waddle-paddle metadata")
+	if not float(duck.movement_profile.get("body_turn_rate_deg", 0.0)) > 0.0:
+		failures.append("duck should expose profile-driven body heading lag metadata")
 	var beaver: Node = arena.bots[2]
 	beaver.apply_creature("beaver")
 	if not float(beaver.movement_profile.get("body_wiggle", 1.0)) < 1.0:
 		failures.append("beaver should expose builder trundle metadata")
+	if not float(beaver.movement_profile.get("body_turn_rate_deg", 0.0)) > 0.0:
+		failures.append("beaver should expose heavy body heading lag metadata")
 	var mink: Node = arena.bots[0]
 	mink.apply_creature("mink")
 	if not float(mink.movement_profile.get("body_wiggle", 0.0)) > 1.0:

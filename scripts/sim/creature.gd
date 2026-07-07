@@ -1061,7 +1061,7 @@ func get_aim_direction() -> Vector2:
 	return last_aim_direction
 
 func get_body_axis() -> Vector2:
-	if body_capsule_half_len_px > 0.0 and body_heading != Vector2.ZERO:
+	if (body_capsule_half_len_px > 0.0 or _profile_body_turn_rate_deg() > 0.0) and body_heading != Vector2.ZERO:
 		return body_heading.normalized()
 	if velocity.length() > 20.0:
 		return velocity.normalized()
@@ -1536,14 +1536,19 @@ func _update_body_heading(delta: float) -> void:
 		desired = velocity.normalized()
 	if desired == Vector2.ZERO:
 		desired = Vector2.RIGHT
-	if body_capsule_half_len_px <= 0.0:
+	var profile_turn_rate := _profile_body_turn_rate_deg()
+	if body_capsule_half_len_px <= 0.0 and profile_turn_rate <= 0.0:
 		body_heading = desired
 		return
 	if body_heading == Vector2.ZERO:
 		body_heading = desired
 		return
-	var max_angle := deg_to_rad(float(_active_movement_profile().get("turn_rate_deg", 900.0))) * delta
+	var turn_rate := profile_turn_rate if profile_turn_rate > 0.0 else float(_active_movement_profile().get("turn_rate_deg", 900.0))
+	var max_angle := deg_to_rad(turn_rate) * delta
 	body_heading = body_heading.normalized().rotated(clampf(body_heading.normalized().angle_to(desired), -max_angle, max_angle)).normalized()
+
+func _profile_body_turn_rate_deg() -> float:
+	return float(_active_movement_profile().get("body_turn_rate_deg", 0.0))
 
 func _effective_movement_tags() -> Array:
 	var tags := movement_tags.duplicate()
