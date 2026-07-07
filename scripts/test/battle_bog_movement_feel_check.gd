@@ -2064,26 +2064,44 @@ func _check_render_state_flags(arena: Node, failures: Array[String]) -> void:
 
 func _check_visual_height_profiles(arena: Node, failures: Array[String]) -> void:
 	var actor: Node = arena.player
+	actor.anim_attack_timer = 0.0
 	actor.apply_creature("great_blue_heron")
 	actor.state = CreatureStateScript.State.NORMAL
+	actor.anim_attack_timer = 0.0
 	var heron_state: Dictionary = actor.get_render_motion_state()
 	actor.apply_creature("owl")
 	actor.state = CreatureStateScript.State.AIRBORNE
+	actor.anim_attack_timer = 0.0
 	var owl_air_state: Dictionary = actor.get_render_motion_state()
 	actor.open_low_window(0.7)
+	actor.anim_attack_timer = 0.0
 	var owl_low_state: Dictionary = actor.get_render_motion_state()
 	actor.state = CreatureStateScript.State.NORMAL
 	actor.low_window_timer = 0.0
+	actor.anim_attack_timer = 0.0
 	var owl_ground_state: Dictionary = actor.get_render_motion_state()
 	actor.apply_creature("kingfisher")
 	actor.state = CreatureStateScript.State.AIRBORNE
+	actor.anim_attack_timer = 0.0
 	var kingfisher_air_state: Dictionary = actor.get_render_motion_state()
 	actor.open_low_window(0.7)
+	actor.anim_attack_timer = 0.0
 	var kingfisher_low_state: Dictionary = actor.get_render_motion_state()
 	actor.apply_creature("bog_turtle")
+	actor.anim_attack_timer = 0.0
 	var bog_state: Dictionary = actor.get_render_motion_state()
+	actor.apply_creature("mosquito_swarm")
+	actor.anim_attack_timer = 0.0
+	var mosquito_base_state: Dictionary = actor.get_render_motion_state()
+	actor.anim_attack_duration = 0.4
+	actor.anim_attack_timer = 0.4
+	var mosquito_attack_state: Dictionary = actor.get_render_motion_state()
 	actor.apply_creature("firefly")
+	actor.anim_attack_timer = 0.0
 	var firefly_state: Dictionary = actor.get_render_motion_state()
+	actor.anim_attack_duration = 0.4
+	actor.anim_attack_timer = 0.4
+	var firefly_attack_state: Dictionary = actor.get_render_motion_state()
 	var tall_heron: bool = float(heron_state.get("model_scale", 1.0)) > 1.15 and float(heron_state.get("height_units", 0.0)) > 1.3 and String(heron_state.get("height_class", "")) == "tall_wader"
 	var owl_lift: bool = float(owl_air_state.get("height_units", 0.0)) > float(owl_ground_state.get("height_units", 0.0)) + 0.25
 	var owl_low_read: bool = float(owl_low_state.get("height_units", 1.0)) < float(owl_air_state.get("height_units", 0.0)) - 0.55 \
@@ -2103,9 +2121,16 @@ func _check_visual_height_profiles(arena: Node, failures: Array[String]) -> void
 		and String(kingfisher_low_state.get("height_band", "")) == "body"
 	var tiny_low: bool = float(bog_state.get("model_scale", 1.0)) < 0.9 and float(bog_state.get("height_units", 1.0)) < 0.3
 	var tiny_hover: bool = float(firefly_state.get("model_scale", 1.0)) < 0.85 and float(firefly_state.get("height_units", 0.0)) >= 0.9
+	var flying_attack_scale: bool = float(mosquito_attack_state.get("model_scale", 1.0)) > float(mosquito_base_state.get("model_scale", 1.0)) + 0.1 \
+		and float(mosquito_attack_state.get("air_attack_model_scale_bonus", 0.0)) > 0.1 \
+		and float(mosquito_attack_state.get("air_attack_release_t", 0.0)) > 0.9 \
+		and float(firefly_attack_state.get("model_scale", 1.0)) > float(firefly_state.get("model_scale", 1.0)) + 0.16 \
+		and float(firefly_attack_state.get("air_attack_model_scale_bonus", 0.0)) > 0.16 \
+		and float(firefly_attack_state.get("air_attack_release_t", 0.0)) > 0.9 \
+		and float(firefly_attack_state.get("model_scale", 1.0)) < float(mosquito_attack_state.get("model_scale", 1.0))
 	var roster_profiled := _all_roster_creatures_have_height_profile(arena)
-	if not tall_heron or not owl_lift or not owl_low_read or not kingfisher_low_read or not tiny_low or not tiny_hover or not roster_profiled:
-		failures.append("visual height profiles should distinguish tall, airborne, hittable low-window, low, and tiny hover creatures; heron=%s owl=%s/%s/%s kingfisher=%s/%s bog=%s firefly=%s roster_profiled=%s" % [
+	if not tall_heron or not owl_lift or not owl_low_read or not kingfisher_low_read or not tiny_low or not tiny_hover or not flying_attack_scale or not roster_profiled:
+		failures.append("visual height profiles should distinguish tall, airborne, hittable low-window, low, tiny hover, and airborne attack readability scales; heron=%s owl=%s/%s/%s kingfisher=%s/%s bog=%s mosquito=%s/%s firefly=%s/%s roster_profiled=%s" % [
 			str(heron_state),
 			str(owl_air_state),
 			str(owl_low_state),
@@ -2113,7 +2138,10 @@ func _check_visual_height_profiles(arena: Node, failures: Array[String]) -> void
 			str(kingfisher_air_state),
 			str(kingfisher_low_state),
 			str(bog_state),
+			str(mosquito_base_state),
+			str(mosquito_attack_state),
 			str(firefly_state),
+			str(firefly_attack_state),
 			str(roster_profiled)
 		])
 
