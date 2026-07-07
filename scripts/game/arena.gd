@@ -72,6 +72,7 @@ const BREEDING_BUFF_LABEL_BY_FAMILY := {
 	"mammal": "MAMM",
 	"crawly": "CRAW"
 }
+const MATCH_LOG_DIR := "user://battle_bog_match_logs"
 
 var entities: Array[Node] = []
 var minions: Array[Node] = []
@@ -119,6 +120,7 @@ var team_stats := {
 	RED: {"kills": 0, "deaths": 0, "core_damage": 0.0, "hut_damage": 0.0, "huts_destroyed": 0, "stock_losses": 0, "deposits": 0, "breeds_completed": 0, "breeds_denied": 0, "wildlife_defeats": 0}
 }
 var kill_feed: Array[Dictionary] = []
+var match_summary_log_path := ""
 var terrain_map: RefCounted = TerrainMapScript.new()
 var arena_rect := ARENA_RECT
 var cover_rects: Array = []
@@ -1703,10 +1705,8 @@ func on_actor_respawned(actor: Node) -> void:
 func _check_stock_victory(losing_team: int) -> void:
 	if match_over or not stock_manager.team_exhausted(losing_team):
 		return
-	match_over = true
 	var winner := "Red" if losing_team == BLUE else "Blue"
-	status_label.text = "%s wins by stock elimination! Press Enter to restart or Esc for menu." % winner
-	end_summary_label.text = _get_match_summary(winner)
+	_finish_match(winner, "stock_elimination", "%s wins by stock elimination! Press Enter to restart or Esc for menu." % winner)
 	add_kill_feed("%s squad is out of stocks" % _team_name(losing_team))
 
 func _show_core_shielded(core: Node) -> void:
@@ -2395,10 +2395,16 @@ func _aura_color(source_ability: String, friendly: bool) -> Color:
 	return Color(0.82, 0.45, 1.0, 0.82)
 
 func _on_core_destroyed(core) -> void:
-	match_over = true
 	var winner := "Red" if core.team == BLUE else "Blue"
-	status_label.text = "%s wins! Press Enter to restart or Esc for menu." % winner
+	_finish_match(winner, "core_destroyed", "%s wins! Press Enter to restart or Esc for menu." % winner)
+
+func _finish_match(winner: String, reason: String, status_text: String) -> void:
+	if match_over:
+		return
+	match_over = true
+	status_label.text = status_text
 	end_summary_label.text = _get_match_summary(winner)
+	_write_match_summary_log(winner, reason)
 
 func _update_ui() -> void:
 	var blue_core = cores[BLUE]
@@ -2490,6 +2496,7 @@ func _get_actor_key(actor: Node) -> String:
 
 func _reset_match_telemetry() -> void:
 	actor_stats.clear()
+	match_summary_log_path = ""
 	team_stats = {
 		BLUE: _new_team_stats(),
 		RED: _new_team_stats()
@@ -2566,16 +2573,43 @@ func _get_match_summary(winner: String) -> String:
 		_format_team_match_summary_line(RED)
 	])
 
-func get_match_summary_data(winner := "") -> Dictionary:
+func get_match_summary_data(winner := "", reason := "") -> Dictionary:
 	return {
 		"winner": winner,
+		"reason": reason,
 		"time": _format_match_time(elapsed),
+		"elapsed_sec": elapsed,
+		"mode": GameConfig.selected_mode,
 		"teams": {
 			"blue": _team_match_summary_data(BLUE),
 			"red": _team_match_summary_data(RED)
 		},
 		"players": _player_match_summary_rows()
 	}
+
+func get_last_match_summary_log_path() -> String:
+	return match_summary_log_path
+
+func _write_match_summary_log(winner: String, reason: String) -> void:
+	var dir_path := ProjectSettings.globalize_path(MATCH_LOG_DIR)
+	var dir_error := DirAccess.make_dir_recursive_absolute(dir_path)
+	if dir_error != OK:
+		push_warning("Could not create match log directory: %s error=%d" % [MATCH_LOG_DIR, dir_error])
+		return
+	var filename := "match_%d_%s_%s.json" % [
+		Time.get_unix_time_from_system(),
+		String(GameConfig.selected_mode).replace(" ", "_").to_lower(),
+		reason
+	]
+	var path := "%s/%s" % [MATCH_LOG_DIR, filename]
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		push_warning("Could not write match summary log: %s error=%d" % [path, FileAccess.get_open_error()])
+		return
+	var data := get_match_summary_data(winner, reason)
+	file.store_string(JSON.stringify(data))
+	file.close()
+	match_summary_log_path = path
 
 func _format_team_match_summary_line(team: int) -> String:
 	var data := _team_match_summary_data(team)

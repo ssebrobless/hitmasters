@@ -91,17 +91,34 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and _row_has_stat(player_rows, "Duck", "stock_losses", 1) \
 		and _row_has_stat(player_rows, "Duck", "hut_damage", 799.0) \
 		and _row_has_stat(player_rows, "Red", "breeds_denied", 1)
+	arena._finish_match("Blue", "test_summary", "Blue wins test")
+	var log_state: Dictionary = _read_summary_log(arena.get_last_match_summary_log_path())
+	var log_data: Dictionary = log_state.get("data", {})
+	var log_teams: Dictionary = log_data.get("teams", {})
+	var log_blue: Dictionary = log_teams.get("blue", {})
+	var log_red: Dictionary = log_teams.get("red", {})
+	var log_ok := bool(log_state.get("ok", false)) \
+		and bool(arena.match_over) \
+		and String(log_data.get("winner", "")) == "Blue" \
+		and String(log_data.get("reason", "")) == "test_summary" \
+		and int(log_blue.get("stock_losses", 0)) == 1 \
+		and int(log_blue.get("deposits", 0)) == 2 \
+		and int(log_blue.get("breeds_completed", 0)) == 1 \
+		and int(log_red.get("breeds_denied", 0)) == 1 \
+		and int(log_blue.get("core_damage", 0)) == 123
 
-	if not deposited or not denied or not data_ok or not text_ok or not player_rows_ok:
-		failures.append("M8 summary should report stocks, deposits, breeding, hut damage, core damage, and player rows; deposited=%s denied=%s data_ok=%s text_ok=%s player_rows_ok=%s summary=%s text=%s rows=%s" % [
+	if not deposited or not denied or not data_ok or not text_ok or not player_rows_ok or not log_ok:
+		failures.append("M8 summary should report stocks, deposits, breeding, hut damage, core damage, player rows, and a JSON match log; deposited=%s denied=%s data_ok=%s text_ok=%s player_rows_ok=%s log_ok=%s summary=%s text=%s rows=%s log=%s" % [
 			str(deposited),
 			str(denied),
 			str(data_ok),
 			str(text_ok),
 			str(player_rows_ok),
+			str(log_ok),
 			str(summary),
 			text,
-			str(player_rows)
+			str(player_rows),
+			str(log_state)
 		])
 
 func _first_hut(arena: Node, team: int) -> Node:
@@ -124,3 +141,16 @@ func _row_has_stat(rows: Array, name_part: String, stat: String, minimum: Varian
 			return float(row.get(stat, 0.0)) >= float(minimum)
 		return int(row.get(stat, 0)) >= int(minimum)
 	return false
+
+func _read_summary_log(path: String) -> Dictionary:
+	if path.is_empty() or not FileAccess.file_exists(path):
+		return {"ok": false, "path": path, "reason": "missing_file"}
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return {"ok": false, "path": path, "reason": "open_failed", "error": FileAccess.get_open_error()}
+	var text := file.get_as_text()
+	file.close()
+	var parsed: Variant = JSON.parse_string(text)
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return {"ok": false, "path": path, "reason": "parse_failed", "text": text}
+	return {"ok": true, "path": path, "data": parsed}
