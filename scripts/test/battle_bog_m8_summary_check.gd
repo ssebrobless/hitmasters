@@ -67,6 +67,7 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 	var blue: Dictionary = teams.get("blue", {})
 	var red: Dictionary = teams.get("red", {})
 	var text: String = arena._get_match_summary("Blue")
+	var scoreboard_text: String = arena._get_scoreboard_text()
 	var player_rows: Array = summary.get("players", [])
 
 	var data_ok := String(summary.get("winner", "")) == "Blue" \
@@ -95,6 +96,12 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and _row_has_stat(player_rows, "Duck", "stock_losses", 1) \
 		and _row_has_stat(player_rows, "Duck", "hut_damage", 799.0) \
 		and _row_has_stat(player_rows, "Red", "breeds_denied", 1)
+	var scoreboard_ok := scoreboard_text.contains("Flow") \
+		and scoreboard_text.contains("Stocks 8/9") \
+		and scoreboard_text.contains("Lost1") \
+		and scoreboard_text.contains("Dep2") \
+		and scoreboard_text.contains("Hut800") \
+		and scoreboard_text.contains("Dep1")
 	arena._finish_match("Blue", "test_summary", "Blue wins test")
 	var log_state: Dictionary = _read_summary_log(arena.get_last_match_summary_log_path())
 	var log_data: Dictionary = log_state.get("data", {})
@@ -111,16 +118,18 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and int(log_red.get("breeds_denied", 0)) == 1 \
 		and int(log_blue.get("core_damage", 0)) == 123
 
-	if not deposited or not denied or not data_ok or not text_ok or not player_rows_ok or not log_ok:
-		failures.append("M8 summary should report stocks, deposits, breeding, hut damage, core damage, player rows, and a JSON match log; deposited=%s denied=%s data_ok=%s text_ok=%s player_rows_ok=%s log_ok=%s summary=%s text=%s rows=%s log=%s" % [
+	if not deposited or not denied or not data_ok or not text_ok or not player_rows_ok or not scoreboard_ok or not log_ok:
+		failures.append("M8 summary should report stocks, deposits, breeding, hut damage, core damage, player rows, live scoreboard flow, and a JSON match log; deposited=%s denied=%s data_ok=%s text_ok=%s player_rows_ok=%s scoreboard_ok=%s log_ok=%s summary=%s text=%s scoreboard=%s rows=%s log=%s" % [
 			str(deposited),
 			str(denied),
 			str(data_ok),
 			str(text_ok),
 			str(player_rows_ok),
+			str(scoreboard_ok),
 			str(log_ok),
 			str(summary),
 			text,
+			scoreboard_text,
 			str(player_rows),
 			str(log_state)
 		])

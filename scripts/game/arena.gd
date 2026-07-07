@@ -2537,6 +2537,7 @@ func _get_scoreboard_text() -> String:
 			blue["kills"], blue["deaths"], int(blue["core_damage"]),
 			red["kills"], red["deaths"], int(red["core_damage"]),
 		],
+		"Flow   Blue %s    Red %s" % [_format_live_team_telemetry(BLUE), _format_live_team_telemetry(RED)],
 		"Breed  Blue %s    Red %s" % [_format_breeding_buff_line(BLUE), _format_breeding_buff_line(RED)],
 		"Players"
 	]
@@ -2544,15 +2545,29 @@ func _get_scoreboard_text() -> String:
 	for key in actor_stats.keys():
 		var stats: Dictionary = actor_stats[key]
 		var team_name := "Blue" if int(stats["team"]) == BLUE else "Red"
-		lines.append("%s %-11s  %d / %d / %d CoreDmg" % [
+		lines.append("%s %-11s  %d/%d  %dHut %dCore Dep%d" % [
 			team_name,
 			stats["name"],
 			stats["kills"],
 			stats["deaths"],
-			int(stats["core_damage"])
+			int(stats.get("hut_damage", 0.0)),
+			int(stats.get("core_damage", 0.0)),
+			int(stats.get("deposits", 0))
 		])
 
 	return "\n".join(lines)
+
+func _format_live_team_telemetry(team: int) -> String:
+	var stats: Dictionary = team_stats[team]
+	var stocks := _team_stock_totals(team)
+	return "Stocks %d/%d Lost%d Dep%d Hut%d Wild%d" % [
+		int(stocks.get("remaining", 0)),
+		int(stocks.get("max", 0)),
+		int(stats.get("stock_losses", 0)),
+		int(stats.get("deposits", 0)),
+		int(stats.get("hut_damage", 0.0)),
+		int(stats.get("wildlife_defeats", 0))
+	]
 
 func _format_breeding_buff_line(team: int) -> String:
 	var chunks: Array[String] = []
