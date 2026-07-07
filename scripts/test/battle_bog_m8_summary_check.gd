@@ -161,7 +161,10 @@ func _check_match_summary_telemetry(arena: Node, failures: Array[String]) -> voi
 		and scoreboard_text.contains("Lost1") \
 		and scoreboard_text.contains("Dep2") \
 		and scoreboard_text.contains("Hut800") \
-		and scoreboard_text.contains("Dep1")
+		and scoreboard_text.contains("Dep1") \
+		and scoreboard_text.contains("Review P5:") \
+		and scoreboard_text.contains("Blue hut damage +800") \
+		and scoreboard_text.contains("Red denials +1")
 	arena._finish_match("Blue", "test_summary", "Blue wins test")
 	var log_path: String = arena.get_last_match_summary_log_path()
 	var log_state: Dictionary = _read_summary_log(log_path)

@@ -2539,6 +2539,7 @@ func _get_scoreboard_text() -> String:
 			red["kills"], red["deaths"], int(red["core_damage"]),
 		],
 		"Flow   Blue %s    Red %s" % [_format_live_team_telemetry(BLUE), _format_live_team_telemetry(RED)],
+		"Review %s" % _match_balance_review_summary(),
 		"Breed  Blue %s    Red %s" % [_format_breeding_buff_line(BLUE), _format_breeding_buff_line(RED)],
 		"Players"
 	]
