@@ -713,12 +713,15 @@ func get_render_motion_state() -> Dictionary:
 	var visual_size_profile := _visual_size_profile()
 	var visual_height_units := _visual_height_units(visual_size_profile)
 	var low_window_t := _low_window_render_t()
-	var air_attack_cue := is_airborne() and low_window_t > 0.0
 	var base_model_scale := float(visual_size_profile.get("model_scale", 1.0))
-	var low_window_scale_bonus := float(visual_size_profile.get("low_window_model_scale_bonus", 0.08)) * low_window_t if air_attack_cue else 0.0
+	var low_window_scale_bonus := float(visual_size_profile.get("low_window_model_scale_bonus", 0.08)) * low_window_t if is_airborne() and low_window_t > 0.0 else 0.0
 	var air_attack_release_t := clampf(anim_attack_timer / maxf(anim_attack_duration, 0.001), 0.0, 1.0) if is_airborne() and anim_attack_timer > 0.0 else 0.0
+	var air_attack_cue_t := maxf(low_window_t, air_attack_release_t)
+	var air_attack_cue := is_airborne() and air_attack_cue_t > 0.0
 	var air_attack_scale_bonus := float(visual_size_profile.get("air_attack_model_scale_bonus", 0.0)) * air_attack_release_t
 	var visual_model_scale := minf(1.35, base_model_scale + low_window_scale_bonus + air_attack_scale_bonus)
+	var visual_radius_px := body_radius * visual_model_scale
+	var air_attack_cue_radius_px := visual_radius_px * (1.12 + air_attack_cue_t * 0.22) if air_attack_cue else 0.0
 	var airborne_visual := is_airborne() or state == CreatureStateScript.State.PERCHED
 	var height_shadow_alpha := _height_shadow_alpha(visual_height_units, low_window_t, airborne_visual)
 	var height_shadow_radius_mult := _height_shadow_radius_mult(visual_height_units, low_window_t, airborne_visual)
@@ -728,11 +731,13 @@ func get_render_motion_state() -> Dictionary:
 		"model_scale": visual_model_scale,
 		"base_model_scale": base_model_scale,
 		"combat_radius_px": body_radius,
-		"visual_radius_px": body_radius * visual_model_scale,
+		"visual_radius_px": visual_radius_px,
 		"truth_ring_radius_px": body_radius,
 		"low_window_model_scale_bonus": low_window_scale_bonus,
 		"air_attack_model_scale_bonus": air_attack_scale_bonus,
 		"air_attack_release_t": air_attack_release_t,
+		"air_attack_cue_t": air_attack_cue_t if air_attack_cue else 0.0,
+		"air_attack_cue_radius_px": air_attack_cue_radius_px,
 		"height_units": visual_height_units,
 		"height_class": String(visual_size_profile.get("height_class", "mid")),
 		"height_band": _visual_height_band(visual_height_units),
@@ -742,7 +747,7 @@ func get_render_motion_state() -> Dictionary:
 		"low_window_active": low_window_t > 0.0,
 		"air_attack_readable": air_attack_cue,
 		"air_attack_cue_pose": air_attack_cue,
-		"air_attack_cue_intensity": low_window_t if air_attack_cue else 0.0,
+		"air_attack_cue_intensity": air_attack_cue_t if air_attack_cue else 0.0,
 		"in_water": surface == EnvironmentProfileScript.SURFACE_WATER,
 		"surface_walk": surface_walk,
 		"surface_wake_intensity": wake_intensity,

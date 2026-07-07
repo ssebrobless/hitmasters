@@ -2151,9 +2151,13 @@ func _check_visual_height_profiles(arena: Node, failures: Array[String]) -> void
 	var flying_attack_scale: bool = float(mosquito_attack_state.get("model_scale", 1.0)) > float(mosquito_base_state.get("model_scale", 1.0)) + 0.1 \
 		and float(mosquito_attack_state.get("air_attack_model_scale_bonus", 0.0)) > 0.1 \
 		and float(mosquito_attack_state.get("air_attack_release_t", 0.0)) > 0.9 \
+		and bool(mosquito_attack_state.get("air_attack_readable", false)) \
+		and float(mosquito_attack_state.get("air_attack_cue_radius_px", 0.0)) > float(mosquito_attack_state.get("visual_radius_px", 0.0)) * 1.25 \
 		and float(firefly_attack_state.get("model_scale", 1.0)) > float(firefly_state.get("model_scale", 1.0)) + 0.16 \
 		and float(firefly_attack_state.get("air_attack_model_scale_bonus", 0.0)) > 0.16 \
 		and float(firefly_attack_state.get("air_attack_release_t", 0.0)) > 0.9 \
+		and bool(firefly_attack_state.get("air_attack_readable", false)) \
+		and float(firefly_attack_state.get("air_attack_cue_radius_px", 0.0)) > float(firefly_attack_state.get("visual_radius_px", 0.0)) * 1.25 \
 		and float(firefly_attack_state.get("model_scale", 1.0)) < float(mosquito_attack_state.get("model_scale", 1.0))
 	var heron_truth_ring: bool = _truth_ring_matches_combat_radius(heron_state) \
 		and float(heron_state.get("visual_radius_px", 0.0)) > float(heron_state.get("combat_radius_px", 0.0)) * 1.15
