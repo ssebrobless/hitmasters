@@ -1019,6 +1019,7 @@ static func _base_bird(canvas: CanvasItem, radius: float, forward: Vector2, side
 					var feather_tip := feather_root + side * wing_side * radius * (0.18 + 0.05 * owl_glide_intensity) - forward * radius * (0.22 + 0.04 * feather_t)
 					canvas.draw_line(feather_root, feather_tip, Color(breast.r, breast.g, breast.b, 0.20 if owl_silent else 0.3), maxf(radius * 0.035, 1.0))
 					canvas.draw_circle(feather_tip, maxf(radius * (0.035 + 0.012 * owl_glide_intensity), 1.0), Color(breast.r, breast.g, breast.b, 0.18 if owl_silent else 0.26))
+				canvas.draw_circle(wing_tip - forward * radius * (0.24 + 0.06 * owl_glide_intensity), maxf(radius * (0.04 + 0.014 * owl_glide_intensity), 1.0), Color(breast.r, breast.g, breast.b, 0.16 if owl_silent else 0.24))
 			if kingfisher_dart:
 				canvas.draw_line(forward * radius * 0.12 + side * wing_side * radius * 0.55, wing_tip - forward * radius * (0.1 + 0.12 * kingfisher_dart_intensity), Color(0.52, 0.82, 1.0, 0.24 + 0.08 * kingfisher_dart_intensity), maxf(radius * 0.045, 1.0))
 				canvas.draw_line(wing_tip + forward * radius * 0.12, wing_tip - forward * radius * (0.46 + 0.16 * kingfisher_dart_intensity), Color(0.86, 0.96, 1.0, 0.22 + 0.08 * kingfisher_dart_intensity), maxf(radius * 0.04, 1.0))
