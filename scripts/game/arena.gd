@@ -404,6 +404,8 @@ func _spawn_match() -> void:
 	day_index = 1
 	day_timer = 0.0
 	_setup_animal_zones()
+	if GameConfig.wake_boss:
+		_debug_wake_all_bosses.call_deferred()
 
 	var blue_core = CoreScript.new()
 	add_child(blue_core)
@@ -795,6 +797,19 @@ func _team_boss_zone(team: int) -> Dictionary:
 		if bool(zone.get("boss", false)) and String(zone.get("side", "")) == side:
 			return zone
 	return {}
+
+func debug_wake_boss(team: int) -> void:
+	# Dev affordance: instantly wake a team's side boss (forces Champsosaurus so
+	# feel-testing is repeatable). Reachable via --bb-wake-boss or the F9 key.
+	if not (team == BLUE or team == RED):
+		return
+	side_boss_index[team] = 0
+	_activate_side_boss_for_team(team)
+	add_kill_feed("[dev] woke %s side boss" % _team_name(team))
+
+func _debug_wake_all_bosses() -> void:
+	debug_wake_boss(BLUE)
+	debug_wake_boss(RED)
 
 func _record_bred_animal(team: int, _actor: Node = null) -> void:
 	bred_animal_count += 1
@@ -3294,6 +3309,9 @@ func _team_name(team: int) -> String:
 var quit_confirm_timer := 0.0
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode == KEY_F9:
+		debug_wake_boss(BLUE)
+		return
 	if match_over and event.is_action_pressed("ui_accept"):
 		get_tree().reload_current_scene()
 	elif event.is_action_pressed("ui_cancel"):
