@@ -101,11 +101,11 @@ func _draw_zone_detail(zone: String, rect: Rect2) -> void:
 
 func _draw_habitat_ground(zone: String, rect: Rect2, rng: RandomNumberGenerator) -> void:
 	var team := 0 if zone == TerrainMapScript.HABITAT_BLUE else 1
-	var team_moss := VisualGrammar.team_color(team, 0.22)
+	var habitat_accent := VisualGrammar.habitat_accent_color(team, 0.28)
 	draw_rect(rect.grow(-6.0), Color(VisualGrammar.BOG_MUD.r, VisualGrammar.BOG_MUD.g, VisualGrammar.BOG_MUD.b, 0.22))
 	draw_rect(rect.grow(-11.0), Color(VisualGrammar.BOG_MUD_DARK.r, VisualGrammar.BOG_MUD_DARK.g, VisualGrammar.BOG_MUD_DARK.b, 0.32), false, 2.5)
-	draw_rect(rect.grow(-3.0), team_moss, false, 4.0)
-	draw_rect(rect.grow(-8.0), Color(team_moss.r, team_moss.g, team_moss.b, 0.14), false, 2.0)
+	draw_rect(rect.grow(-3.0), habitat_accent, false, 4.0)
+	draw_rect(rect.grow(-8.0), VisualGrammar.habitat_accent_color(team, 0.16), false, 2.0)
 
 	var center := rect.get_center()
 	var ring_radius := minf(rect.size.x, rect.size.y) * 0.28
@@ -135,7 +135,8 @@ func _draw_zone_edge(zone: String, rect: Rect2) -> void:
 		TerrainMapScript.COVER:
 			draw_rect(rect.grow(2.0), VisualGrammar.BOG_LAND_DARK.darkened(0.55), false, 3.0)
 		TerrainMapScript.HABITAT_BLUE, TerrainMapScript.HABITAT_RED:
-			var color := Color(0.38, 0.68, 1.0, 0.65) if zone == TerrainMapScript.HABITAT_BLUE else Color(1.0, 0.48, 0.38, 0.65)
+			var team := 0 if zone == TerrainMapScript.HABITAT_BLUE else 1
+			var color := VisualGrammar.habitat_accent_color(team, 0.65)
 			draw_rect(rect.grow(-7.0), color, false, 2.0)
 
 func _draw_water_shore(rect: Rect2) -> void:

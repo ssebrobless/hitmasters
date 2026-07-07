@@ -1,6 +1,7 @@
 extends Node2D
 
 const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
+const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
 
 var arena: Node = null
 var cue_id := ""
@@ -97,7 +98,7 @@ func _draw() -> void:
 	var base := _family_color()
 	var targetable := not is_untargetable()
 	var alpha := 0.92 if targetable else 0.48
-	draw_circle(Vector2(1.5, 2.0), body_radius + 4.0, Color(0.03, 0.035, 0.03, 0.55))
+	draw_circle(Vector2(1.5, 2.0), body_radius + 4.0, VisualGrammar.shadow_color(0.55))
 	draw_circle(Vector2.ZERO, body_radius + 3.0, Color(base.r, base.g, base.b, 0.16 if targetable else 0.08))
 	draw_circle(Vector2.ZERO, body_radius, Color(base.r, base.g, base.b, alpha))
 	draw_circle(Vector2(body_radius * 0.32, -body_radius * 0.22), body_radius * 0.46, Color(base.r, base.g, base.b, minf(alpha + 0.08, 1.0)).lightened(0.14))
@@ -135,16 +136,4 @@ func _breeding_health() -> float:
 			return 88.0
 
 func _family_color() -> Color:
-	match family:
-		"amphibian":
-			return Color(0.42, 0.68, 0.28)
-		"reptile":
-			return Color(0.28, 0.5, 0.25)
-		"bird":
-			return Color(0.5, 0.58, 0.72)
-		"mammal":
-			return Color(0.45, 0.3, 0.18)
-		"crawly":
-			return Color(0.48, 0.38, 0.24)
-		_:
-			return Color(0.55, 0.48, 0.32)
+	return VisualGrammar.family_color(family)

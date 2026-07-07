@@ -120,31 +120,31 @@ func _draw_food_overlays(world: Rect2, map_scale: float) -> void:
 		var kind: String = String(food.get("kind"))
 		if kind == "plant":
 			var plant_type: String = String(food.get("plant_type"))
-			var color := Color(0.48, 0.86, 0.34, 0.78)
+			var color := VisualGrammar.harvestable_color("berry_leaf", 0.78)
 			var radius: float = 1.4
 			match plant_type:
 				"tree":
-					color = Color(0.25, 0.62, 0.28, 0.84)
+					color = VisualGrammar.harvestable_color("tree_canopy", 0.84)
 					radius = 1.8
 				"berry":
-					color = Color(0.86, 0.28, 0.32, 0.82)
+					color = VisualGrammar.harvestable_color("berry_fruit", 0.82)
 				"seed":
-					color = Color(0.74, 0.58, 0.28, 0.78)
+					color = VisualGrammar.harvestable_color("seed_marker", 0.78)
 				"flower":
-					color = Color(0.9, 0.48, 0.84, 0.82)
-			draw_circle(point, radius + 0.8, Color(0.02, 0.025, 0.015, 0.72))
+					color = VisualGrammar.harvestable_color("flower_petal", 0.82)
+			draw_circle(point, radius + 0.8, VisualGrammar.shadow_color(0.72))
 			draw_circle(point, radius, color)
 		elif kind == "critter":
-			draw_circle(point, 1.5, Color(0.76, 0.58, 0.34, 0.78))
+			draw_circle(point, 1.5, VisualGrammar.harvestable_color("critter_belly", 0.78))
 
 func _minimap_zone_color(zone: Dictionary, active: bool, boss: bool, contested: bool) -> Color:
 	if contested:
-		return Color(1.0, 0.82, 0.25, 0.78)
+		return VisualGrammar.ecology_zone_color("contested", 0.78)
 	if boss:
-		return Color(0.95, 0.58, 0.18, 0.76) if active else Color(0.54, 0.48, 0.38, 0.42)
+		return VisualGrammar.ecology_zone_color("boss_active", 0.76) if active else VisualGrammar.ecology_zone_color("boss_dormant", 0.42)
 	if String(zone.get("side", "")) == "blue":
-		return Color(0.55, 0.78, 0.4, 0.62)
-	return Color(0.68, 0.7, 0.36, 0.62)
+		return VisualGrammar.ecology_zone_color("blue_side", 0.62)
+	return VisualGrammar.ecology_zone_color("red_side", 0.62)
 
 func _draw_minimap_ellipse(center: Vector2, radius: Vector2, fill: Color, outline: Color, width: float) -> void:
 	var points := PackedVector2Array()

@@ -1,6 +1,7 @@
 extends Node2D
 
 const TargetFilter := preload("res://scripts/sim/combat/target_filter.gd")
+const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
 
 const GROW_SEC := 2.0
 const FIELD_SEC := 10.0
@@ -20,6 +21,7 @@ func setup(field_arena: Node, actor: Node, field_position: Vector2) -> void:
 	source_actor = actor
 	team = int(actor.team)
 	global_position = field_position
+	queue_redraw()
 
 func _physics_process(delta: float) -> void:
 	if consumed:
@@ -28,8 +30,10 @@ func _physics_process(delta: float) -> void:
 		retire()
 		return
 	if grow_timer > 0.0:
+		var was_growing := grow_timer > 0.0
 		grow_timer = maxf(grow_timer - delta, 0.0)
-		queue_redraw()
+		if was_growing and grow_timer <= 0.0:
+			queue_redraw()
 		return
 	remaining = maxf(remaining - delta, 0.0)
 	if remaining <= 0.0:
@@ -43,7 +47,6 @@ func _physics_process(delta: float) -> void:
 				entity.heal(float(entity.max_health) * HEAL_FRACTION)
 				retire()
 				return
-	queue_redraw()
 
 func is_alive() -> bool:
 	return not consumed
@@ -56,16 +59,16 @@ func retire() -> void:
 
 func _draw() -> void:
 	var mature := grow_timer <= 0.0
-	var fill := Color(0.42, 0.24, 0.08, 0.35) if not mature else Color(0.2, 0.52, 0.18, 0.30)
-	var outline := Color(0.7, 0.45, 0.16, 0.7) if not mature else Color(0.9, 0.48, 0.78, 0.75)
+	var fill := VisualGrammar.harvestable_color("seed_soil", 0.35) if not mature else VisualGrammar.harvestable_color("berry_leaf", 0.30)
+	var outline := VisualGrammar.harvestable_color("seed_marker", 0.7) if not mature else VisualGrammar.harvestable_color("flower_petal", 0.75)
 	draw_circle(Vector2.ZERO, body_radius, fill)
 	draw_arc(Vector2.ZERO, body_radius, 0.0, TAU, 24, outline, 2.0)
 	if mature:
-		draw_line(Vector2(0.0, 8.0), Vector2(0.0, -5.0), Color(0.22, 0.58, 0.22), 2.0)
-		draw_circle(Vector2(-4.0, -6.0), 4.0, Color(0.92, 0.42, 0.82))
-		draw_circle(Vector2(4.0, -6.0), 4.0, Color(0.94, 0.5, 0.86))
-		draw_circle(Vector2(0.0, -10.0), 4.0, Color(0.9, 0.42, 0.78))
-		draw_circle(Vector2(0.0, -6.0), 2.5, Color(0.95, 0.76, 0.24))
+		draw_line(Vector2(0.0, 8.0), Vector2(0.0, -5.0), VisualGrammar.harvestable_color("flower_stem"), 2.0)
+		draw_circle(Vector2(-4.0, -6.0), 4.0, VisualGrammar.harvestable_color("flower_petal").darkened(0.04))
+		draw_circle(Vector2(4.0, -6.0), 4.0, VisualGrammar.harvestable_color("flower_petal").lightened(0.04))
+		draw_circle(Vector2(0.0, -10.0), 4.0, VisualGrammar.harvestable_color("flower_petal"))
+		draw_circle(Vector2(0.0, -6.0), 2.5, VisualGrammar.harvestable_color("flower_center"))
 	else:
-		draw_rect(Rect2(Vector2(-7.0, -4.0), Vector2(14.0, 8.0)), Color(0.36, 0.22, 0.12, 0.85))
-		draw_line(Vector2(0.0, 3.0), Vector2(0.0, -5.0), Color(0.36, 0.68, 0.28), 1.6)
+		draw_rect(Rect2(Vector2(-7.0, -4.0), Vector2(14.0, 8.0)), VisualGrammar.harvestable_color("seed_soil", 0.85))
+		draw_line(Vector2(0.0, 3.0), Vector2(0.0, -5.0), VisualGrammar.harvestable_color("seed_sprout"), 1.6)

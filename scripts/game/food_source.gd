@@ -9,6 +9,7 @@ const PLANT_BERRY := "berry"
 const PLANT_TREE := "tree"
 const PLANT_SEED := "seed"
 const PLANT_FLOWER := "flower"
+const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
 
 var kind := KIND_PLANT
 var plant_type := PLANT_BERRY
@@ -89,15 +90,15 @@ func _draw_plant() -> void:
 func _draw_resource_marker() -> void:
 	var marker_center := Vector2(0.0, 2.0)
 	var marker_radius := body_radius + (4.5 if plant_type == PLANT_TREE else 3.0)
-	var fill := Color(0.04, 0.08, 0.05, 0.22)
-	var outline := Color(0.36, 0.68, 0.34, 0.62)
+	var fill := VisualGrammar.harvestable_color("marker_fill", 0.22)
+	var outline := VisualGrammar.harvestable_color("berry_marker", 0.62)
 	match plant_type:
 		PLANT_TREE:
-			outline = Color(0.84, 0.66, 0.28, 0.72)
+			outline = VisualGrammar.harvestable_color("tree_marker", 0.72)
 		PLANT_SEED:
-			outline = Color(0.67, 0.52, 0.28, 0.66)
+			outline = VisualGrammar.harvestable_color("seed_marker", 0.66)
 		PLANT_FLOWER:
-			outline = Color(0.88, 0.48, 0.82, 0.68)
+			outline = VisualGrammar.harvestable_color("flower_marker", 0.68)
 	draw_circle(marker_center, marker_radius, fill)
 	draw_arc(marker_center, marker_radius, 0.0, TAU, 28, outline, 1.35, true)
 
@@ -113,9 +114,9 @@ func _plant_body_radius() -> float:
 			return 10.0
 
 func _draw_berry_bush() -> void:
-	var stem := Color(0.22, 0.55, 0.24)
-	var leaf := Color(0.42, 0.86, 0.38)
-	var fruit := Color(0.82, 0.18, 0.27)
+	var stem := VisualGrammar.harvestable_color("berry_stem")
+	var leaf := VisualGrammar.harvestable_color("berry_leaf")
+	var fruit := VisualGrammar.harvestable_color("berry_fruit")
 	draw_line(Vector2(0.0, 7.0), Vector2(0.0, -8.0), stem, 3.0)
 	draw_circle(Vector2(-5.0, -2.0), 5.0, leaf)
 	draw_circle(Vector2(5.0, -4.0), 5.0, leaf.lightened(0.1))
@@ -124,9 +125,9 @@ func _draw_berry_bush() -> void:
 	draw_circle(Vector2(-7.0, -4.0), 1.8, fruit.darkened(0.1))
 
 func _draw_tree() -> void:
-	var trunk := Color(0.42, 0.25, 0.12)
-	var canopy := Color(0.18, 0.52, 0.28)
-	var fruit := Color(0.9, 0.64, 0.2)
+	var trunk := VisualGrammar.harvestable_color("tree_trunk")
+	var canopy := VisualGrammar.harvestable_color("tree_canopy")
+	var fruit := VisualGrammar.harvestable_color("tree_fruit")
 	draw_rect(Rect2(Vector2(-3.0, -2.0), Vector2(6.0, 14.0)), trunk)
 	draw_circle(Vector2(0.0, -10.0), 10.0, canopy)
 	draw_circle(Vector2(-7.0, -4.0), 7.0, canopy.lightened(0.08))
@@ -135,17 +136,17 @@ func _draw_tree() -> void:
 	draw_circle(Vector2(5.0, -7.0), 2.0, fruit.darkened(0.08))
 
 func _draw_seed_patch() -> void:
-	var soil := Color(0.42, 0.28, 0.16)
-	var sprout := Color(0.48, 0.82, 0.35)
+	var soil := VisualGrammar.harvestable_color("seed_soil")
+	var sprout := VisualGrammar.harvestable_color("seed_sprout")
 	draw_rect(Rect2(Vector2(-8.0, -5.0), Vector2(16.0, 10.0)), soil)
 	for x in [-5.0, 0.0, 5.0]:
 		draw_line(Vector2(x, 3.0), Vector2(x, -5.0), sprout.darkened(0.1), 1.6)
 		draw_circle(Vector2(x - 1.8, -3.0), 2.2, sprout)
 
 func _draw_flower() -> void:
-	var stem := Color(0.24, 0.62, 0.28)
-	var petal := Color(0.92, 0.42, 0.82)
-	var center := Color(0.96, 0.78, 0.24)
+	var stem := VisualGrammar.harvestable_color("flower_stem")
+	var petal := VisualGrammar.harvestable_color("flower_petal")
+	var center := VisualGrammar.harvestable_color("flower_center")
 	draw_line(Vector2(0.0, 8.0), Vector2(0.0, -5.0), stem, 2.4)
 	draw_circle(Vector2(-5.0, -7.0), 4.0, petal.darkened(0.05))
 	draw_circle(Vector2(5.0, -7.0), 4.0, petal.lightened(0.05))
@@ -155,16 +156,16 @@ func _draw_flower() -> void:
 func _draw_harvest_pips() -> void:
 	if harvest_hits_required <= 1:
 		return
-	var pip_color := Color(0.95, 0.82, 0.35)
-	var empty_color := Color(0.12, 0.1, 0.07, 0.72)
+	var pip_color := VisualGrammar.harvestable_color("pip")
+	var empty_color := VisualGrammar.harvestable_color("pip_empty", 0.72)
 	for i in harvest_hits_required:
 		var x := (float(i) - float(harvest_hits_required - 1) * 0.5) * 5.0
 		var color := pip_color if i < harvest_hits_remaining else empty_color
 		draw_circle(Vector2(x, body_radius + 5.0), 1.8, color)
 
 func _draw_critter() -> void:
-	var shell := Color(0.5, 0.36, 0.2)
-	var belly := Color(0.78, 0.62, 0.36)
+	var shell := VisualGrammar.harvestable_color("critter_shell")
+	var belly := VisualGrammar.harvestable_color("critter_belly")
 	draw_circle(Vector2.ZERO, body_radius, shell)
 	draw_circle(Vector2(2.0, 0.0), body_radius * 0.62, belly)
 	for i in 4:

@@ -92,6 +92,81 @@ static func shadow_color(alpha := SHADOW.a) -> Color:
 	output.a = alpha
 	return output
 
+static func harvestable_color(part: String, alpha := 1.0) -> Color:
+	var color := BOG_MOSS
+	match part:
+		"marker_fill":
+			color = BOG_LAND_DARK.darkened(0.28)
+		"berry_marker":
+			color = BOG_MOSS.lightened(0.08)
+		"tree_marker", "pip":
+			color = Color(0.68, 0.54, 0.24)
+		"seed_marker":
+			color = BOG_MUD.lightened(0.16)
+		"flower_marker", "flower_petal":
+			color = Color(0.58, 0.40, 0.54)
+		"berry_stem", "flower_stem":
+			color = BOG_MOSS.darkened(0.08)
+		"berry_leaf", "seed_sprout":
+			color = BOG_MOSS.lightened(0.1)
+		"berry_fruit":
+			color = Color(0.56, 0.18, 0.22)
+		"tree_trunk", "seed_soil", "critter_shell":
+			color = BOG_MUD
+		"tree_canopy":
+			color = BOG_MOSS.darkened(0.1)
+		"tree_fruit", "flower_center", "critter_belly":
+			color = BOG_REED.lightened(0.14)
+		"pip_empty":
+			color = BOG_MUD_DARK.darkened(0.18)
+	color.a = alpha
+	return color
+
+static func family_color(family: String, alpha := 1.0) -> Color:
+	var color := BOG_REED
+	match family:
+		"amphibian":
+			color = BOG_MOSS.lightened(0.12)
+		"reptile":
+			color = BOG_MOSS.darkened(0.08)
+		"bird":
+			color = Color(0.44, 0.50, 0.58)
+		"mammal":
+			color = BOG_MUD
+		"crawly":
+			color = BOG_MUD.lightened(0.1)
+	color.a = alpha
+	return color
+
+static func habitat_accent_color(team: int, alpha := 1.0) -> Color:
+	var color := Color(0.20, 0.31, 0.34) if team == 0 else Color(0.36, 0.25, 0.18)
+	color.a = alpha
+	return color
+
+static func ecology_zone_color(kind: String, alpha := 1.0) -> Color:
+	var color := BOG_REED
+	match kind:
+		"boss_active":
+			color = Color(0.58, 0.43, 0.22)
+		"boss_dormant":
+			color = Color(0.52, 0.46, 0.38)
+		"blue_control":
+			color = Color(0.24, 0.38, 0.42)
+		"red_control":
+			color = Color(0.42, 0.28, 0.22)
+		"blue_side":
+			color = BOG_MOSS.lightened(0.06)
+		"red_side":
+			color = Color(0.58, 0.62, 0.34)
+		"contested":
+			color = Color(0.58, 0.52, 0.28)
+		"water_outline":
+			color = WATER_FOAM
+		"water_fill":
+			color = WATER_SHALLOW
+	color.a = alpha
+	return color
+
 static func with_alpha(color: Color, alpha: float) -> Color:
 	var output := color
 	output.a *= alpha

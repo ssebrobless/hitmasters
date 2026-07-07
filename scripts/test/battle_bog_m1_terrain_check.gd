@@ -113,7 +113,30 @@ func _visual_palette_ok() -> bool:
 		and _max_channel(water) <= 0.55 \
 		and _max_channel(cover) <= 0.55
 	var shadow_helper_ok := _color_matches(VisualGrammar.shadow_color(0.62), Color(0.04, 0.05, 0.03, 0.62))
-	return hierarchy_ok and value_band_ok and shadow_helper_ok and foam.a < 1.0
+	var ecology_palette_ok := _ecology_visual_palette_ok()
+	return hierarchy_ok and value_band_ok and shadow_helper_ok and ecology_palette_ok and foam.a < 1.0
+
+func _ecology_visual_palette_ok() -> bool:
+	var sampled := [
+		VisualGrammar.harvestable_color("berry_leaf"),
+		VisualGrammar.harvestable_color("berry_fruit"),
+		VisualGrammar.harvestable_color("tree_fruit"),
+		VisualGrammar.harvestable_color("flower_petal"),
+		VisualGrammar.family_color("amphibian"),
+		VisualGrammar.family_color("bird")
+	]
+	for color: Color in sampled:
+		if _max_channel(color) > 0.72:
+			return false
+	var marker_fill := VisualGrammar.harvestable_color("marker_fill", 0.22)
+	var habitat_accent := VisualGrammar.habitat_accent_color(0, 0.65)
+	var ecology_control := VisualGrammar.ecology_zone_color("blue_control", 0.34)
+	return absf(marker_fill.a - 0.22) < 0.001 \
+		and _max_channel(marker_fill) <= 0.14 \
+		and absf(habitat_accent.a - 0.65) < 0.001 \
+		and absf(ecology_control.a - 0.34) < 0.001 \
+		and _max_channel(habitat_accent) <= 0.42 \
+		and _max_channel(ecology_control) <= 0.42
 
 func _visual_constitution_palette_matches(palette: Dictionary) -> bool:
 	return _color_matches(palette["land_dark"], Color(0.16, 0.19, 0.11)) \

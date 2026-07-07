@@ -2315,9 +2315,11 @@ func _draw_animal_zones() -> void:
 		_draw_ellipse(center, radius, fill, outline, 2.0 if active else 1.0)
 		_draw_animal_zone_water_source(zone, active)
 		if contested:
-			_draw_ellipse(center, radius * 0.92, Color(1.0, 0.85, 0.25, 0.025), Color(1.0, 0.82, 0.25, 0.46), 3.0)
+			var contested_color := VisualGrammar.ecology_zone_color("contested")
+			_draw_ellipse(center, radius * 0.92, Color(contested_color.r, contested_color.g, contested_color.b, 0.025), VisualGrammar.ecology_zone_color("contested", 0.46), 3.0)
 		elif control_team >= 0:
-			var team_tint := Color(0.4, 0.72, 1.0, 0.34) if control_team == BLUE else Color(1.0, 0.42, 0.35, 0.34)
+			var control_key := "blue_control" if control_team == BLUE else "red_control"
+			var team_tint := VisualGrammar.ecology_zone_color(control_key, 0.34)
 			_draw_ellipse(center, radius * 0.86, Color(team_tint.r, team_tint.g, team_tint.b, 0.018), team_tint, 2.0)
 		_draw_animal_zone_occupant_marks(zone, center, radius, base_color)
 
@@ -2327,17 +2329,18 @@ func _draw_animal_zone_water_source(zone: Dictionary, active: bool) -> void:
 	if water_radius.x <= 0.0 or water_radius.y <= 0.0:
 		return
 	var alpha := 0.24 if active else 0.09
-	_draw_ellipse(water_center, water_radius, Color(0.18, 0.46, 0.56, alpha * 0.34), Color(0.48, 0.78, 0.86, alpha), 1.3 if active else 0.8)
-	_draw_ellipse(water_center, water_radius * 0.58, Color(0.0, 0.0, 0.0, 0.0), Color(0.58, 0.86, 0.92, alpha * 0.72), 0.9)
+	var water_fill := VisualGrammar.ecology_zone_color("water_fill")
+	_draw_ellipse(water_center, water_radius, Color(water_fill.r, water_fill.g, water_fill.b, alpha * 0.34), VisualGrammar.ecology_zone_color("water_outline", alpha), 1.3 if active else 0.8)
+	_draw_ellipse(water_center, water_radius * 0.58, Color(0.0, 0.0, 0.0, 0.0), VisualGrammar.ecology_zone_color("water_outline", alpha * 0.72), 0.9)
 
 func _animal_zone_color(zone: Dictionary, active: bool, boss: bool, control_team: int) -> Color:
 	if boss:
-		return Color(0.95, 0.65, 0.2) if active else Color(0.52, 0.46, 0.38)
+		return VisualGrammar.ecology_zone_color("boss_active" if active else "boss_dormant")
 	if control_team == BLUE:
-		return Color(0.38, 0.68, 0.95)
+		return VisualGrammar.ecology_zone_color("blue_control")
 	if control_team == RED:
-		return Color(0.95, 0.42, 0.36)
-	return Color(0.5, 0.68, 0.38) if String(zone.get("side", "")) == "blue" else Color(0.58, 0.62, 0.34)
+		return VisualGrammar.ecology_zone_color("red_control")
+	return VisualGrammar.ecology_zone_color("blue_side" if String(zone.get("side", "")) == "blue" else "red_side")
 
 func _draw_animal_zone_occupant_marks(zone: Dictionary, center: Vector2, radius: Vector2, color: Color) -> void:
 	var occupants: Array = zone.get("alive_occupants", zone.get("occupants", []))
@@ -2465,10 +2468,10 @@ func _aura_ring_radius(target: Variant) -> float:
 
 func _aura_color(source_ability: String, friendly: bool) -> Color:
 	if source_ability == "Scent Marking":
-		return Color(0.95, 0.82, 0.35, 0.82)
+		return VisualGrammar.telegraph_color("windup", 0.82)
 	if friendly:
-		return Color(0.35, 1.0, 0.55, 0.82)
-	return Color(0.82, 0.45, 1.0, 0.82)
+		return VisualGrammar.telegraph_color("aura", 0.82, true)
+	return VisualGrammar.telegraph_color("aura", 0.82, false)
 
 func _on_core_destroyed(core) -> void:
 	var winner := "Red" if core.team == BLUE else "Blue"
