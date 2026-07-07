@@ -1532,6 +1532,7 @@ static func _base_spider(canvas: CanvasItem, radius: float, forward: Vector2, si
 			var trail_start := -forward * radius * 0.36 + side * trail_side * radius * 0.52
 			canvas.draw_line(trail_start, trail_start - forward * radius * (0.42 + 0.18 * skitter_intensity) + side * trail_side * radius * 0.16, Color(accent.r, accent.g, accent.b, 0.14 + 0.08 * skitter_intensity), maxf(radius * 0.045, 1.0))
 			canvas.draw_arc(trail_start + side * trail_side * radius * 0.16, radius * (0.16 + 0.05 * skitter_intensity), PI * 0.08, PI * 0.9, 8, Color(accent.r, accent.g, accent.b, 0.16 + 0.06 * skitter_intensity), maxf(radius * 0.035, 1.0))
+			canvas.draw_circle(trail_start - forward * radius * (0.22 + 0.08 * skitter_intensity) + side * trail_side * radius * 0.1, maxf(radius * (0.03 + 0.012 * skitter_intensity), 1.0), Color(accent.r, accent.g, accent.b, 0.2 + 0.08 * skitter_intensity))
 
 	# Eight legs, two joints each, alternating gait.
 	for leg_index in 8:
