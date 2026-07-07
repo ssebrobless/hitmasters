@@ -29,6 +29,9 @@ func _draw() -> void:
 		for rect: Rect2 in layer["rects"]:
 			var mini := Rect2((rect.position - world.position) * map_scale, rect.size * map_scale)
 			draw_rect(mini, VisualGrammar.terrain_color(zone, 1.0, true))
+	_draw_bridge_overlays(world, map_scale)
+	_draw_animal_zone_overlays(world, map_scale)
+	_draw_food_overlays(world, map_scale)
 
 	for hut in arena.huts:
 		if hut == null or not is_instance_valid(hut):
@@ -79,6 +82,77 @@ func _draw() -> void:
 		draw_rect(view_rect.intersection(Rect2(Vector2.ZERO, map_size)), Color(1.0, 1.0, 1.0, 0.35), false, 1.0)
 
 	draw_rect(Rect2(Vector2.ZERO, map_size), Color(0.5, 0.55, 0.45, 0.7), false, 1.5)
+
+func _draw_bridge_overlays(world: Rect2, map_scale: float) -> void:
+	if arena.terrain_map == null or not arena.terrain_map.has_method("get_land_bridge_rects"):
+		return
+	for rect: Rect2 in arena.terrain_map.get_land_bridge_rects():
+		var mini := Rect2((rect.position - world.position) * map_scale, rect.size * map_scale)
+		draw_rect(mini.grow(1.0), Color(0.08, 0.08, 0.04, 0.48))
+		draw_rect(mini, Color(0.48, 0.42, 0.24, 0.72))
+
+func _draw_animal_zone_overlays(world: Rect2, map_scale: float) -> void:
+	if arena == null or arena.get("animal_zone_states") == null:
+		return
+	for zone: Dictionary in arena.get("animal_zone_states"):
+		var center: Vector2 = (zone.get("center", Vector2.ZERO) - world.position) * map_scale
+		var radius: Vector2 = zone.get("radius", Vector2.ZERO) * map_scale
+		if radius.x <= 0.0 or radius.y <= 0.0:
+			continue
+		var active := bool(zone.get("active", false))
+		var boss := bool(zone.get("boss", false))
+		var contested := bool(zone.get("contested", false))
+		var color := _minimap_zone_color(zone, active, boss, contested)
+		_draw_minimap_ellipse(center, radius, Color(color.r, color.g, color.b, 0.06 if active else 0.025), color, 1.2 if active else 0.8)
+		if boss:
+			_draw_minimap_ellipse(center, radius * 0.66, Color(0.0, 0.0, 0.0, 0.0), Color(color.r, color.g, color.b, color.a * 0.72), 0.9)
+
+func _draw_food_overlays(world: Rect2, map_scale: float) -> void:
+	if arena == null or arena.get("food_sources") == null:
+		return
+	for food in arena.get("food_sources"):
+		if food == null or not is_instance_valid(food):
+			continue
+		var point: Vector2 = (food.global_position - world.position) * map_scale
+		var kind := String(food.get("kind"))
+		if kind == "plant":
+			var plant_type := String(food.get("plant_type"))
+			var color := Color(0.48, 0.86, 0.34, 0.78)
+			var radius := 1.4
+			match plant_type:
+				"tree":
+					color = Color(0.25, 0.62, 0.28, 0.84)
+					radius = 1.8
+				"berry":
+					color = Color(0.86, 0.28, 0.32, 0.82)
+				"seed":
+					color = Color(0.74, 0.58, 0.28, 0.78)
+				"flower":
+					color = Color(0.9, 0.48, 0.84, 0.82)
+			draw_circle(point, radius + 0.8, Color(0.02, 0.025, 0.015, 0.72))
+			draw_circle(point, radius, color)
+		elif kind == "critter":
+			draw_circle(point, 1.5, Color(0.76, 0.58, 0.34, 0.78))
+
+func _minimap_zone_color(zone: Dictionary, active: bool, boss: bool, contested: bool) -> Color:
+	if contested:
+		return Color(1.0, 0.82, 0.25, 0.78)
+	if boss:
+		return Color(0.95, 0.58, 0.18, 0.76) if active else Color(0.54, 0.48, 0.38, 0.42)
+	if String(zone.get("side", "")) == "blue":
+		return Color(0.55, 0.78, 0.4, 0.62)
+	return Color(0.68, 0.7, 0.36, 0.62)
+
+func _draw_minimap_ellipse(center: Vector2, radius: Vector2, fill: Color, outline: Color, width: float) -> void:
+	var points := PackedVector2Array()
+	var steps := 28
+	for i in steps:
+		var angle := TAU * float(i) / float(steps)
+		points.append(center + Vector2(cos(angle) * radius.x, sin(angle) * radius.y))
+	if fill.a > 0.0:
+		draw_colored_polygon(points, fill)
+	for i in steps:
+		draw_line(points[i], points[(i + 1) % steps], outline, width)
 
 func _draw_entity_icon(entity: Node, point: Vector2) -> void:
 	var team := _node_team(entity)
