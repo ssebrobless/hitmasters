@@ -71,6 +71,8 @@ func setup(next_arena, zone: Dictionary, next_species_id: String, spawn_position
 		min_x = home_center.x - radius.x - LEASH_MARGIN
 		max_x = MIDDLE_REACH
 	leash_rect = Rect2(Vector2(min_x, min_y), Vector2(max_x - min_x, max_y - min_y))
+	if arena != null and is_instance_valid(arena):
+		leash_rect = leash_rect.intersection(arena.ARENA_RECT)
 	global_position = spawn_position
 	facing = Vector2.LEFT if zone_side == "red" else Vector2.RIGHT
 	z_index = 6
@@ -215,6 +217,9 @@ func _find_target() -> Node:
 			continue
 		var t := int(entity.get("team"))
 		if t != 0 and t != 1:
+			continue
+		# Only aggro real creatures -- skip huts, dams, minions, and breeding actors.
+		if not entity.has_method("is_scored_actor") or not entity.is_scored_actor():
 			continue
 		if entity.has_method("is_alive") and not entity.is_alive():
 			continue
