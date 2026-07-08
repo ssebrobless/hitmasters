@@ -313,6 +313,10 @@ The marker layer draws under combat telegraphs so attacks remain the strongest s
 **[BB-VIS FOLLOW-UP DONE 2026-07-08]** The status HUD now exposes day phase and vision strength (`Day N Phase V%`)
 so players can tell when dusk/night information limits are active without opening debug views. Covered by
 `battle_bog_day_night_vision_check.gd` and the scene boot HUD readability check.
+**[BB-VIS FOLLOW-UP DONE 2026-07-08]** Harvestable food minimap pips now use the same information-ecology posture:
+exact when currently scouted, faded from last-known memory after being seen, and hidden when never seen or stale.
+Neutral animal-zone progress stays public ecology pressure. Covered by `battle_bog_vision_minimap_check.gd` and
+`battle_bog_ecology_check.gd`.
 
 ---
 

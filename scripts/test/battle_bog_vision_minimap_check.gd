@@ -78,6 +78,8 @@ func _run() -> void:
 	if heard_marker.distance_to(enemy.global_position) <= 1.0:
 		failures.append("heard-only marker should not expose exact enemy position; marker=%s enemy=%s" % [str(heard_marker), str(enemy.global_position)])
 
+	_check_food_minimap_memory(arena, player, failures)
+
 	minimap.free()
 	print("vision_minimap failures=%d" % failures.size())
 	for failure in failures:
@@ -95,4 +97,45 @@ func _first_enemy(arena: Node) -> Node:
 		if entity.has_method("is_alive") and not entity.is_alive():
 			continue
 		return entity
+	return null
+
+func _check_food_minimap_memory(arena: Node, player: Node, failures: Array[String]) -> void:
+	var food := _first_non_habitat_food(arena, 0)
+	if food == null:
+		failures.append("vision minimap food check expected a food source outside blue habitat")
+		return
+	arena.team_food_vision[0].clear()
+	player.global_position = food.global_position + Vector2(5000.0, 0.0)
+	var hidden: Dictionary = arena.get_food_minimap_state(food, 0)
+	if bool(hidden.get("visible", true)):
+		failures.append("never-seen distant food should be hidden on minimap; state=%s" % str(hidden))
+
+	player.global_position = food.global_position + Vector2(12.0, 0.0)
+	var visible: Dictionary = arena.get_food_minimap_state(food, 0)
+	if not bool(visible.get("visible", false)) or String(visible.get("state", "")) != "visible":
+		failures.append("nearby food should be exact-visible on minimap; state=%s" % str(visible))
+	arena.vision_tick_timer = 0.0
+	arena._tick_team_vision(0.2)
+	var seen_point: Vector2 = food.global_position
+
+	player.global_position = food.global_position + Vector2(5000.0, 0.0)
+	arena.elapsed += 2.0
+	var remembered: Dictionary = arena.get_food_minimap_state(food, 0)
+	var remembered_point: Vector2 = remembered.get("point", Vector2.INF)
+	if not bool(remembered.get("visible", false)) or String(remembered.get("state", "")) != "last_known" or remembered_point.distance_to(seen_point) > 1.0:
+		failures.append("scouted food should leave a last-known minimap marker; state=%s seen=%s" % [str(remembered), str(seen_point)])
+
+	arena.elapsed += 50.0
+	var expired: Dictionary = arena.get_food_minimap_state(food, 0)
+	if bool(expired.get("visible", false)):
+		failures.append("food minimap memory should expire; state=%s" % str(expired))
+
+func _first_non_habitat_food(arena: Node, team: int) -> Node:
+	var habitat_rect: Rect2 = arena.terrain_map.get_team_habitat_rect(team)
+	for food: Node in arena.food_sources:
+		if food == null or not is_instance_valid(food):
+			continue
+		if habitat_rect.has_point(food.global_position):
+			continue
+		return food
 	return null

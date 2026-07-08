@@ -128,26 +128,33 @@ func _draw_food_overlays(world: Rect2, map_scale: float) -> void:
 	for food: Node in arena.get("food_sources"):
 		if food == null or not is_instance_valid(food):
 			continue
-		var point: Vector2 = (food.global_position - world.position) * map_scale
+		var marker_state: Dictionary = arena.get_food_minimap_state(food, view_team) if arena.has_method("get_food_minimap_state") else {"visible": true, "point": food.global_position, "stale": false}
+		if not bool(marker_state.get("visible", false)):
+			continue
+		var marker_point: Vector2 = marker_state.get("point", food.global_position)
+		if marker_point == Vector2.INF:
+			continue
+		var point: Vector2 = (marker_point - world.position) * map_scale
+		var alpha_mult := 0.42 if bool(marker_state.get("stale", false)) else 1.0
 		var kind: String = String(food.get("kind"))
 		if kind == "plant":
 			var plant_type: String = String(food.get("plant_type"))
-			var color := VisualGrammar.harvestable_color("berry_leaf", 0.78)
+			var color := VisualGrammar.harvestable_color("berry_leaf", 0.78 * alpha_mult)
 			var radius: float = 1.4
 			match plant_type:
 				"tree":
-					color = VisualGrammar.harvestable_color("tree_canopy", 0.84)
+					color = VisualGrammar.harvestable_color("tree_canopy", 0.84 * alpha_mult)
 					radius = 1.8
 				"berry":
-					color = VisualGrammar.harvestable_color("berry_fruit", 0.82)
+					color = VisualGrammar.harvestable_color("berry_fruit", 0.82 * alpha_mult)
 				"seed":
-					color = VisualGrammar.harvestable_color("seed_marker", 0.78)
+					color = VisualGrammar.harvestable_color("seed_marker", 0.78 * alpha_mult)
 				"flower":
-					color = VisualGrammar.harvestable_color("flower_petal", 0.82)
-			draw_circle(point, radius + 0.8, VisualGrammar.shadow_color(0.72))
+					color = VisualGrammar.harvestable_color("flower_petal", 0.82 * alpha_mult)
+			draw_circle(point, radius + 0.8, VisualGrammar.shadow_color(0.72 * alpha_mult))
 			draw_circle(point, radius, color)
 		elif kind == "critter":
-			draw_circle(point, 1.5, VisualGrammar.harvestable_color("critter_belly", 0.78))
+			draw_circle(point, 1.5, VisualGrammar.harvestable_color("critter_belly", 0.78 * alpha_mult))
 
 func _minimap_zone_color(zone: Dictionary, active: bool, boss: bool, contested: bool) -> Color:
 	if contested:

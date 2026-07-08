@@ -66,6 +66,7 @@ const VISION_GHOST_FADE_DAY := 3.0
 const VISION_GHOST_FADE_DUSK := 5.0
 const VISION_GHOST_FADE_NIGHT := 6.0
 const VISION_TICK_SEC := 0.1
+const FOOD_MINIMAP_MEMORY_SEC := 45.0
 # Six info-states (Decision #35).
 const INFO_VISIBLE := "visible"
 const INFO_REVEALED := "revealed"
@@ -150,6 +151,7 @@ var team_boss_stock_buffs: Dictionary = {}
 var active_terrain_events: Array[Dictionary] = []
 var team_vision := {BLUE: {}, RED: {}}    # entity_id -> {last_point, last_seen, ever}
 var team_reveals := {BLUE: {}, RED: {}}   # entity_id -> remaining reveal seconds
+var team_food_vision := {BLUE: {}, RED: {}} # food_id -> {point, last_seen}
 var vision_tick_timer := 0.0
 var center_boss_fired := [false, false]   # per CENTER_BOSS_TIMES entry
 var center_boss_spawn_count := 0          # unique-id counter (a claimed zone can outlive a new spawn)
@@ -1976,6 +1978,7 @@ func _refresh_food_sources() -> void:
 		if food != null and is_instance_valid(food):
 			food.queue_free()
 	food_sources.clear()
+	team_food_vision = {BLUE: {}, RED: {}}
 	var spawn_points: Array = terrain_map.get_food_spawn_points() if terrain_map.has_method("get_food_spawn_points") else []
 	for entry: Dictionary in spawn_points:
 		var food = FoodSourceScript.new()
@@ -1999,6 +2002,7 @@ func try_eat_nearby_food(actor: Node) -> bool:
 		if actor.consume_food(String(food.get("kind")), float(food.get("food_value")), float(food.get("heal_fraction"))):
 			food.consume()
 			food_sources.remove_at(i)
+			_forget_food_source(food)
 			return true
 	return false
 
@@ -2040,6 +2044,7 @@ func try_harvest_food_with_hit_shape(actor: Node, shape: Dictionary, source_abil
 	if actor.consume_food(String(best_food.get("kind")), float(best_food.get("food_value")), float(best_food.get("heal_fraction"))):
 		best_food.consume()
 		food_sources.erase(best_food)
+		_forget_food_source(best_food)
 		return true
 	return false
 
@@ -2197,6 +2202,67 @@ func get_world_info_markers(team := -1) -> Array[Dictionary]:
 		})
 	return markers
 
+func get_food_minimap_state(food: Node, team: int) -> Dictionary:
+	if not _is_food_source_valid(food) or not (team == BLUE or team == RED):
+		return {"visible": false, "state": INFO_HIDDEN, "point": Vector2.INF}
+	if _is_food_visible_to_team(food, team):
+		return {
+			"visible": true,
+			"state": INFO_VISIBLE,
+			"point": food.global_position,
+			"stale": false
+		}
+	var record: Dictionary = team_food_vision.get(team, {}).get(food.get_instance_id(), {})
+	if record.is_empty():
+		return {"visible": false, "state": INFO_HIDDEN, "point": Vector2.INF}
+	if elapsed - float(record.get("last_seen", -9999.0)) > FOOD_MINIMAP_MEMORY_SEC:
+		return {"visible": false, "state": INFO_HIDDEN, "point": Vector2.INF}
+	return {
+		"visible": true,
+		"state": INFO_LAST_KNOWN,
+		"point": record.get("point", Vector2.INF),
+		"stale": true,
+		"age": elapsed - float(record.get("last_seen", elapsed))
+	}
+
+func _is_food_source_valid(food: Node) -> bool:
+	if food == null or not is_instance_valid(food):
+		return false
+	if food.has_method("is_alive") and not food.is_alive():
+		return false
+	return true
+
+func _is_food_visible_to_team(food: Node, team: int) -> bool:
+	if not _is_food_source_valid(food):
+		return false
+	if _point_in_team_habitat(food.global_position, team):
+		return true
+	var vision_range := get_team_vision_range(team)
+	for member in _team_vision_members(team):
+		if member.global_position.distance_to(food.global_position) <= vision_range and has_line_of_sight(member.global_position, food.global_position, 3.0):
+			return true
+	return false
+
+func _record_food_sighting(food: Node, team: int) -> void:
+	if not _is_food_source_valid(food) or not (team == BLUE or team == RED):
+		return
+	team_food_vision[team][food.get_instance_id()] = {
+		"point": food.global_position,
+		"last_seen": elapsed
+	}
+
+func _forget_food_source(food: Node) -> void:
+	if food == null:
+		return
+	var id := food.get_instance_id()
+	for team in [BLUE, RED]:
+		team_food_vision[team].erase(id)
+
+func _point_in_team_habitat(point: Vector2, team: int) -> bool:
+	if terrain_map == null or not terrain_map.has_method("get_team_habitat_rect"):
+		return false
+	return terrain_map.get_team_habitat_rect(team).has_point(point)
+
 func _is_info_marker_candidate(entity: Node, view_team: int) -> bool:
 	if entity == null or not is_instance_valid(entity) or not ("team" in entity):
 		return false
@@ -2333,10 +2399,14 @@ func _tick_team_vision(delta: float) -> void:
 					"last_seen": elapsed,
 					"ever": true
 				}
+		for food in food_sources:
+			if _is_food_visible_to_team(food, team):
+				_record_food_sighting(food, team)
 
 func _reset_team_vision() -> void:
 	team_vision = {BLUE: {}, RED: {}}
 	team_reveals = {BLUE: {}, RED: {}}
+	team_food_vision = {BLUE: {}, RED: {}}
 	vision_tick_timer = 0.0
 
 func get_lane_destination(attacking_team: int, lane_anchor: Vector2) -> Vector2:
