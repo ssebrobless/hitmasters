@@ -68,6 +68,8 @@ func attach_leech(actor: Node, target: Node, duration: float, source_ability: St
 		target.apply_dot(actor, source_ability, ATTACH_DPS * duration, duration)
 	if target.has_method("add_modifier"):
 		target.add_modifier(source_ability, {"revealed": 2.0}, duration)
+	if actor.arena != null and actor.arena.has_method("reveal_entity_to_team"):
+		actor.arena.reveal_entity_to_team(target, int(actor.team), duration)
 	if actor.has_method("emit_vfx_event"):
 		actor.emit_vfx_event("latch_started", {"attacker": actor, "victim": target, "duration": duration, "source_ability": source_ability})
 

@@ -301,6 +301,10 @@ either leaking exact positions or disappearing entirely. `get_info_marker_point(
 only for visible/revealed targets, stored points for last-known targets, and quantized noise/rustle points for
 heard/suspected targets. Minimap heard rings and bot investigate intents now consume that shared accessor. Covered by
 `battle_bog_vision_world_check.gd`, `battle_bog_vision_minimap_check.gd`, and `battle_bog_vision_bot_check.gd`.
+**[BB-VIS FOLLOW-UP DONE 2026-07-08]** Firefly and Leech reveal effects now feed the shared team-vision service:
+Firefly Spark and Leech attach/Sensory Crypt still apply their local reveal modifiers, but also call
+`reveal_entity_to_team` for the attacking team so fog, minimap, bots, and world masking agree on the revealed target.
+Covered by `battle_bog_wave3_firefly_check.gd`, `battle_bog_wave4_leech_check.gd`, and vision masking checks.
 
 ---
 

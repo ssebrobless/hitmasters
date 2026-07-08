@@ -79,13 +79,15 @@ func _check_primary_projectile_attach(arena: Node, failures: Array[String]) -> v
 		projectile.global_position = target.global_position
 		projectile._physics_process(0.016)
 	var attached: bool = _has_damage_tick(target, "Leech Projectile") and _has_modifier(target, "Leech Projectile")
+	var team_revealed := _team_reveal_active(arena, int(actor.team), target)
 	var before: float = target.health
 	target.tick_sim(1.0)
 	var ticking: bool = target.health < before
-	if not spent or not attached or not ticking:
-		failures.append("Leech primary should spend one body-leech, stick, reveal, and deal attach DPS; spent=%s attached=%s ticking=%s health=%.2f target=%.2f ticks=%s" % [
+	if not spent or not attached or not team_revealed or not ticking:
+		failures.append("Leech primary should spend one body-leech, stick, reveal through team vision, and deal attach DPS; spent=%s attached=%s team_revealed=%s ticking=%s health=%.2f target=%.2f ticks=%s" % [
 			str(spent),
 			str(attached),
+			str(team_revealed),
 			str(ticking),
 			actor.health,
 			target.health,
@@ -143,10 +145,12 @@ func _check_sensory_crypt(arena: Node, failures: Array[String]) -> void:
 	var hit_water: bool = _has_damage_tick(first, "Sensory Crypt") and _has_damage_tick(second, "Sensory Crypt")
 	var skipped_other_body: bool = not _has_damage_tick(other_body, "Sensory Crypt")
 	var spent_and_cooled: bool = actor.health == actor.max_health - 2.0 and actor.e_timer > 13.0
-	if not found_other_body or not hit_water or not skipped_other_body or not spent_and_cooled:
-		failures.append("Leech Sensory Crypt should stay within one connected water body, spend one body-leech per valid target, and reveal/attach; found_other_body=%s water=%s other_body=%s spent=%s health=%.2f e=%.2f ticks=%s/%s/%s" % [
+	var revealed_water: bool = _team_reveal_active(arena, int(actor.team), first) and _team_reveal_active(arena, int(actor.team), second)
+	if not found_other_body or not hit_water or not revealed_water or not skipped_other_body or not spent_and_cooled:
+		failures.append("Leech Sensory Crypt should stay within one connected water body, spend one body-leech per valid target, and reveal/attach; found_other_body=%s water=%s revealed=%s other_body=%s spent=%s health=%.2f e=%.2f ticks=%s/%s/%s" % [
 			str(found_other_body),
 			str(hit_water),
+			str(revealed_water),
 			str(skipped_other_body),
 			str(spent_and_cooled),
 			actor.health,
@@ -195,3 +199,6 @@ func _has_modifier(target: Node, source: String) -> bool:
 		if String(modifier.get("source", "")) == source:
 			return true
 	return false
+
+func _team_reveal_active(arena: Node, team: int, target: Node) -> bool:
+	return float(arena.team_reveals.get(team, {}).get(target.get_instance_id(), 0.0)) > 0.0

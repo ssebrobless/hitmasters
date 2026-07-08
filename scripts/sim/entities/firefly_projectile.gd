@@ -61,6 +61,8 @@ func _hit_scan() -> void:
 			entity.break_stealth()
 		if entity.has_method("add_modifier"):
 			entity.add_modifier("Firefly Reveal", {"revealed": 2.0}, REVEAL_SEC)
+		if arena.has_method("reveal_entity_to_team"):
+			arena.reveal_entity_to_team(entity, team, REVEAL_SEC)
 		hit_entities.append(entity)
 		queue_free()
 		return

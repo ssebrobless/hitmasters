@@ -117,10 +117,12 @@ func _check_reveal_projectile(arena: Node, failures: Array[String]) -> void:
 			projectile._physics_process(0.016)
 	var damaged: bool = target.health < target.max_health
 	var revealed: bool = not target.is_stealthed() and _has_modifier(target, "Firefly Reveal")
-	if not damaged or not revealed:
-		failures.append("Firefly primary should launch homing reveal projectile; damaged=%s revealed=%s health=%.2f projectiles=%d" % [
+	var team_revealed := _team_reveal_active(arena, int(actor.team), target)
+	if not damaged or not revealed or not team_revealed:
+		failures.append("Firefly primary should launch homing reveal projectile and feed team vision; damaged=%s revealed=%s team_revealed=%s health=%.2f projectiles=%d" % [
 			str(damaged),
 			str(revealed),
+			str(team_revealed),
 			target.health,
 			actor.kit.projectiles.size()
 		])
@@ -187,3 +189,6 @@ func _has_modifier(target: Node, source: String) -> bool:
 		if String(modifier.get("source", "")) == source:
 			return true
 	return false
+
+func _team_reveal_active(arena: Node, team: int, target: Node) -> bool:
+	return float(arena.team_reveals.get(team, {}).get(target.get_instance_id(), 0.0)) > 0.0
