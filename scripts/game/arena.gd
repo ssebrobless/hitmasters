@@ -34,6 +34,7 @@ const CreatureInfoPanelScript := preload("res://scripts/ui/creature_info_panel.g
 const StockManagerScript := preload("res://scripts/game/stock_manager.gd")
 const FoodSourceScript := preload("res://scripts/game/food_source.gd")
 const WildlifeEncounterScript := preload("res://scripts/game/wildlife_encounter.gd")
+const BossActorScript := preload("res://scripts/game/bosses/boss_actor.gd")
 const ChampsosaurusBossScript := preload("res://scripts/game/bosses/champsosaurus_side_boss.gd")
 const TeratornisCenterBossScript := preload("res://scripts/game/bosses/teratornis_center_boss.gd")
 const BossCatalog := preload("res://scripts/game/bosses/boss_catalog.gd")
@@ -987,10 +988,8 @@ func _spawn_wildlife_for_zone(zone: Dictionary) -> void:
 		var species_id := String(occupants[i])
 		var spawn_pos := _animal_zone_spawn_position(zone, i, occupants.size())
 		var occupant: Node
-		if bool(zone.get("center_boss", false)):
-			occupant = TeratornisCenterBossScript.new()
-		elif bool(zone.get("boss", false)) and String(zone.get("boss_family", "")) == "champsosaurus":
-			occupant = ChampsosaurusBossScript.new()
+		if bool(zone.get("boss", false)):
+			occupant = _new_boss_actor(String(zone.get("boss_family", "")))
 		else:
 			occupant = WildlifeEncounterScript.new()
 		add_child(occupant)
@@ -1001,6 +1000,15 @@ func _spawn_wildlife_for_zone(zone: Dictionary) -> void:
 	zone["alive_occupants"] = alive_occupants
 	zone["alive_count"] = alive_occupants.size()
 	zone["wildlife_count"] = alive_occupants.size()
+
+func _new_boss_actor(family: String) -> Node:
+	match family:
+		"champsosaurus":
+			return ChampsosaurusBossScript.new()
+		"teratornis":
+			return TeratornisCenterBossScript.new()
+		_:
+			return BossActorScript.new()
 
 func _animal_zone_spawn_position(zone: Dictionary, index: int, count: int) -> Vector2:
 	var center: Vector2 = zone.get("center", Vector2.ZERO)
@@ -1300,7 +1308,7 @@ func get_center_boss_state() -> Dictionary:
 		"active": true,
 		"family": String(zone.get("boss_family", "")),
 		"objective_state": String(zone.get("objective_state", "")),
-		"size_mult": TeratornisCenterBossScript.SIZE_MULT,
+		"size_mult": BossActorScript.CENTER_SIZE_MULT,
 		"claim_ratio": clampf(float(zone.get("claim_progress", 0.0)) / BOSS_CLAIM_DURATION, 0.0, 1.0),
 		"contested": bool(zone.get("contested", false)),
 		"control_team": int(zone.get("control_team", -1))

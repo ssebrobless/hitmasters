@@ -27,7 +27,9 @@ func _run() -> void:
 		quit(1)
 		return
 
-	arena.debug_spawn_center_boss()
+	# This smoke is specifically for Grand Hunt Shadow/reveal, so force Teratornis
+	# instead of using the now-generic random center-boss debug roll.
+	arena._spawn_center_boss("teratornis")
 	var boss: Node = _center_actor(arena)
 	if boss == null:
 		print("bb_center_boss_live_smoke RESULT=FAIL reason=no_boss_spawned")

@@ -23,10 +23,10 @@ BB-BOSS-1  per-team meter + objective-state contract            [DONE 2026-07-07
    -> BB-VIS-2/3  minimap fog + bot see-only-what-they-see   [DONE 2026-07-08]
    -> BB-VIS-4    world-space enemy masking (deferred)
    -> BB-BOSS-5  Teratornis center boss                    [DONE 2026-07-08]
-   -> BB-BOSS-6  shared boss framework + remaining 4 families
+   -> BB-BOSS-6  shared boss framework + remaining 4 families            [DONE 2026-07-08]
    (BB-VIS-4 may follow)
    -> BB-BOSS-5  Teratornis center boss
-   -> BB-BOSS-6  shared boss framework + remaining 4 families
+   -> BB-BOSS-6  shared boss framework + remaining 4 families            [DONE 2026-07-08]
 ```
 
 Standing gates every milestone: full suite `scripts/test/run_all.ps1 -Godot <exe> -KeepGoing -StrictOutput`
@@ -356,6 +356,21 @@ Arthropleura (4 segment bands, not 20 health bars) incrementally with side + cen
 buffs/rewards/terrain events from `boss_catalog.gd`. Apply anti-snowball caps/decay to teamwide rewards.
 
 **DoD:** all five families spawn as side + center bosses on the shared framework.
+
+**[DONE 2026-07-08]** Claude started the extraction by creating `scripts/game/bosses/boss_actor.gd` and thinning
+Champsosaurus/Teratornis into subclasses; the run halted immediately after adding center-scaling constants. Codex
+finished the slice: `boss_actor.gd` now owns per-family profiles for all five families, shared TEL/HIT/FX/RECOVERY
+AI, leash/center-mode behavior, center scaling (`CENTER_SIZE_MULT = 1.5`, `CENTER_HEALTH_MULT = 2.0`), and readable
+placeholder silhouettes for Platyhystrix, American Mastodon, and Arthropleura. `arena.gd` now uses `_new_boss_actor`
+so every side boss and every center roll instantiates through the shared framework; center objective state reports
+the shared size multiplier instead of the Teratornis-specific constant. `champsosaurus_side_boss.gd` and
+`teratornis_center_boss.gd` now specialize visuals/telegraph hooks on top of the base. New
+`battle_bog_boss_shared_framework_check.gd` proves all five families spawn as side bosses and as 50% larger center
+bosses. Existing Champsosaurus attack/leash checks, center schedule check, side and center live smokes pass; full
+suite is 62 PASS / 0 FAIL. The Teratornis center live smoke now forces `teratornis` explicitly because generic
+center debug spawn can correctly roll any family after BB-BOSS-6. Still deferred from the reward follow-up:
+Champsosaurus `empowered_dot`, Platyhystrix shield/slow, Mastodon regen ramp, Arthropleura kill growth, and
+swim-stamina-specific duration wiring.
 
 ---
 
