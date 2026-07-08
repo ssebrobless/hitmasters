@@ -4,6 +4,7 @@ const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
 const MinimapBackdropScript := preload("res://scripts/ui/minimap_backdrop.gd")
 
 const MAP_WIDTH := 232.0
+const BOSS_CLAIM_DURATION_HINT := 5.0
 
 var arena: Node = null
 var redraw_accumulator: float = 0.0
@@ -117,6 +118,7 @@ func _draw_animal_zone_overlays(world: Rect2, map_scale: float) -> void:
 		_draw_minimap_ellipse(center, radius, Color(color.r, color.g, color.b, 0.06 if active else 0.025), color, zone_width)
 		if boss:
 			_draw_minimap_ellipse(center, radius * 0.66, Color(0.0, 0.0, 0.0, 0.0), Color(color.r, color.g, color.b, color.a * 0.72), 0.9)
+			_draw_boss_zone_marker(zone, center, radius, color)
 		else:
 			_draw_animal_zone_progress_marks(zone, center, radius, color)
 
@@ -163,13 +165,24 @@ func _minimap_zone_color(zone: Dictionary, active: bool, boss: bool, contested: 
 
 static func animal_zone_minimap_state(zone: Dictionary) -> Dictionary:
 	if bool(zone.get("boss", false)):
+		var objective_state := String(zone.get("objective_state", "dormant"))
+		var active := bool(zone.get("active", false))
+		var claim_progress := float(zone.get("claim_progress", 0.0))
+		var visible := active or objective_state in ["active", "claimable", "contesting", "claimed", "stolen"]
+		var family := String(zone.get("boss_family", ""))
 		return {
-			"visible": false,
-			"objective_state": String(zone.get("objective_state", "dormant")),
+			"visible": visible,
+			"objective_state": objective_state,
 			"boss": true,
-			"active": bool(zone.get("active", false)),
+			"center_boss": bool(zone.get("center_boss", false)),
+			"active": active,
+			"family": family,
+			"label": boss_family_minimap_code(family),
+			"action": _boss_minimap_action(objective_state, active),
 			"progress_mark_count": 0,
 			"progress_mark_total": 0,
+			"claim_progress": claim_progress,
+			"claim_ratio": clampf(claim_progress / BOSS_CLAIM_DURATION_HINT, 0.0, 1.0),
 			"contested": bool(zone.get("contested", false)),
 			"control_team": int(zone.get("control_team", -1)),
 			"claim_team": int(zone.get("claim_team", -1)),
@@ -188,6 +201,32 @@ static func animal_zone_minimap_state(zone: Dictionary) -> Dictionary:
 		"control_team": int(zone.get("control_team", -1))
 	}
 
+static func boss_family_minimap_code(family: String) -> String:
+	match family:
+		"champsosaurus":
+			return "CH"
+		"platyhystrix":
+			return "PL"
+		"mastodon":
+			return "MA"
+		"arthropleura":
+			return "AR"
+		"teratornis":
+			return "TE"
+	return "BOSS"
+
+static func _boss_minimap_action(objective_state: String, active: bool) -> String:
+	match objective_state:
+		"active":
+			return "fight"
+		"claimable":
+			return "claim"
+		"contesting":
+			return "contest"
+		"claimed", "stolen":
+			return "claimed"
+	return "fight" if active else "wait"
+
 func _draw_animal_zone_progress_marks(zone: Dictionary, center: Vector2, radius: Vector2, color: Color) -> void:
 	var state := animal_zone_minimap_state(zone)
 	if not bool(state.get("visible", false)):
@@ -204,6 +243,33 @@ func _draw_animal_zone_progress_marks(zone: Dictionary, center: Vector2, radius:
 		var occupant_index := int(floor(float(i) * float(total) / float(count)))
 		var mark_color := Color(color.r, color.g, color.b, 0.82) if occupant_index < alive else defeated_color
 		draw_circle(point, 1.25, mark_color)
+
+func _draw_boss_zone_marker(zone: Dictionary, center: Vector2, radius: Vector2, color: Color) -> void:
+	var state := animal_zone_minimap_state(zone)
+	if not bool(state.get("visible", false)):
+		return
+	var label := "CTR" if bool(state.get("center_boss", false)) else String(state.get("label", "BOSS"))
+	var action := _boss_action_label(String(state.get("action", "wait")))
+	var text := label if action.is_empty() else "%s %s" % [label, action]
+	var label_width := 44.0 if bool(state.get("center_boss", false)) else 38.0
+	var label_pos := center + Vector2(-label_width * 0.5, -4.0)
+	draw_rect(Rect2(label_pos + Vector2(-1.5, -6.5), Vector2(label_width + 3.0, 9.0)), VisualGrammar.shadow_color(0.58), true)
+	draw_string(ThemeDB.fallback_font, label_pos, text, HORIZONTAL_ALIGNMENT_CENTER, label_width, 8, Color(color.r, color.g, color.b, 0.96))
+	var claim_ratio := float(state.get("claim_ratio", 0.0))
+	if String(state.get("action", "")) in ["claim", "contest"] and claim_ratio > 0.0:
+		var arc_radius := maxf(minf(radius.x, radius.y) * 0.38, 3.0)
+		var arc_color := VisualGrammar.ecology_zone_color("contested", 0.9) if bool(state.get("contested", false)) else color
+		draw_arc(center, arc_radius, -PI * 0.5, -PI * 0.5 + TAU * claim_ratio, 20, arc_color, 1.7)
+
+func _boss_action_label(action: String) -> String:
+	match action:
+		"fight":
+			return "FIGHT"
+		"claim":
+			return "CLAIM"
+		"contest":
+			return "HOLD"
+	return ""
 
 func _draw_minimap_ellipse(center: Vector2, radius: Vector2, fill: Color, outline: Color, width: float) -> void:
 	var points := PackedVector2Array()
