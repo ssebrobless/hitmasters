@@ -368,6 +368,11 @@ Arthropleura center reward `kill_growth` is now wired as
 `battle_bog_boss_reward_wiring_check.gd`. All transcribed boss stock and center reward consume-sites now have first
 mechanical wiring; remaining work is tuning/readability rather than recorded-but-inert rewards.
 
+**[DONE 2026-07-08]** Added a compact player-facing objective summary accessor, `get_boss_objective_brief(team)`,
+for HUD/minimap/readability work. It returns side boss meter/family/action/claim lock, enemy-side equivalent,
+center boss active/countdown/claim state, current boss-stock summary, and current center combat rewards without UI
+code needing to interpret raw zone dictionaries. Covered by `battle_bog_boss_objective_state_check.gd`.
+
 ---
 
 ## BB-BOSS-6 — Shared framework + remaining families
@@ -389,8 +394,8 @@ the shared size multiplier instead of the Teratornis-specific constant. `champso
 `battle_bog_boss_shared_framework_check.gd` proves all five families spawn as side bosses and as 50% larger center
 bosses. Existing Champsosaurus attack/leash checks, center schedule check, side and center live smokes pass; full
 suite is 62 PASS / 0 FAIL. The Teratornis center live smoke now forces `teratornis` explicitly because generic
-center debug spawn can correctly roll any family after BB-BOSS-6. Still deferred from the reward follow-up:
-Platyhystrix shield/slow, Mastodon regen ramp, Arthropleura kill growth, and swim-stamina-specific duration wiring.
+center debug spawn can correctly roll any family after BB-BOSS-6. The later reward follow-up wired all transcribed
+boss-stock and center reward consume-sites.
 
 ---
 

@@ -600,6 +600,85 @@ func get_boss_progress_state() -> Dictionary:
 		}
 	}
 
+func get_boss_objective_brief(team: int) -> Dictionary:
+	var clean_team := team if team == BLUE or team == RED else BLUE
+	return {
+		"team": clean_team,
+		"side": _side_boss_objective_brief(clean_team),
+		"enemy_side": _side_boss_objective_brief(_enemy_team(clean_team)),
+		"center": _center_boss_objective_brief(),
+		"boss_stock": get_team_boss_stock_summary(clean_team),
+		"combat_rewards": get_team_combat_reward_state(clean_team)
+	}
+
+func _side_boss_objective_brief(team: int) -> Dictionary:
+	var state := get_side_boss_state(team)
+	var meter := int(state.get("meter", 0))
+	var interval := maxi(int(state.get("interval", BOSS_BREED_INTERVAL)), 1)
+	var objective_state := String(state.get("objective_state", "dormant"))
+	var active := bool(state.get("active", false))
+	var meter_locked := active or objective_state == "claimable" or objective_state == "contesting"
+	var current_family := String(state.get("family", ""))
+	var next_family := String(state.get("next_family", ""))
+	var family := current_family if not current_family.is_empty() else next_family
+	var action := "breed"
+	match objective_state:
+		"active":
+			action = "fight"
+		"claimable":
+			action = "claim"
+		"contesting":
+			action = "contest"
+		"claimed", "stolen":
+			action = "claimed"
+		_:
+			action = "breed"
+	return {
+		"team": team,
+		"state": objective_state,
+		"active": active,
+		"family": family,
+		"next_family": next_family,
+		"meter": meter,
+		"interval": interval,
+		"meter_ratio": clampf(float(meter) / float(interval), 0.0, 1.0),
+		"meter_locked": meter_locked,
+		"claim_ratio": float(state.get("claim_ratio", 0.0)),
+		"claim_team": int(state.get("claim_team", -1)),
+		"control_team": int(state.get("control_team", -1)),
+		"contested": bool(state.get("contested", false)),
+		"action": action
+	}
+
+func _center_boss_objective_brief() -> Dictionary:
+	var state := get_center_boss_state()
+	var schedule := _next_center_boss_schedule_brief()
+	var active := bool(state.get("active", false))
+	return {
+		"active": active,
+		"state": String(state.get("objective_state", "active" if active else "dormant")),
+		"family": String(state.get("family", "")),
+		"size_mult": float(state.get("size_mult", 0.0)),
+		"claim_ratio": float(state.get("claim_ratio", 0.0)),
+		"control_team": int(state.get("control_team", -1)),
+		"contested": bool(state.get("contested", false)),
+		"next_spawn_index": int(schedule.get("index", -1)),
+		"next_spawn_time": float(schedule.get("time", -1.0)),
+		"next_spawn_in": -1.0 if active else float(schedule.get("in", -1.0)),
+		"action": "fight" if active else ("wait" if int(schedule.get("index", -1)) >= 0 else "complete")
+	}
+
+func _next_center_boss_schedule_brief() -> Dictionary:
+	for i in CENTER_BOSS_TIMES.size():
+		if not bool(center_boss_fired[i]):
+			var spawn_time := float(CENTER_BOSS_TIMES[i])
+			return {
+				"index": i,
+				"time": spawn_time,
+				"in": maxf(spawn_time - elapsed, 0.0)
+			}
+	return {"index": -1, "time": -1.0, "in": -1.0}
+
 func get_side_boss_state(team: int) -> Dictionary:
 	var idx := int(side_boss_index.get(team, 0))
 	var zone := _team_boss_zone(team)

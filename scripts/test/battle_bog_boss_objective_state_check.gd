@@ -27,6 +27,7 @@ func _run() -> void:
 
 	var failures: Array[String] = []
 	_check_objective_lifecycle(arena, failures)
+	_check_objective_brief(arena, failures)
 
 	print("boss_objective_state failures=%d" % failures.size())
 	for failure in failures:
@@ -67,3 +68,35 @@ func _check_objective_lifecycle(arena: Node, failures: Array[String]) -> void:
 	# Red never bred, so its objective stays dormant throughout.
 	if String(arena.get_side_boss_state(1).get("objective_state", "")) != "dormant":
 		failures.append("red boss should remain dormant; state=%s" % str(arena.get_side_boss_state(1)))
+
+func _check_objective_brief(arena: Node, failures: Array[String]) -> void:
+	var brief: Dictionary = arena.get_boss_objective_brief(0)
+	var side: Dictionary = brief.get("side", {})
+	var center: Dictionary = brief.get("center", {})
+	if String(side.get("state", "")) != "claimable" or String(side.get("action", "")) != "claim":
+		failures.append("objective brief should expose side claim action after lifecycle setup; side=%s" % str(side))
+	if bool(side.get("meter_locked", false)) != true:
+		failures.append("objective brief should mark active side boss meter locked; side=%s" % str(side))
+	if String(side.get("family", "")) != "champsosaurus":
+		failures.append("objective brief should expose current side boss family; side=%s" % str(side))
+	if bool(center.get("active", true)) or int(center.get("next_spawn_index", -1)) != 0 or absf(float(center.get("next_spawn_time", 0.0)) - 600.0) > 0.01:
+		failures.append("objective brief should expose first center spawn countdown while dormant; center=%s" % str(center))
+
+	arena.elapsed = 590.0
+	brief = arena.get_boss_objective_brief(0)
+	center = brief.get("center", {})
+	if absf(float(center.get("next_spawn_in", -1.0)) - 10.0) > 0.01:
+		failures.append("objective brief should compute center spawn seconds remaining; center=%s" % str(center))
+
+	arena.elapsed = 600.0
+	arena._tick_center_boss_schedule()
+	brief = arena.get_boss_objective_brief(0)
+	center = brief.get("center", {})
+	if not bool(center.get("active", false)) or String(center.get("action", "")) != "fight" or float(center.get("next_spawn_in", 0.0)) >= 0.0:
+		failures.append("objective brief should switch center to active fight state; center=%s" % str(center))
+
+	arena._grant_center_reward(0, "teratornis")
+	brief = arena.get_boss_objective_brief(0)
+	var rewards: Dictionary = brief.get("combat_rewards", {})
+	if int(rewards.get("teratornis", {}).get("stack", 0)) != 1:
+		failures.append("objective brief should include team center reward state; rewards=%s" % str(rewards))
