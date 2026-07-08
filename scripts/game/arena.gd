@@ -1319,6 +1319,16 @@ func get_team_combat_reward_state(team: int) -> Dictionary:
 		}
 	return states
 
+func get_team_combat_reward_value(team: int, family: String) -> float:
+	var stack := int(team_combat_rewards.get(team, {}).get(family, 0))
+	if stack <= 0:
+		return 0.0
+	return BossCatalog.center_reward_value(family, stack)
+
+func get_team_vision_range(team: int) -> float:
+	# Phase sight range extended by the team's Teratornis habitat-stock vision_range buff.
+	return get_vision_range_for_phase() * (1.0 + get_team_boss_stock_effect(team, "vision_range"))
+
 # --- Boss-stock buff channel (separate from the capped breeding buffs) ------------
 func _reset_boss_stock_buffs() -> void:
 	team_boss_stock_buffs = {
@@ -2003,7 +2013,7 @@ func _team_vision_members(team: int) -> Array[Node]:
 
 func _sensory_state_for(entity: Node, team: int) -> String:
 	# Live sight/hearing only (no memory): INFO_VISIBLE | INFO_HEARD | INFO_HIDDEN.
-	var vision_range := get_vision_range_for_phase()
+	var vision_range := get_team_vision_range(team)
 	var hearing_range := vision_range + VISION_HEARING_BONUS
 	var stealthed: bool = entity.has_method("is_stealthed") and entity.is_stealthed()
 	var pos: Vector2 = entity.global_position

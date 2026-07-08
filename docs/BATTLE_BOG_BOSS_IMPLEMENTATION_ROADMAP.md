@@ -332,6 +332,23 @@ repeat family), reveal through the vision service.
 
 ---
 
+## Reward-ability wiring (BB-BOSS-4/5 follow-up)  [PARTIAL — DONE 2026-07-08]
+
+**[DONE 2026-07-08]** The recorded-but-inert boss rewards now bite in combat. Wired the habitat-stock stat
+buffs into creature.gd: `damage_reduction` (`_modified_incoming_damage`), `healing_received` (`heal`),
+`hunger_depletion` (`_tick_hunger`), `size` (`_effective_body_radius` at spawn + `refresh_team_breeding_buffs`),
+and `vision_range` (arena `get_team_vision_range`, consumed by `_sensory_state_for`). Wired the Teratornis center
+reward **Sky Ambush**: a per-creature `undamaged_timer` (ticked in `tick_sim`, reset on real incoming damage);
+`modify_outgoing_damage` empowers the next hit by the reward value once the timer passes `AMBUSH_UNDAMAGED_SEC`
+(8s), then resets the window. New arena getters `get_team_combat_reward_value`, `get_team_vision_range`; creature
+`_team_combat_reward`. Test `battle_bog_boss_reward_wiring_check.gd` (`failures=0`); full suite 61 PASS; both boss
+live smokes PASS. STILL DEFERRED (need net-new subsystems, land in/after BB-BOSS-6): Champsosaurus `empowered_dot`
+(needs an on-hit-landed hook), Platyhystrix `periodic_shield_slow` (shield-absorb + slow-on-break), American Mastodon
+`regen_ramp` (no base out-of-combat regen exists), Arthropleura `kill_growth` (teamwide stacking kill counter + cap);
+Champsosaurus `swim_duration` (no swim-stamina system).
+
+---
+
 ## BB-BOSS-6 — Shared framework + remaining families
 
 Extract common `boss_actor.gd` framework learned from the two concrete bosses; add Platyhystrix, American Mastodon,

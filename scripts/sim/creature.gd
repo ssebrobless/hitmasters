@@ -168,6 +168,8 @@ var last_move_displacement_px := 0.0
 var stealth_timer := 0.0
 var low_window_timer := 0.0
 var counter_hit_window_timer := 0.0
+var undamaged_timer := 0.0  # seconds since last took damage (Teratornis Sky Ambush window)
+const AMBUSH_UNDAMAGED_SEC := 8.0
 var respawn_timer := 0.0
 var respawn_duration := 5.0
 var hunger := HUNGER_MAX
@@ -189,7 +191,7 @@ func apply_creature(next_creature_id: String) -> void:
 	movement_tags = creature_data.get("movement", [])
 	max_health = _stat_float("health", 1.0)
 	health = max_health
-	body_radius = _footprint_radius_px()
+	body_radius = _effective_body_radius()
 	body_capsule_half_len_px = _footprint_capsule_half_len_px()
 	movement_profile = MovementFeelScript.profile_for(creature_id)
 	base_speed_px = _speed_px_for_ground()
@@ -290,6 +292,7 @@ func tick_sim(delta: float) -> void:
 	stealth_timer = maxf(stealth_timer - delta, 0.0)
 	low_window_timer = maxf(low_window_timer - delta, 0.0)
 	counter_hit_window_timer = maxf(counter_hit_window_timer - delta, 0.0)
+	undamaged_timer += delta
 	_update_flight(delta)
 	_update_terrain(delta)
 	_move_from_input(delta)
@@ -410,6 +413,8 @@ func take_damage_event(event: Resource) -> void:
 	break_stealth()
 	var before_health := health
 	var amount: float = _modified_incoming_damage(event)
+	if amount > 0.0:
+		undamaged_timer = 0.0  # taking damage resets the Sky Ambush window
 	var counter_hit := counter_hit_window_timer > 0.0 and amount > 0.0
 	if counter_hit:
 		amount *= COUNTER_HIT_MULT
@@ -480,7 +485,7 @@ func take_damage_event(event: Resource) -> void:
 func heal(amount: float) -> void:
 	if alive:
 		var before := health
-		health = minf(health + amount * _modifier_value("healing_received_mult", 1.0), max_health)
+		health = minf(health + amount * _modifier_value("healing_received_mult", 1.0) * (1.0 + _team_boss_stock_bonus("healing_received")), max_health)
 		var healed := health - before
 		if healed > 0.0:
 			emit_vfx_event("heal_tick", {
@@ -546,10 +551,14 @@ func refresh_team_breeding_buffs() -> void:
 	var health_ratio := clampf(health / previous_max, 0.0, 1.0)
 	max_health = _stat_float("health", 1.0)
 	health = clampf(max_health * health_ratio, 0.0, max_health)
+	body_radius = _effective_body_radius()  # Arthropleura habitat-stock size buff
 	base_speed_px = _speed_px_for_ground()
 	terrain_speed_target_px = _terrain_target_speed_px(current_terrain_zone)
 	terrain_speed_px = terrain_speed_target_px
 	_request_render_redraw(true)
+
+func _effective_body_radius() -> float:
+	return _footprint_radius_px() * (1.0 + _team_boss_stock_bonus("size"))
 
 func is_satiated() -> bool:
 	return hunger_satiated
@@ -1128,7 +1137,20 @@ func make_damage_event(amount: float, delivery: int, plane: int, source_ability:
 	return event
 
 func modify_outgoing_damage(amount: float) -> float:
-	return amount * _modifier_value("damage_dealt_mult", 1.0) * _team_buff_multiplier("damage")
+	var result := amount * _modifier_value("damage_dealt_mult", 1.0) * _team_buff_multiplier("damage")
+	# Teratornis center reward (Sky Ambush): after AMBUSH_UNDAMAGED_SEC without taking damage,
+	# the next damage instance is empowered, then the window resets.
+	if undamaged_timer >= AMBUSH_UNDAMAGED_SEC:
+		var burst := _team_combat_reward("teratornis")
+		if burst > 0.0:
+			result *= 1.0 + burst
+			undamaged_timer = 0.0
+	return result
+
+func _team_combat_reward(family: String) -> float:
+	if arena != null and arena.has_method("get_team_combat_reward_value"):
+		return float(arena.get_team_combat_reward_value(team, family))
+	return 0.0
 
 func get_ability_delta(delta: float) -> float:
 	return delta * _team_buff_multiplier("ability_haste")
@@ -1396,7 +1418,9 @@ func _tick_hunger(delta: float) -> void:
 	if hunger_satiated:
 		return
 	var full_to_empty_sec := _hunger_full_to_empty_sec()
-	hunger = maxf(hunger - (HUNGER_MAX / full_to_empty_sec) * delta, 0.0)
+	# Arthropleura habitat-stock buff: hunger_depletion is negative -> drains slower.
+	var depletion_scale := maxf(1.0 + _team_boss_stock_bonus("hunger_depletion"), 0.0)
+	hunger = maxf(hunger - (HUNGER_MAX / full_to_empty_sec) * depletion_scale * delta, 0.0)
 	if hunger <= 0.0 and alive:
 		take_area_damage(max_health * 10.0, "Starvation")
 
@@ -1451,6 +1475,8 @@ func _modified_incoming_damage(event: Resource) -> float:
 	var amount: float = event.amount
 	amount *= float(event.region_mult)
 	amount *= _modifier_value("damage_taken_mult", 1.0)
+	# American Mastodon habitat-stock buff: flat damage reduction from all sources.
+	amount *= maxf(1.0 - _team_boss_stock_bonus("damage_reduction"), 0.0)
 	# Decision #33: while latched on, third parties deal 75% — the victim's
 	# own fight-back stays the premier answer to a latch.
 	if latch_victim != null and is_instance_valid(latch_victim) and event.source_actor != null and event.source_actor != latch_victim:
