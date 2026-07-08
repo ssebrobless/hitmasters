@@ -1058,7 +1058,13 @@ func _activate_side_boss_for_team(team: int) -> void:
 		zone["claimed_team"] = -1
 		_spawn_wildlife_for_zone(zone)
 		animal_zone_states[i] = zone
-	add_kill_feed("%s boss stirs: %s" % [_team_name(team), family.capitalize()])
+	add_objective_feed(
+		"%s boss awakens: %s - fight in %s boss zone" % [_team_name(team), family.capitalize(), side],
+		"fight",
+		team,
+		family,
+		"%s:Boss" % side
+	)
 
 func _spawn_wildlife_for_zone(zone: Dictionary) -> void:
 	if not bool(zone.get("active", false)):
@@ -1151,7 +1157,13 @@ func on_wildlife_defeated(encounter: Node, source_actor: Node = null) -> void:
 		if bool(zone.get("boss", false)) and alive_occupants.is_empty():
 			zone["active"] = false
 			zone["objective_state"] = "claimable"
-			add_kill_feed("%s downed - claimable" % String(zone.get("boss_family", "boss")).capitalize())
+			add_objective_feed(
+				"%s downed - hold the boss zone to claim" % String(zone.get("boss_family", "boss")).capitalize(),
+				"claim",
+				_zone_owner_team(zone),
+				String(zone.get("boss_family", "")),
+				String(zone.get("id", ""))
+			)
 		animal_zone_states[zone_index] = zone
 	var reward: Dictionary = _grant_wildlife_reward(encounter, source_actor)
 	var source_name: String = source_actor.get_actor_name() if source_actor != null and is_instance_valid(source_actor) and source_actor.has_method("get_actor_name") else "A creature"
@@ -1305,7 +1317,13 @@ func _resolve_boss_claim(zone: Dictionary, team: int) -> void:
 	var is_owner := team == _zone_owner_team(zone)
 	zone["objective_state"] = "claimed" if is_owner else "stolen"
 	_grant_boss_reward(team, family, is_owner)
-	add_kill_feed("%s %s the %s boss" % [_team_name(team), "claimed" if is_owner else "stole", family.capitalize()])
+	add_objective_feed(
+		"%s %s the %s boss - habitat stock gained" % [_team_name(team), "claimed" if is_owner else "stole", family.capitalize()],
+		"claimed" if is_owner else "stolen",
+		team,
+		family,
+		String(zone.get("id", ""))
+	)
 
 func _grant_boss_reward(team: int, family: String, is_owner: bool) -> void:
 	_add_boss_stock_stack(team, family)
@@ -1364,7 +1382,7 @@ func _spawn_center_boss(family: String) -> void:
 	}
 	animal_zone_states.append(zone)
 	_spawn_wildlife_for_zone(animal_zone_states[animal_zone_states.size() - 1])
-	add_kill_feed("Center boss descends: %s (map-wide)" % family.capitalize())
+	add_objective_feed("Center boss descends: %s - fight mid" % family.capitalize(), "fight", -1, family, String(zone.get("id", "")))
 
 func _center_boss_zone_index() -> int:
 	for i in animal_zone_states.size():
@@ -1381,7 +1399,13 @@ func _grant_center_reward(team: int, family: String) -> void:
 	rewards[family] = mini(int(rewards.get(family, 0)) + 1, CENTER_BOSS_REWARD_MAX_STACK)
 	team_combat_rewards[team] = rewards
 	var label := String(BossCatalog.center_reward(family).get("label", family.capitalize()))
-	add_kill_feed("%s claims center reward: %s (x%d)" % [_team_name(team), label, int(rewards[family])])
+	add_objective_feed(
+		"%s claims center reward: %s (x%d)" % [_team_name(team), label, int(rewards[family])],
+		"reward",
+		team,
+		family,
+		"center"
+	)
 	if family == "arthropleura":
 		_refresh_team_breeding_buffs(team)
 
@@ -2582,13 +2606,22 @@ func record_hut_damage(source_team: int, amount: float, source_actor: Node = nul
 func get_core_damage_multiplier(_team: int) -> float:
 	return 1.0
 
-func add_kill_feed(message: String) -> void:
-	kill_feed.push_front({
-		"message": message,
-		"remaining": 4.5
-	})
+func add_kill_feed(message: String, kind: String = "feed", duration: float = 4.5, metadata: Dictionary = {}) -> void:
+	var entry := metadata.duplicate(true)
+	entry["message"] = message
+	entry["remaining"] = duration
+	entry["kind"] = kind
+	kill_feed.push_front(entry)
 	while kill_feed.size() > 5:
 		kill_feed.pop_back()
+
+func add_objective_feed(message: String, action: String, team: int = -1, family: String = "", zone_id: String = "") -> void:
+	add_kill_feed(message, "objective", 6.0, {
+		"action": action,
+		"team": team,
+		"family": family,
+		"zone_id": zone_id
+	})
 
 func get_enemy_core(team: int):
 	return cores.get(RED if team == BLUE else BLUE)

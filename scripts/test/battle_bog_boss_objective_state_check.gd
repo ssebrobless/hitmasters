@@ -46,6 +46,16 @@ func _center_boss_zone(arena: Node) -> Dictionary:
 			return zone
 	return {}
 
+func _has_objective_event(arena: Node, action: String, fragment: String) -> bool:
+	for entry: Dictionary in arena.kill_feed:
+		if String(entry.get("kind", "")) != "objective":
+			continue
+		if String(entry.get("action", "")) != action:
+			continue
+		if String(entry.get("message", "")).contains(fragment):
+			return true
+	return false
+
 func _check_objective_lifecycle(arena: Node, failures: Array[String]) -> void:
 	# Fresh: the side boss objective is dormant, and the minimap surfaces the
 	# dormant state as a coarse public broadcast without showing progress pips.
@@ -65,6 +75,8 @@ func _check_objective_lifecycle(arena: Node, failures: Array[String]) -> void:
 		failures.append("active boss minimap should report active; mm=%s" % str(active_mm))
 	if not bool(active_mm.get("visible", false)) or String(active_mm.get("action", "")) != "fight" or String(active_mm.get("label", "")) != "CH":
 		failures.append("active boss minimap should expose fight label; mm=%s" % str(active_mm))
+	if not _has_objective_event(arena, "fight", "Blue boss awakens"):
+		failures.append("boss activation should emit a public fight objective event; feed=%s" % str(arena.kill_feed))
 
 	# Defeat the boss occupant: objective_state -> claimable (public downed broadcast).
 	for enc in arena.wildlife_encounters.duplicate():
@@ -75,6 +87,8 @@ func _check_objective_lifecycle(arena: Node, failures: Array[String]) -> void:
 	var claimable_mm: Dictionary = MinimapScript.animal_zone_minimap_state(_boss_zone(arena, "blue"))
 	if not bool(claimable_mm.get("visible", false)) or String(claimable_mm.get("action", "")) != "claim":
 		failures.append("claimable boss minimap should expose claim action; mm=%s" % str(claimable_mm))
+	if not _has_objective_event(arena, "claim", "hold the boss zone"):
+		failures.append("boss downed state should emit a public claim objective event; feed=%s" % str(arena.kill_feed))
 
 	# Red never bred, so its objective stays dormant throughout.
 	if String(arena.get_side_boss_state(1).get("objective_state", "")) != "dormant":
@@ -108,9 +122,13 @@ func _check_objective_brief(arena: Node, failures: Array[String]) -> void:
 	var center_mm: Dictionary = MinimapScript.animal_zone_minimap_state(_center_boss_zone(arena))
 	if not bool(center_mm.get("visible", false)) or not bool(center_mm.get("center_boss", false)) or String(center_mm.get("action", "")) != "fight":
 		failures.append("center boss minimap should expose center fight state; mm=%s" % str(center_mm))
+	if not _has_objective_event(arena, "fight", "Center boss descends"):
+		failures.append("center spawn should emit a public fight objective event; feed=%s" % str(arena.kill_feed))
 
 	arena._grant_center_reward(0, "teratornis")
 	brief = arena.get_boss_objective_brief(0)
 	var rewards: Dictionary = brief.get("combat_rewards", {})
 	if int(rewards.get("teratornis", {}).get("stack", 0)) != 1:
 		failures.append("objective brief should include team center reward state; rewards=%s" % str(rewards))
+	if not _has_objective_event(arena, "reward", "claims center reward"):
+		failures.append("center reward should emit a public reward objective event; feed=%s" % str(arena.kill_feed))

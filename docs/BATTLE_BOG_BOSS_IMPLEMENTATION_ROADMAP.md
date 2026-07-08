@@ -379,6 +379,10 @@ beside the deposit prompt. Covered by `battle_bog_m5_trio_ux_check.gd`.
 blank boss ellipses: active side bosses surface fight labels, downed bosses surface claim labels/progress hooks,
 contested claims can draw hold arcs, and center bosses announce as center fight objectives. Dormant boss zones still
 stay quiet. Covered by `battle_bog_boss_objective_state_check.gd` plus the existing M6 zone and vision minimap checks.
+**[DONE 2026-07-08]** Boss objective broadcasts now use typed feed entries (`kind=objective`) with action, team,
+family, and zone metadata while preserving the existing kill-feed display path. Boss wake-ups, downed claim windows,
+owner claims, enemy steals, center spawns, and center reward claims are all structured as public objective events.
+Covered by `battle_bog_boss_objective_state_check.gd` and `battle_bog_boss_claim_steal_check.gd`.
 
 ---
 

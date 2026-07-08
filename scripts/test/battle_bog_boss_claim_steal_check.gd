@@ -60,6 +60,8 @@ func _run() -> void:
 		failures.append("blue holding its own boss to completion should be claimed; state=%s" % String(zone.get("objective_state", "")))
 	if int(zone.get("claimed_team", -1)) != 0:
 		failures.append("claimed_team should be blue; got %d" % int(zone.get("claimed_team", -1)))
+	if not _has_objective_event(arena, "claimed", "habitat stock gained"):
+		failures.append("owner claim should emit a public claimed objective event; feed=%s" % str(arena.kill_feed))
 
 	# Fresh red boss stolen by blue -> stolen (enemy).
 	_activate_and_down_boss(arena, 1)
@@ -69,6 +71,8 @@ func _run() -> void:
 		failures.append("blue completing on red's boss should be stolen; state=%s" % String(red_zone.get("objective_state", "")))
 	if int(red_zone.get("claimed_team", -1)) != 0:
 		failures.append("stolen claimed_team should be blue (thief); got %d" % int(red_zone.get("claimed_team", -1)))
+	if not _has_objective_event(arena, "stolen", "habitat stock gained"):
+		failures.append("enemy steal should emit a public stolen objective event; feed=%s" % str(arena.kill_feed))
 
 	print("boss_claim_steal failures=%d" % failures.size())
 	for failure in failures:
@@ -80,6 +84,16 @@ func _real_boss_zone(arena: Node, side: String) -> Dictionary:
 		if String(zone.get("side", "")) == side and String(zone.get("group", "")) == "Boss":
 			return zone
 	return {}
+
+func _has_objective_event(arena: Node, action: String, fragment: String) -> bool:
+	for entry: Dictionary in arena.kill_feed:
+		if String(entry.get("kind", "")) != "objective":
+			continue
+		if String(entry.get("action", "")) != action:
+			continue
+		if String(entry.get("message", "")).contains(fragment):
+			return true
+	return false
 
 func _activate_and_down_boss(arena: Node, team: int) -> void:
 	for _i in range(5):
