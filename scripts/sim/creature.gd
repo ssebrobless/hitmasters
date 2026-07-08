@@ -205,7 +205,7 @@ func apply_creature(next_creature_id: String) -> void:
 	body_capsule_half_len_px = _footprint_capsule_half_len_px()
 	movement_profile = MovementFeelScript.profile_for(creature_id)
 	base_speed_px = _speed_px_for_ground()
-	swim_time_max = _numeric_stat("swim_time_sec", 0.0)
+	swim_time_max = _effective_swim_time_max()
 	swim_time_remaining = swim_time_max
 	_reset_terrain_profile()
 	flight_time_max = _numeric_stat("flight_time_sec", 0.0)
@@ -564,9 +564,13 @@ func consume_food(kind: String, food_value: float, heal_fraction: float) -> bool
 func refresh_team_breeding_buffs() -> void:
 	var previous_max := maxf(max_health, 0.001)
 	var health_ratio := clampf(health / previous_max, 0.0, 1.0)
+	var previous_swim_max := maxf(swim_time_max, 0.001)
+	var swim_ratio := clampf(swim_time_remaining / previous_swim_max, 0.0, 1.0) if swim_time_max > 0.0 else 1.0
 	max_health = _stat_float("health", 1.0)
 	health = clampf(max_health * health_ratio, 0.0, max_health)
 	body_radius = _effective_body_radius()  # Arthropleura habitat-stock size buff
+	swim_time_max = _effective_swim_time_max()
+	swim_time_remaining = clampf(swim_time_max * swim_ratio, 0.0, swim_time_max)
 	base_speed_px = _speed_px_for_ground()
 	terrain_speed_target_px = _terrain_target_speed_px(current_terrain_zone)
 	terrain_speed_px = terrain_speed_target_px
@@ -574,6 +578,12 @@ func refresh_team_breeding_buffs() -> void:
 
 func _effective_body_radius() -> float:
 	return _footprint_radius_px() * (1.0 + _team_boss_stock_bonus("size") + _team_kill_growth_bonus())
+
+func _effective_swim_time_max() -> float:
+	var base := _numeric_stat("swim_time_sec", 0.0)
+	if base <= 0.0:
+		return 0.0
+	return base * (1.0 + _team_boss_stock_bonus("swim_duration"))
 
 func is_satiated() -> bool:
 	return hunger_satiated

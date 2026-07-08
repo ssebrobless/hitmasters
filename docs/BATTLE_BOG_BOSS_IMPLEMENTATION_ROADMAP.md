@@ -359,11 +359,14 @@ reset this no-damage window. **[DONE 2026-07-08]** Platyhystrix center reward `p
 wired as **Spore Ward**: creatures with the reward periodically gain an absorb shield based on max health, incoming
 damage depletes that shield before health, and the attacker is briefly slowed when the shield breaks. The world view
 gets transient shield refresh/absorb/break cues through the existing VFX telegraph path. **[DONE 2026-07-08]**
+Champsosaurus habitat-stock `swim_duration` is now wired into the existing limited-swim timer: `swim_time_max`
+scales by the stock buff and `refresh_team_breeding_buffs` preserves the current swim-meter ratio when the max changes.
+**[DONE 2026-07-08]**
 Arthropleura center reward `kill_growth` is now wired as
 **Swarm Growth**: `Creature.on_kill` notifies the arena, the arena tracks a capped teamwide kill-growth counter
 (8 stacks), and the resulting bonus increases team outgoing damage plus body radius. Covered in
-`battle_bog_boss_reward_wiring_check.gd`. STILL DEFERRED (needs swim-stamina-specific consume-site design):
-Champsosaurus `swim_duration` (no swim-stamina system).
+`battle_bog_boss_reward_wiring_check.gd`. All transcribed boss stock and center reward consume-sites now have first
+mechanical wiring; remaining work is tuning/readability rather than recorded-but-inert rewards.
 
 ---
 

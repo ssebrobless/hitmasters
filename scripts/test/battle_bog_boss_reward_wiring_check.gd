@@ -1,6 +1,6 @@
 extends SceneTree
 ## BB-BOSS-5 follow-up: the boss rewards that were recorded-but-inert now bite in combat.
-## Covers the habitat-stock stat buffs (damage_reduction, healing_received, hunger_depletion,
+## Covers the habitat-stock stat buffs (damage_reduction, swim_duration, healing_received, hunger_depletion,
 ## size, vision_range), plus center rewards Sky Ambush, Iron Hide, Tidal Venom, Spore Ward, and Swarm Growth.
 
 const ARENA_SCENE := "res://scenes/Arena.tscn"
@@ -45,7 +45,26 @@ func _run() -> void:
 	if not (buffed_incoming < base_incoming - 0.01):
 		failures.append("damage_reduction should lower incoming damage; %.2f -> %.2f" % [base_incoming, buffed_incoming])
 
-	# 2) healing_received (Platyhystrix): heals are amplified.
+	# 2) swim_duration (Champsosaurus): limited swimmers stay safe in deep water longer.
+	var turtle := _first_team_creature(arena, 0, "snapping_turtle")
+	if turtle == null:
+		failures.append("swim_duration check expected a snapping turtle on player team")
+	else:
+		var base_swim_max := float(turtle.swim_time_max)
+		turtle.swim_time_remaining = turtle.swim_time_max * 0.5
+		arena._add_boss_stock_stack(0, "champsosaurus")
+		if not (float(turtle.swim_time_max) > base_swim_max + 0.01):
+			failures.append("swim_duration should increase swim_time_max; %.2f -> %.2f" % [base_swim_max, float(turtle.swim_time_max)])
+		if absf(float(turtle.swim_time_remaining) / maxf(float(turtle.swim_time_max), 0.001) - 0.5) > 0.01:
+			failures.append("swim_duration refresh should preserve swim meter ratio; remaining=%.2f max=%.2f" % [float(turtle.swim_time_remaining), float(turtle.swim_time_max)])
+		turtle.global_position = Vector2.ZERO
+		turtle._reset_terrain_profile()
+		turtle.swim_time_remaining = 1.0
+		turtle._update_terrain(0.5)
+		if not (float(turtle.swim_time_remaining) > 0.0 and float(turtle.swim_time_remaining) < 1.0):
+			failures.append("swim_duration buff should still use the limited swim meter rather than disabling drain")
+
+	# 3) healing_received (Platyhystrix): heals are amplified.
 	player.health = 1.0
 	player.heal(20.0)
 	var base_heal: float = float(player.health) - 1.0
@@ -56,7 +75,7 @@ func _run() -> void:
 	if not (buffed_heal > base_heal + 0.1):
 		failures.append("healing_received should amplify heals; %.2f -> %.2f" % [base_heal, buffed_heal])
 
-	# 3+4) hunger_depletion + size (Arthropleura): slower drain, bigger body.
+	# 4+5) hunger_depletion + size (Arthropleura): slower drain, bigger body.
 	player.hunger_satiated = false
 	player.hunger = 300.0
 	player._tick_hunger(1.0)
@@ -71,13 +90,13 @@ func _run() -> void:
 	if not (float(player.body_radius) > base_radius + 0.001):
 		failures.append("size buff should enlarge body_radius; %.3f -> %.3f" % [base_radius, float(player.body_radius)])
 
-	# 5) vision_range (Teratornis habitat buff): team sight range extends.
+	# 6) vision_range (Teratornis habitat buff): team sight range extends.
 	var base_vision := float(arena.get_team_vision_range(0))
 	arena._add_boss_stock_stack(0, "teratornis")
 	if not (float(arena.get_team_vision_range(0)) > base_vision + 0.5):
 		failures.append("vision_range buff should extend team sight; %.1f -> %.1f" % [base_vision, float(arena.get_team_vision_range(0))])
 
-	# 6) Sky Ambush (Teratornis center reward): empowered next hit after the no-damage window.
+	# 7) Sky Ambush (Teratornis center reward): empowered next hit after the no-damage window.
 	arena._grant_center_reward(0, "teratornis")
 	player.undamaged_timer = 10.0
 	var empowered: float = player.modify_outgoing_damage(100.0)
@@ -89,7 +108,7 @@ func _run() -> void:
 	if normal > empowered - 5.0:
 		failures.append("second consecutive hit should not be empowered; got %.1f" % normal)
 
-	# 7) Iron Hide (American Mastodon center reward): after 4s out of combat, regen resumes until damaged/full.
+	# 8) Iron Hide (American Mastodon center reward): after 4s out of combat, regen resumes until damaged/full.
 	arena._grant_center_reward(0, "american_mastodon")
 	player.health = player.max_health - 40.0
 	player.undamaged_timer = 3.9
@@ -106,7 +125,7 @@ func _run() -> void:
 	if not (float(player.undamaged_timer) <= 0.001):
 		failures.append("Iron Hide should reset its no-damage window on real health damage; timer=%.3f" % float(player.undamaged_timer))
 
-	# 8) Tidal Venom (Champsosaurus center reward): landed hits apply a capped DOT.
+	# 9) Tidal Venom (Champsosaurus center reward): landed hits apply a capped DOT.
 	arena._grant_center_reward(0, "champsosaurus")
 	enemy.damage_ticks.clear()
 	enemy.health = enemy.max_health
@@ -121,7 +140,7 @@ func _run() -> void:
 	if _dot_count(enemy, "Tidal Venom") > 1:
 		failures.append("Tidal Venom DOT ticks should not recursively add stacks; ticks=%s" % str(enemy.damage_ticks))
 
-	# 9) Spore Ward (Platyhystrix center reward): periodic shield absorbs damage and slows the breaker.
+	# 10) Spore Ward (Platyhystrix center reward): periodic shield absorbs damage and slows the breaker.
 	arena._grant_center_reward(0, "platyhystrix")
 	player.spore_ward_timer = 0.0
 	player.spore_ward_absorb = 0.0
@@ -141,7 +160,7 @@ func _run() -> void:
 	if not (enemy.get_modifier_value("move_speed_mult", 1.0) < 1.0):
 		failures.append("Spore Ward breaker should be slowed; modifiers=%s" % str(enemy.modifiers))
 
-	# 10) Swarm Growth (Arthropleura center reward): scored kills grow team damage + body size, capped.
+	# 11) Swarm Growth (Arthropleura center reward): scored kills grow team damage + body size, capped.
 	arena._grant_center_reward(0, "arthropleura")
 	var growth_base_radius := float(player.body_radius)
 	var growth_base_damage: float = player.modify_outgoing_damage(100.0)
@@ -182,6 +201,19 @@ func _first_enemy(arena: Node) -> Node:
 		if int(entity.get("team")) == player_team:
 			continue
 		if not entity.has_method("is_scored_actor") or not entity.is_scored_actor():
+			continue
+		if entity.has_method("is_alive") and not entity.is_alive():
+			continue
+		return entity
+	return null
+
+func _first_team_creature(arena: Node, team: int, creature_id: String) -> Node:
+	for entity: Node in arena.entities:
+		if entity == null or not is_instance_valid(entity):
+			continue
+		if not ("team" in entity) or int(entity.get("team")) != team:
+			continue
+		if not ("creature_id" in entity) or String(entity.get("creature_id")) != creature_id:
 			continue
 		if entity.has_method("is_alive") and not entity.is_alive():
 			continue
