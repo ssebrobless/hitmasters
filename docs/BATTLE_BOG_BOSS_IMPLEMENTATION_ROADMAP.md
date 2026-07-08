@@ -352,10 +352,12 @@ reward **Sky Ambush**: a per-creature `undamaged_timer` (ticked in `tick_sim`, r
 live smokes PASS. **[DONE 2026-07-08]** Champsosaurus center reward `empowered_dot` is now wired as **Tidal Venom**:
 `Creature.take_damage_event` calls source `on_damage_dealt` after a positive landed hit, and `Creature.on_damage_dealt`
 uses the existing DOT system to apply a capped 3s venom tick for teams with the Champsosaurus center reward. DOT ticks
-do not recursively apply more venom. Covered in `battle_bog_boss_reward_wiring_check.gd`. STILL DEFERRED (need
-net-new subsystems, land after the on-hit hook): Platyhystrix `periodic_shield_slow` (shield-absorb + slow-on-break),
-American Mastodon `regen_ramp` (no base out-of-combat regen exists), Arthropleura `kill_growth` (teamwide stacking
-kill counter + cap); Champsosaurus `swim_duration` (no swim-stamina system).
+do not recursively apply more venom. **[DONE 2026-07-08]** Arthropleura center reward `kill_growth` is now wired as
+**Swarm Growth**: `Creature.on_kill` notifies the arena, the arena tracks a capped teamwide kill-growth counter
+(8 stacks), and the resulting bonus increases team outgoing damage plus body radius. Covered in
+`battle_bog_boss_reward_wiring_check.gd`. STILL DEFERRED (need net-new subsystems): Platyhystrix
+`periodic_shield_slow` (shield-absorb + slow-on-break), American Mastodon `regen_ramp` (no base out-of-combat regen
+exists); Champsosaurus `swim_duration` (no swim-stamina system).
 
 ---
 

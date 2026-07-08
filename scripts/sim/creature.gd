@@ -562,7 +562,7 @@ func refresh_team_breeding_buffs() -> void:
 	_request_render_redraw(true)
 
 func _effective_body_radius() -> float:
-	return _footprint_radius_px() * (1.0 + _team_boss_stock_bonus("size"))
+	return _footprint_radius_px() * (1.0 + _team_boss_stock_bonus("size") + _team_kill_growth_bonus())
 
 func is_satiated() -> bool:
 	return hunger_satiated
@@ -1141,7 +1141,7 @@ func make_damage_event(amount: float, delivery: int, plane: int, source_ability:
 	return event
 
 func modify_outgoing_damage(amount: float) -> float:
-	var result := amount * _modifier_value("damage_dealt_mult", 1.0) * _team_buff_multiplier("damage")
+	var result := amount * _modifier_value("damage_dealt_mult", 1.0) * _team_buff_multiplier("damage") * (1.0 + _team_kill_growth_bonus())
 	# Teratornis center reward (Sky Ambush): after AMBUSH_UNDAMAGED_SEC without taking damage,
 	# the next damage instance is empowered, then the window resets.
 	if undamaged_timer >= AMBUSH_UNDAMAGED_SEC:
@@ -1166,6 +1166,11 @@ func on_damage_dealt(target: Node, event: Resource, amount: float) -> void:
 func _team_combat_reward(family: String) -> float:
 	if arena != null and arena.has_method("get_team_combat_reward_value"):
 		return float(arena.get_team_combat_reward_value(team, family))
+	return 0.0
+
+func _team_kill_growth_bonus() -> float:
+	if arena != null and arena.has_method("get_team_kill_growth_bonus"):
+		return float(arena.get_team_kill_growth_bonus(team))
 	return 0.0
 
 func get_ability_delta(delta: float) -> float:
@@ -1282,6 +1287,8 @@ func has_latch() -> bool:
 	return latch_victim != null or latched_attacker != null
 
 func on_kill(_victim: Node) -> void:
+	if arena != null and arena.has_method("record_center_reward_kill"):
+		arena.record_center_reward_kill(self, _victim)
 	var diet := String(creature_data.get("diet", ""))
 	if diet == "carnivore" or diet == "omnivore":
 		healing_ticks.append({"remaining": 2.0, "amount_remaining": max_health * 0.05})

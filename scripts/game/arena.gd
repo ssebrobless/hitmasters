@@ -93,6 +93,7 @@ const BOSS_CLAIM_DECAY_MULT := 0.5
 const CENTER_BOSS_TIMES := [600.0, 1200.0]
 const CENTER_BOSS_RADIUS := Vector2(150.0, 130.0)
 const CENTER_BOSS_REWARD_MAX_STACK := 2
+const CENTER_KILL_GROWTH_MAX_STACKS := 8
 const BREEDING_BUFF_FAMILIES := ["amphibian", "reptile", "bird", "mammal", "crawly"]
 const BREEDING_BUFF_EFFECT_BY_FAMILY := {
 	"amphibian": "regen",
@@ -152,6 +153,7 @@ var vision_tick_timer := 0.0
 var center_boss_fired := [false, false]   # per CENTER_BOSS_TIMES entry
 var center_boss_spawn_count := 0          # unique-id counter (a claimed zone can outlive a new spawn)
 var team_combat_rewards: Dictionary = {}  # team -> {family: stack(1..2)}
+var team_kill_growth_stacks := {BLUE: 0, RED: 0}
 var huts_lost := {0: 0, 1: 0}
 var hut_defend_hint_timer := 0.0
 var habitat_deposit_feedback_timer := 0.0
@@ -663,6 +665,7 @@ func _setup_animal_zones() -> void:
 	center_boss_fired = [false, false]
 	center_boss_spawn_count = 0
 	team_combat_rewards = {BLUE: {}, RED: {}}
+	team_kill_growth_stacks = {BLUE: 0, RED: 0}
 	animal_zone_tick_timer = 0.0
 	var terrain_zones: Array = terrain_map.get_animal_zones() if terrain_map.has_method("get_animal_zones") else []
 	for source_zone in terrain_zones:
@@ -1299,6 +1302,8 @@ func _grant_center_reward(team: int, family: String) -> void:
 	team_combat_rewards[team] = rewards
 	var label := String(BossCatalog.center_reward(family).get("label", family.capitalize()))
 	add_kill_feed("%s claims center reward: %s (x%d)" % [_team_name(team), label, int(rewards[family])])
+	if family == "arthropleura":
+		_refresh_team_breeding_buffs(team)
 
 func get_center_boss_state() -> Dictionary:
 	var idx := _center_boss_zone_index()
@@ -1326,6 +1331,9 @@ func get_team_combat_reward_state(team: int) -> Dictionary:
 			"stack": stack,
 			"value": BossCatalog.center_reward_value(family, stack)
 		}
+		if String(family) == "arthropleura":
+			states[family]["growth_stacks"] = int(team_kill_growth_stacks.get(team, 0))
+			states[family]["growth_bonus"] = get_team_kill_growth_bonus(team)
 	return states
 
 func get_team_combat_reward_value(team: int, family: String) -> float:
@@ -1333,6 +1341,36 @@ func get_team_combat_reward_value(team: int, family: String) -> float:
 	if stack <= 0:
 		return 0.0
 	return BossCatalog.center_reward_value(family, stack)
+
+func record_center_reward_kill(killer: Node, victim: Node) -> void:
+	if killer == null or victim == null or not is_instance_valid(killer):
+		return
+	if not ("team" in killer) or not ("team" in victim):
+		return
+	var killer_team := int(killer.get("team"))
+	var victim_team := int(victim.get("team"))
+	if not (killer_team == BLUE or killer_team == RED) or killer_team == victim_team:
+		return
+	if killer.has_method("is_scored_actor") and not killer.is_scored_actor():
+		return
+	if victim.has_method("is_scored_actor") and not victim.is_scored_actor():
+		return
+	if get_team_combat_reward_value(killer_team, "arthropleura") <= 0.0:
+		return
+	var before := int(team_kill_growth_stacks.get(killer_team, 0))
+	var after := mini(before + 1, CENTER_KILL_GROWTH_MAX_STACKS)
+	if after == before:
+		return
+	team_kill_growth_stacks[killer_team] = after
+	_refresh_team_breeding_buffs(killer_team)
+
+func get_team_kill_growth_bonus(team: int) -> float:
+	if not (team == BLUE or team == RED):
+		return 0.0
+	var reward_value := get_team_combat_reward_value(team, "arthropleura")
+	if reward_value <= 0.0:
+		return 0.0
+	return float(team_kill_growth_stacks.get(team, 0)) * reward_value
 
 func get_team_vision_range(team: int) -> float:
 	# Phase sight range extended by the team's Teratornis habitat-stock vision_range buff.

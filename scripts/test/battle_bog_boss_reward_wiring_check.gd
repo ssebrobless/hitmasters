@@ -1,7 +1,7 @@
 extends SceneTree
 ## BB-BOSS-5 follow-up: the boss rewards that were recorded-but-inert now bite in combat.
 ## Covers the habitat-stock stat buffs (damage_reduction, healing_received, hunger_depletion,
-## size, vision_range) and the Teratornis center reward Sky Ambush (empowered next hit).
+## size, vision_range), plus center rewards Sky Ambush, Tidal Venom, and Swarm Growth.
 
 const ARENA_SCENE := "res://scenes/Arena.tscn"
 const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
@@ -103,6 +103,27 @@ func _run() -> void:
 	enemy._tick_timers(1.0)
 	if _dot_count(enemy, "Tidal Venom") > 1:
 		failures.append("Tidal Venom DOT ticks should not recursively add stacks; ticks=%s" % str(enemy.damage_ticks))
+
+	# 8) Swarm Growth (Arthropleura center reward): scored kills grow team damage + body size, capped.
+	arena._grant_center_reward(0, "arthropleura")
+	var growth_base_radius := float(player.body_radius)
+	var growth_base_damage: float = player.modify_outgoing_damage(100.0)
+	player.on_kill(enemy)
+	var growth_state: Dictionary = arena.get_team_combat_reward_state(0).get("arthropleura", {})
+	var growth_bonus := float(growth_state.get("growth_bonus", 0.0))
+	if int(growth_state.get("growth_stacks", 0)) != 1:
+		failures.append("Swarm Growth should add one kill stack after on_kill; state=%s" % str(growth_state))
+	if not (growth_bonus > 0.0):
+		failures.append("Swarm Growth should report a positive growth bonus; state=%s" % str(growth_state))
+	if not (float(player.body_radius) > growth_base_radius + 0.001):
+		failures.append("Swarm Growth should enlarge body_radius; %.3f -> %.3f" % [growth_base_radius, float(player.body_radius)])
+	if not (player.modify_outgoing_damage(100.0) > growth_base_damage + 0.1):
+		failures.append("Swarm Growth should increase outgoing damage after a kill")
+	for i in 12:
+		player.on_kill(enemy)
+	growth_state = arena.get_team_combat_reward_state(0).get("arthropleura", {})
+	if int(growth_state.get("growth_stacks", 0)) != arena.CENTER_KILL_GROWTH_MAX_STACKS:
+		failures.append("Swarm Growth should cap at %d stacks; state=%s" % [arena.CENTER_KILL_GROWTH_MAX_STACKS, str(growth_state)])
 
 	print("boss_reward_wiring failures=%d" % failures.size())
 	for failure in failures:
