@@ -189,6 +189,8 @@ func _side_objective_text(side: Dictionary) -> String:
 		"FIGHT":
 			return "FIGHT %s" % family
 		"CLAIM":
+			if float(side.get("claim_ratio", 0.0)) > 0.0:
+				return "CLM %d%%" % int(round(float(side.get("claim_ratio", 0.0)) * 100.0))
 			return "CLAIM %s" % family
 		"CONTEST":
 			return "HOLD %d%%" % int(round(float(side.get("claim_ratio", 0.0)) * 100.0))
@@ -201,11 +203,13 @@ func _breeding_objective_text(breeding: Dictionary) -> String:
 	return "BR%d %s" % [int(breeding.get("count", 0)), _compact_time(float(breeding.get("next_remaining", 0.0)))]
 
 func _center_objective_text(center: Dictionary) -> String:
+	var state := String(center.get("state", "dormant")).to_upper()
+	if state in ["CLAIMABLE", "CONTESTING"]:
+		return "CTR %d%%" % int(round(float(center.get("claim_ratio", 0.0)) * 100.0))
+	if state in ["CLAIMED", "STOLEN"]:
+		return "CTR OK"
 	if bool(center.get("active", false)):
 		var family := _family_code(String(center.get("family", "")))
-		var state := String(center.get("state", "active")).to_upper()
-		if state == "CONTESTING":
-			return "CTR %d%%" % int(round(float(center.get("claim_ratio", 0.0)) * 100.0))
 		return "CTR %s" % family
 	var seconds := float(center.get("next_spawn_in", -1.0))
 	if seconds < 0.0:

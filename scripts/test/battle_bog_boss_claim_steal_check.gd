@@ -49,10 +49,16 @@ func _run() -> void:
 	arena._advance_boss_claim(zone, 2.0)  # red holds 2s
 	if int(zone.get("claim_team", -1)) != 1 or float(zone.get("claim_progress", 0.0)) <= 0.0:
 		failures.append("red partial hold should own progress; claim_team=%d progress=%f" % [int(zone.get("claim_team", -1)), float(zone.get("claim_progress", 0.0))])
+	var steal_brief: Dictionary = arena.get_boss_objective_brief(0).get("side", {})
+	if String(steal_brief.get("claim_route", "")) != "steal_stock_only" or String(steal_brief.get("action", "")) != "claim":
+		failures.append("enemy partial hold should brief as stock-only steal route; side=%s" % str(steal_brief))
 	zone["control_team"] = 0
 	arena._advance_boss_claim(zone, 1.0)  # blue seizes -> restart at this step
 	if int(zone.get("claim_team", -1)) != 0 or float(zone.get("claim_progress", 0.0)) > 1.01:
 		failures.append("blue seizing should restart progress (no carry-over); claim_team=%d progress=%f" % [int(zone.get("claim_team", -1)), float(zone.get("claim_progress", 0.0))])
+	var owner_brief: Dictionary = arena.get_boss_objective_brief(0).get("side", {})
+	if String(owner_brief.get("claim_route", "")) != "owner_stock_disrupt":
+		failures.append("owner partial hold should brief as stock-plus-disruption route; side=%s" % str(owner_brief))
 
 	# Blue holds to completion -> claimed (owner).
 	_drive_claim(arena, zone, 0)

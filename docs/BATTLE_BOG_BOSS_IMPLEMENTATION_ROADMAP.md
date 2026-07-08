@@ -408,6 +408,10 @@ stay quiet. Covered by `battle_bog_boss_objective_state_check.gd` plus the exist
 family, and zone metadata while preserving the existing kill-feed display path. Boss wake-ups, downed claim windows,
 owner claims, enemy steals, center spawns, and center reward claims are all structured as public objective events.
 Covered by `battle_bog_boss_objective_state_check.gd` and `battle_bog_boss_claim_steal_check.gd`.
+**[DONE 2026-07-08]** Side and center boss objective briefs now share the same action vocabulary for downed claim
+states (`fight -> claim -> contest -> claimed`) and expose claim reward routes (`owner_stock_disrupt`,
+`steal_stock_only`, `center_combat_reward`). The trio HUD uses compact claim-progress labels for side and center
+claim phases. Covered by `battle_bog_boss_objective_state_check.gd` and `battle_bog_boss_claim_steal_check.gd`.
 
 ---
 

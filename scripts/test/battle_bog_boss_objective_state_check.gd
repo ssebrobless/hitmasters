@@ -46,6 +46,12 @@ func _center_boss_zone(arena: Node) -> Dictionary:
 			return zone
 	return {}
 
+func _real_center_boss_zone(arena: Node) -> Dictionary:
+	for zone: Dictionary in arena.animal_zone_states:
+		if bool(zone.get("center_boss", false)):
+			return zone
+	return {}
+
 func _has_objective_event(arena: Node, action: String, fragment: String) -> bool:
 	for entry: Dictionary in arena.kill_feed:
 		if String(entry.get("kind", "")) != "objective":
@@ -124,6 +130,22 @@ func _check_objective_brief(arena: Node, failures: Array[String]) -> void:
 		failures.append("center boss minimap should expose center fight state; mm=%s" % str(center_mm))
 	if not _has_objective_event(arena, "fight", "Center boss descends"):
 		failures.append("center spawn should emit a public fight objective event; feed=%s" % str(arena.kill_feed))
+
+	var real_center := _real_center_boss_zone(arena)
+	real_center["active"] = false
+	real_center["objective_state"] = "claimable"
+	real_center["claim_team"] = 0
+	real_center["claim_progress"] = 2.5
+	brief = arena.get_boss_objective_brief(0)
+	center = brief.get("center", {})
+	if String(center.get("action", "")) != "claim" or String(center.get("claim_route", "")) != "center_combat_reward" or absf(float(center.get("claim_ratio", 0.0)) - 0.5) > 0.01:
+		failures.append("center brief should expose downed claim progress/reward route; center=%s" % str(center))
+	real_center["objective_state"] = "contesting"
+	real_center["contested"] = true
+	brief = arena.get_boss_objective_brief(0)
+	center = brief.get("center", {})
+	if String(center.get("action", "")) != "contest" or not bool(center.get("contested", false)):
+		failures.append("center brief should expose contested claim state; center=%s" % str(center))
 
 	arena._grant_center_reward(0, "teratornis")
 	brief = arena.get_boss_objective_brief(0)

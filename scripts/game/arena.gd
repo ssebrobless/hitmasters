@@ -656,18 +656,10 @@ func _side_boss_objective_brief(team: int) -> Dictionary:
 	var current_family := String(state.get("family", ""))
 	var next_family := String(state.get("next_family", ""))
 	var family := current_family if not current_family.is_empty() else next_family
-	var action := "breed"
-	match objective_state:
-		"active":
-			action = "fight"
-		"claimable":
-			action = "claim"
-		"contesting":
-			action = "contest"
-		"claimed", "stolen":
-			action = "claimed"
-		_:
-			action = "breed"
+	var action := _boss_objective_action(objective_state, active, "breed")
+	var route_team := int(state.get("claim_team", -1))
+	if route_team < 0:
+		route_team = int(state.get("control_team", -1))
 	return {
 		"team": team,
 		"state": objective_state,
@@ -682,6 +674,7 @@ func _side_boss_objective_brief(team: int) -> Dictionary:
 		"claim_team": int(state.get("claim_team", -1)),
 		"control_team": int(state.get("control_team", -1)),
 		"contested": bool(state.get("contested", false)),
+		"claim_route": _side_boss_claim_route(team, route_team),
 		"action": action
 	}
 
@@ -689,19 +682,42 @@ func _center_boss_objective_brief() -> Dictionary:
 	var state := get_center_boss_state()
 	var schedule := _next_center_boss_schedule_brief()
 	var active := bool(state.get("active", false))
+	var objective_state := String(state.get("objective_state", "active" if active else "dormant"))
+	var action := _boss_objective_action(objective_state, active, "wait")
+	if action == "wait" and int(schedule.get("index", -1)) < 0:
+		action = "complete"
 	return {
 		"active": active,
-		"state": String(state.get("objective_state", "active" if active else "dormant")),
+		"state": objective_state,
 		"family": String(state.get("family", "")),
 		"size_mult": float(state.get("size_mult", 0.0)),
 		"claim_ratio": float(state.get("claim_ratio", 0.0)),
+		"claim_team": int(state.get("claim_team", -1)),
 		"control_team": int(state.get("control_team", -1)),
 		"contested": bool(state.get("contested", false)),
 		"next_spawn_index": int(schedule.get("index", -1)),
 		"next_spawn_time": float(schedule.get("time", -1.0)),
 		"next_spawn_in": -1.0 if active else float(schedule.get("in", -1.0)),
-		"action": "fight" if active else ("wait" if int(schedule.get("index", -1)) >= 0 else "complete")
+		"claim_route": "center_combat_reward" if action in ["claim", "contest", "claimed"] else "none",
+		"action": action
 	}
+
+func _boss_objective_action(objective_state: String, active: bool, dormant_action: String) -> String:
+	match objective_state:
+		"active":
+			return "fight"
+		"claimable":
+			return "claim"
+		"contesting":
+			return "contest"
+		"claimed", "stolen":
+			return "claimed"
+	return "fight" if active else dormant_action
+
+func _side_boss_claim_route(owner_team: int, route_team: int) -> String:
+	if route_team < 0:
+		return "none"
+	return "owner_stock_disrupt" if route_team == owner_team else "steal_stock_only"
 
 func _next_center_boss_schedule_brief() -> Dictionary:
 	for i in CENTER_BOSS_TIMES.size():
@@ -1454,6 +1470,7 @@ func get_center_boss_state() -> Dictionary:
 		"objective_state": String(zone.get("objective_state", "")),
 		"size_mult": BossActorScript.CENTER_SIZE_MULT,
 		"claim_ratio": clampf(float(zone.get("claim_progress", 0.0)) / BOSS_CLAIM_DURATION, 0.0, 1.0),
+		"claim_team": int(zone.get("claim_team", -1)),
 		"contested": bool(zone.get("contested", false)),
 		"control_team": int(zone.get("control_team", -1))
 	}
