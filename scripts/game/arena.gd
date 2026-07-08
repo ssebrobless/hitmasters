@@ -3502,15 +3502,21 @@ func get_status_hud_text(creature_name := "") -> String:
 		display_name = String(player.creature_data.get("name", "Unknown")) if player != null else "Unknown"
 	var active_text: String = "S%d %s" % [active_squad_index + 1, display_name] if _is_1v1_trio_mode() else display_name
 	var hunger_text: String = "Hunger %d%%" % int(round(float(player.get("hunger")))) if player != null and player.get("hunger") != null else "Hunger --"
-	return "%s  %s  Day %d\n%s  %s  Bots %d  Wave %ds" % [
+	return "%s  %s  %s\n%s  %s  Bots %d  Wave %ds" % [
 		mode_text,
 		_format_match_time(elapsed),
-		day_index,
+		get_day_hud_label(),
 		active_text,
 		hunger_text,
 		bots.size(),
 		ceili(wave_timer)
 	]
+
+func get_day_hud_label() -> String:
+	var phase := get_day_phase()
+	var phase_label := phase.capitalize()
+	var vision_pct := int(round(get_vision_range_for_phase(phase) / VISION_RANGE_DAY * 100.0))
+	return "Day %d %s V%d%%" % [day_index, phase_label, vision_pct]
 
 func _get_cooldown_text() -> String:
 	if player == null:

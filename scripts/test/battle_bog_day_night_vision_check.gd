@@ -47,6 +47,9 @@ func _run() -> void:
 			failures.append("phase %s expected vision_range %.0f got %.1f" % [String(case["phase"]), float(case["range"]), float(state.get("vision_range", -1.0))])
 		if String(arena.get_day_phase()) != String(case["phase"]):
 			failures.append("get_day_phase mismatch at frac %.2f: %s" % [float(case["frac"]), String(arena.get_day_phase())])
+		var hud_label := String(arena.get_day_hud_label())
+		if not hud_label.contains(String(case["phase"]).capitalize()) or not hud_label.contains("V%d%%" % int(round(float(case["range"]) / 220.0 * 100.0))):
+			failures.append("phase %s should expose HUD phase and vision percent; label=%s" % [String(case["phase"]), hud_label])
 
 	# Vision shrinks from day through night; multiplier is normalized to the day range.
 	if not (arena.get_vision_range_for_phase("day") > arena.get_vision_range_for_phase("dusk")
@@ -56,6 +59,8 @@ func _run() -> void:
 	var night: Dictionary = arena.get_day_state()
 	if not is_equal_approx(float(night.get("vision_multiplier", -1.0)), 120.0 / 220.0):
 		failures.append("night vision_multiplier expected %.3f got %.3f" % [120.0 / 220.0, float(night.get("vision_multiplier", -1.0))])
+	if not String(arena.get_status_hud_text()).contains("Night V55%"):
+		failures.append("status HUD should expose night information limit; text=%s" % String(arena.get_status_hud_text()))
 
 	print("day_night_vision failures=%d" % failures.size())
 	for failure in failures:
