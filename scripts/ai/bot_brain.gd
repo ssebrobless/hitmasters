@@ -126,10 +126,10 @@ func _choose_intent(actor: Node) -> Dictionary:
 
 	return {"mode": "idle", "point": actor.global_position + Vector2.RIGHT}
 
-# No visible target: move toward the nearest last-known point for an enemy we lost sight of
-# (last_known) or currently only hear (heard). Navigates to the STORED point, not live pos.
+# No visible target: move toward the nearest degraded marker for an enemy we lost sight of
+# (last_known) or currently only hear (heard). Heard markers are coarse, not live exact pos.
 func _investigate_intent(actor: Node) -> Dictionary:
-	if actor.arena == null or not actor.arena.has_method("get_last_known_point"):
+	if actor.arena == null or not actor.arena.has_method("get_info_marker_point"):
 		return {}
 	if not _has_property(actor.arena, "entities"):
 		return {}
@@ -143,13 +143,13 @@ func _investigate_intent(actor: Node) -> Dictionary:
 		var state := String(actor.arena.get_entity_info_state(entity, actor.team))
 		if state != "last_known" and state != "heard":
 			continue
-		var last_point: Vector2 = actor.arena.get_last_known_point(actor.team, entity)
-		if last_point == Vector2.INF:
+		var marker_point: Vector2 = actor.arena.get_info_marker_point(actor.team, entity)
+		if marker_point == Vector2.INF:
 			continue
-		var distance: float = actor.global_position.distance_to(last_point)
+		var distance: float = actor.global_position.distance_to(marker_point)
 		if distance < best_distance:
 			best_distance = distance
-			best_point = last_point
+			best_point = marker_point
 	if best_point == Vector2.INF:
 		return {}
 	return {"mode": "investigate", "point": best_point}

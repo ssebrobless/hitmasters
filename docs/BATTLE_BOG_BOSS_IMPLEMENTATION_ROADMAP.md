@@ -296,6 +296,11 @@ last-known, suspected, and hidden states no longer leak exact world sprites; own
 structures, objectives, projectiles, and combat telegraphs are left alone. Test
 `battle_bog_vision_world_masking_check.gd` covers visible/revealed enemies rendering, last-known/hidden enemies
 masking, minion masking, and own-player safety.
+**[BB-VIS FOLLOW-UP DONE 2026-07-08]** Heard-only enemies now produce coarse information marker points instead of
+either leaking exact positions or disappearing entirely. `get_info_marker_point(team, entity)` returns exact points
+only for visible/revealed targets, stored points for last-known targets, and quantized noise/rustle points for
+heard/suspected targets. Minimap heard rings and bot investigate intents now consume that shared accessor. Covered by
+`battle_bog_vision_world_check.gd`, `battle_bog_vision_minimap_check.gd`, and `battle_bog_vision_bot_check.gd`.
 
 ---
 

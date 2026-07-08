@@ -301,11 +301,11 @@ func _draw_fogged_enemy(entity: Node, world: Rect2, map_scale: float) -> void:
 	if state == "visible" or state == "revealed":
 		_draw_entity_icon(entity, (entity.global_position - world.position) * map_scale)
 		return
-	# Out of direct sight: surface a coarse ghost / ripple from the last-known point only.
-	var last_point: Vector2 = arena.get_last_known_point(view_team, entity)
-	if last_point == Vector2.INF:
-		return  # never seen: no marker (suspected/hidden reveal nothing)
-	var point: Vector2 = (last_point - world.position) * map_scale
+	# Out of direct sight: surface stored ghosts or coarse sound/rustle pulses, never exact hidden positions.
+	var marker_point: Vector2 = arena.get_info_marker_point(view_team, entity) if arena.has_method("get_info_marker_point") else arena.get_last_known_point(view_team, entity)
+	if marker_point == Vector2.INF:
+		return
+	var point: Vector2 = (marker_point - world.position) * map_scale
 	var color: Color = VisualGrammar.team_color(_node_team(entity))
 	if state == "last_known":
 		VisualGrammar.draw_minimap_symbol(self, point, VisualGrammar.ICON_ACTOR, 3.2, VisualGrammar.with_alpha(color, 0.4), Color(1.0, 1.0, 1.0, 0.14))

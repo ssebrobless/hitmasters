@@ -69,7 +69,20 @@ func _run() -> void:
 	if arena.get_entity_info_state(enemy, blue) == "revealed":
 		failures.append("reveal should expire after its duration")
 
-	# 6) Stealth: adjacent but unseen -> heard, not visible.
+	# 6) Heard: a never-seen enemy in hearing range gives a coarse marker, not exact position.
+	arena.team_vision[blue].clear()
+	enemy.global_position = origin + Vector2(arena.get_team_vision_range(blue) + 40.0, 0.0)
+	if arena.get_entity_info_state(enemy, blue) != "heard":
+		failures.append("enemy outside sight but inside hearing should be heard; got %s" % arena.get_entity_info_state(enemy, blue))
+	var heard_marker: Vector2 = arena.get_info_marker_point(blue, enemy)
+	if heard_marker == Vector2.INF:
+		failures.append("heard enemy should expose a coarse marker point")
+	if heard_marker.distance_to(enemy.global_position) <= 1.0:
+		failures.append("heard marker should be coarse, not exact; marker=%s enemy=%s" % [str(heard_marker), str(enemy.global_position)])
+	if arena.get_last_known_point(blue, enemy) != Vector2.INF:
+		failures.append("never-seen heard enemy should not create a last-known ghost")
+
+	# 7) Stealth: adjacent but unseen -> heard, not visible.
 	enemy.global_position = origin + Vector2(12.0, 0.0)
 	if arena.get_entity_info_state(enemy, blue) != "visible":
 		failures.append("pre-stealth adjacency should be visible; got %s" % arena.get_entity_info_state(enemy, blue))
@@ -79,12 +92,12 @@ func _run() -> void:
 	if arena.is_entity_visible_to_team(enemy, blue):
 		failures.append("stealthed enemy must not be visible-to-team")
 
-	# 7) get_visible_enemy_targets tracks live visibility.
+	# 8) get_visible_enemy_targets tracks live visibility.
 	enemy.break_stealth()
 	if not arena.get_visible_enemy_targets(player).has(enemy):
 		failures.append("un-stealthed adjacent enemy should be in get_visible_enemy_targets")
 
-	# 8) Suspected: an unseen intruder on our own turf.
+	# 9) Suspected: an unseen intruder on our own turf.
 	arena.team_vision[blue].clear()
 	arena.team_reveals[blue].clear()
 	for member in arena._team_vision_members(blue):

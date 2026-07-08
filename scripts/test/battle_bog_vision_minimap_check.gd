@@ -64,6 +64,20 @@ func _run() -> void:
 	if arena.is_entity_visible_to_team(enemy, 0):
 		failures.append("far enemy must not be drawn as a live pip")
 
+	# A never-seen enemy in hearing range should draw a coarse sound/rustle pulse,
+	# even though there is no last-known ghost to reuse.
+	arena.team_vision[0].clear()
+	enemy.global_position = player.global_position + Vector2(arena.get_team_vision_range(0) + 40.0, 0.0)
+	if arena.get_entity_info_state(enemy, 0) != "heard":
+		failures.append("enemy outside sight but inside hearing should be heard; got %s" % arena.get_entity_info_state(enemy, 0))
+	if arena.get_last_known_point(0, enemy) != Vector2.INF:
+		failures.append("heard-only enemy should not have a last-known point")
+	var heard_marker: Vector2 = arena.get_info_marker_point(0, enemy)
+	if heard_marker == Vector2.INF:
+		failures.append("heard-only enemy should expose a coarse minimap marker")
+	if heard_marker.distance_to(enemy.global_position) <= 1.0:
+		failures.append("heard-only marker should not expose exact enemy position; marker=%s enemy=%s" % [str(heard_marker), str(enemy.global_position)])
+
 	minimap.free()
 	print("vision_minimap failures=%d" % failures.size())
 	for failure in failures:

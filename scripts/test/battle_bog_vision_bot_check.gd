@@ -1,7 +1,7 @@
 extends SceneTree
 ## BB-VIS-3: bots only act on enemies their team can see. An enemy in fog is not perceivable
 ## (dropped from target scans); after losing sight of a seen enemy the bot forms an INVESTIGATE
-## intent toward the stored last-known point (never the live position).
+## intent toward the stored last-known point, and heard-only enemies use coarse marker points.
 
 const ARENA_SCENE := "res://scenes/Arena.tscn"
 
@@ -55,7 +55,21 @@ func _run() -> void:
 	if not brain._investigate_intent(bot).is_empty():
 		failures.append("no last-known memory should yield no investigate intent")
 
-	# 3) See the enemy, then lose sight -> INVESTIGATE the stored last-known point.
+	# 3) Heard but never seen -> INVESTIGATE the coarse marker, not the live exact position.
+	arena.team_vision[1].clear()
+	enemy.global_position = bot.global_position + Vector2(arena.get_team_vision_range(1) + 40.0, 0.0)
+	if arena.get_entity_info_state(enemy, 1) != "heard":
+		failures.append("enemy outside sight but inside hearing should be heard by bot team; got %s" % arena.get_entity_info_state(enemy, 1))
+	var heard_marker: Vector2 = arena.get_info_marker_point(1, enemy)
+	var heard_investigate: Dictionary = brain._investigate_intent(bot)
+	if String(heard_investigate.get("mode", "")) != "investigate":
+		failures.append("heard-only enemy should form an investigate intent; got %s" % str(heard_investigate))
+	elif (heard_investigate.get("point", Vector2.INF) as Vector2).distance_to(heard_marker) > 1.0:
+		failures.append("heard-only investigate should target coarse marker %s; got %s" % [str(heard_marker), str(heard_investigate.get("point"))])
+	if heard_marker.distance_to(enemy.global_position) <= 1.0:
+		failures.append("heard-only bot marker should not expose exact enemy position; marker=%s enemy=%s" % [str(heard_marker), str(enemy.global_position)])
+
+	# 4) See the enemy, then lose sight -> INVESTIGATE the stored last-known point.
 	enemy.global_position = bot.global_position + Vector2(12.0, 0.0)
 	arena._tick_team_vision(0.2)                 # red team records the sighting
 	var last_seen: Vector2 = enemy.global_position

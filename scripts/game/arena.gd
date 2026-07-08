@@ -61,6 +61,7 @@ const VISION_RANGE_DUSK := 170.0
 const VISION_RANGE_NIGHT := 120.0
 const VISION_RANGE_DAWN := 200.0
 const VISION_HEARING_BONUS := 120.0
+const VISION_NOISE_GRID := 72.0
 const VISION_GHOST_FADE_DAY := 3.0
 const VISION_GHOST_FADE_DUSK := 5.0
 const VISION_GHOST_FADE_NIGHT := 6.0
@@ -2179,6 +2180,28 @@ func get_last_known_point(team: int, entity: Node) -> Vector2:
 	if record.is_empty():
 		return Vector2.INF
 	return record.get("last_point", Vector2.INF)
+
+func get_info_marker_point(team: int, entity: Node) -> Vector2:
+	# Public marker point for degraded information: exact for visible/revealed,
+	# stored for last-known, coarse for heard/suspected, never for fully hidden.
+	if entity == null or not is_instance_valid(entity):
+		return Vector2.INF
+	var state := get_entity_info_state(entity, team)
+	match state:
+		INFO_VISIBLE, INFO_REVEALED:
+			return entity.global_position
+		INFO_LAST_KNOWN:
+			return get_last_known_point(team, entity)
+		INFO_HEARD, INFO_SUSPECTED:
+			return _coarse_info_marker_point(entity.global_position, entity.get_instance_id() + team * 31)
+	return Vector2.INF
+
+func _coarse_info_marker_point(point: Vector2, salt: int) -> Vector2:
+	var grid := VISION_NOISE_GRID
+	var snapped := Vector2(roundf(point.x / grid) * grid, roundf(point.y / grid) * grid)
+	var sx := float(posmod(salt, 5) - 2) * 5.0
+	var sy := float(posmod(floori(float(salt) / 5.0), 5) - 2) * 5.0
+	return snapped + Vector2(sx, sy)
 
 func _is_revealed(team: int, id: int) -> bool:
 	return float(team_reveals.get(team, {}).get(id, 0.0)) > 0.0
