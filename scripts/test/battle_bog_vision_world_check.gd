@@ -105,6 +105,11 @@ func _run() -> void:
 	enemy.global_position = Vector2(-3000.0, 0.0)       # deep in blue territory, beyond hearing
 	if arena.get_entity_info_state(enemy, blue) != "suspected":
 		failures.append("unseen enemy on own turf should be suspected; got %s" % arena.get_entity_info_state(enemy, blue))
+	var debug_state: Dictionary = arena.get_information_debug_state(blue)
+	var enemy_info: Dictionary = debug_state.get("enemy_info", {})
+	var food_info: Dictionary = debug_state.get("food_info", {})
+	if int(enemy_info.get("suspected", 0)) < 1 or not food_info.has("hidden") or not debug_state.has("live_objective_count"):
+		failures.append("information debug state should summarize enemy/food/objective visibility; debug=%s" % str(debug_state))
 
 	print("vision_world failures=%d" % failures.size())
 	for failure in failures:

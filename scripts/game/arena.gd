@@ -2219,6 +2219,57 @@ func get_world_info_markers(team := -1) -> Array[Dictionary]:
 		})
 	return markers
 
+func get_information_debug_state(team := -1) -> Dictionary:
+	var view_team := int(team)
+	if view_team < 0:
+		view_team = get_world_view_team()
+	var enemy_info := _blank_info_counts()
+	for entity: Node in entities:
+		if not _is_info_marker_candidate(entity, view_team):
+			continue
+		var state := get_entity_info_state(entity, view_team)
+		enemy_info[state] = int(enemy_info.get(state, 0)) + 1
+	var food_info := _blank_info_counts()
+	for food in food_sources:
+		var food_state := get_food_minimap_state(food, view_team)
+		var state := String(food_state.get("state", INFO_HIDDEN))
+		food_info[state] = int(food_info.get(state, 0)) + 1
+	return {
+		"team": view_team,
+		"phase": get_day_phase(),
+		"vision_range": get_team_vision_range(view_team),
+		"enemy_info": enemy_info,
+		"food_info": food_info,
+		"reveal_count": team_reveals.get(view_team, {}).size(),
+		"objective_event_count": _objective_feed_count(),
+		"live_objective_count": _live_objective_count()
+	}
+
+func _blank_info_counts() -> Dictionary:
+	return {
+		INFO_VISIBLE: 0,
+		INFO_REVEALED: 0,
+		INFO_HEARD: 0,
+		INFO_LAST_KNOWN: 0,
+		INFO_SUSPECTED: 0,
+		INFO_HIDDEN: 0
+	}
+
+func _objective_feed_count() -> int:
+	var count := 0
+	for entry: Dictionary in kill_feed:
+		if String(entry.get("kind", "")) == "objective":
+			count += 1
+	return count
+
+func _live_objective_count() -> int:
+	var count := 0
+	for zone: Dictionary in animal_zone_states:
+		var state := String(zone.get("objective_state", ""))
+		if state in ["active", "claimable", "contesting"]:
+			count += 1
+	return count
+
 func get_food_minimap_state(food: Node, team: int) -> Dictionary:
 	if not _is_food_source_valid(food) or not (team == BLUE or team == RED):
 		return {"visible": false, "state": INFO_HIDDEN, "point": Vector2.INF}

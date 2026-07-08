@@ -35,3 +35,23 @@ func _process(delta: float) -> void:
 		int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
 		Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0
 	]
+	if arena != null and is_instance_valid(arena) and arena.has_method("get_information_debug_state"):
+		text += "\n%s" % _format_info_debug(arena.get_information_debug_state())
+
+func _format_info_debug(state: Dictionary) -> String:
+	var enemies: Dictionary = state.get("enemy_info", {})
+	var food: Dictionary = state.get("food_info", {})
+	return "Info %s V%d R%d H%d L%d S%d X%d  Food V%d L%d X%d  Obj %d/%d" % [
+		String(state.get("phase", "?")).substr(0, 1).to_upper(),
+		int(enemies.get("visible", 0)),
+		int(enemies.get("revealed", 0)),
+		int(enemies.get("heard", 0)),
+		int(enemies.get("last_known", 0)),
+		int(enemies.get("suspected", 0)),
+		int(enemies.get("hidden", 0)),
+		int(food.get("visible", 0)),
+		int(food.get("last_known", 0)),
+		int(food.get("hidden", 0)),
+		int(state.get("live_objective_count", 0)),
+		int(state.get("objective_event_count", 0))
+	]

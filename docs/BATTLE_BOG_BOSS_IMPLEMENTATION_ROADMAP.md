@@ -317,6 +317,10 @@ so players can tell when dusk/night information limits are active without openin
 exact when currently scouted, faded from last-known memory after being seen, and hidden when never seen or stale.
 Neutral animal-zone progress stays public ecology pressure. Covered by `battle_bog_vision_minimap_check.gd` and
 `battle_bog_ecology_check.gd`.
+**[BB-VIS FOLLOW-UP DONE 2026-07-08]** The F3 playtest overlay now has an information-debug line backed by
+`get_information_debug_state(team)`: enemy visible/revealed/heard/last-known/suspected/hidden counts, food
+visible/remembered/hidden counts, and live/objective event counts. Covered by `battle_bog_vision_world_check.gd`
+and scene boot smoke.
 
 ---
 
