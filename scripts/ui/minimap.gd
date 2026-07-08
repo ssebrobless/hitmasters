@@ -165,7 +165,9 @@ static func animal_zone_minimap_state(zone: Dictionary) -> Dictionary:
 			"progress_mark_count": 0,
 			"progress_mark_total": 0,
 			"contested": bool(zone.get("contested", false)),
-			"control_team": int(zone.get("control_team", -1))
+			"control_team": int(zone.get("control_team", -1)),
+			"claim_team": int(zone.get("claim_team", -1)),
+			"claimed_team": int(zone.get("claimed_team", -1))
 		}
 	var active := bool(zone.get("active", false))
 	var spawned_count := maxi(int(zone.get("spawned_count", 0)), int((zone.get("occupants", []) as Array).size()))

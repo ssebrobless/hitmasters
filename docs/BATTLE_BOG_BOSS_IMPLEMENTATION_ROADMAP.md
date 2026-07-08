@@ -16,9 +16,9 @@ Every major boss attack: `TEL_warning -> HIT_active -> FX_afterstate -> RECOVERY
 
 ```
 BB-BOSS-1  per-team meter + objective-state contract            [DONE 2026-07-07]
-   -> BB-BOSS-2  objective lifecycle state machine + public broadcasts
-   -> BB-BOSS-3  Champsosaurus side-boss actor (scripts/game/bosses/)
-   -> BB-BOSS-4  claim/steal + reward routing + timed terrain-event
+   -> BB-BOSS-2  objective lifecycle state machine + public broadcasts   [DONE 2026-07-07]
+   -> BB-BOSS-3  Champsosaurus side-boss actor (scripts/game/bosses/)    [DONE 2026-07-07]
+   -> BB-BOSS-4  claim/steal + reward routing + timed terrain-event      [DONE 2026-07-07]
    -> BB-VIS-1   team vision API                 [HARD predecessor of BB-BOSS-5]
    -> BB-VIS-2/3/4  minimap / bots / world+day-night   (may follow BB-BOSS-5)
    -> BB-BOSS-5  Teratornis center boss
@@ -209,6 +209,18 @@ inconvenience/reroute/reveal, not route-lock; timed overlay, not mutation.
 
 **DoD:** downed boss claimed via contestable window (not last-hit); rewards route correctly and stay separate from
 family buffs; enemy-side terrain event fires on owner claim only.
+
+**[DONE 2026-07-07]** New `scripts/game/bosses/boss_catalog.gd` (FAMILY_BUFFS + FAMILY_TERRAIN_EVENTS transcribed
+from BOSS_DESIGN). arena.gd: `_advance_boss_claim`/`_resolve_boss_claim` run a presence-based contest window
+(claimable->contesting->claimed|stolen; reuses `_tick_animal_zones` control/contested, now counted for downed
+boss zones too; seizing restarts progress, no last-hit); `_grant_boss_reward(team, family, is_owner)` adds a
+capped boss-stock stack (`BOSS_STOCK_TEAM_CAP=8`) and, owner-only, spawns an enemy-side timed terrain event
+(`active_terrain_events`, ticked/expired each frame). Getters: `get_team_boss_stock_effect/summary`,
+`get_active_terrain_events`; `get_side_boss_state` now carries claim_progress/ratio/team/claimed_team. creature.gd
+consumes the boss channel via `_team_buff_bonus/_multiplier` (breeding + boss-stock summed at the stat site only;
+the capped breeding stack path is untouched). Review finding #2 fixed: new `damage_creatures_in_radius` (scored
+creatures only, never cores/huts/dams/breeding actors); Champsosaurus bite switched to it. Tests: the 3 named
+checks (all `failures=0`); full suite 55 PASS; live smoke PASS.
 
 ---
 

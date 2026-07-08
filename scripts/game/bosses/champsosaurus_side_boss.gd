@@ -190,8 +190,10 @@ func _advance_attack(delta: float) -> void:
 		"tel":
 			phase = "hit"
 			phase_timer = HIT_TIME
-			if arena != null and is_instance_valid(arena) and arena.has_method("damage_enemies_in_radius"):
-				arena.damage_enemies_in_radius(team, bite_center, BITE_RADIUS, BITE_DAMAGE, self, "Jaw Gate")
+			if arena != null and is_instance_valid(arena) and arena.has_method("damage_creatures_in_radius"):
+				# Creature-only AoE: neutral bite threatens fighters of BOTH teams but must
+				# not collaterally hit cores/huts/dams/breeding actors (review finding #2).
+				arena.damage_creatures_in_radius(team, bite_center, BITE_RADIUS, BITE_DAMAGE, self, "Jaw Gate")
 		"hit":
 			phase = "fx"
 			phase_timer = FX_TIME

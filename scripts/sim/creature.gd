@@ -1128,10 +1128,10 @@ func make_damage_event(amount: float, delivery: int, plane: int, source_ability:
 	return event
 
 func modify_outgoing_damage(amount: float) -> float:
-	return amount * _modifier_value("damage_dealt_mult", 1.0) * _team_breeding_multiplier("damage")
+	return amount * _modifier_value("damage_dealt_mult", 1.0) * _team_buff_multiplier("damage")
 
 func get_ability_delta(delta: float) -> float:
-	return delta * _team_breeding_multiplier("ability_haste")
+	return delta * _team_buff_multiplier("ability_haste")
 
 func add_modifier(source: String, values: Dictionary, duration: float) -> void:
 	if _modifier_value("cc_immune", 1.0) > 1.5 and _is_disruption_modifier(values):
@@ -1387,7 +1387,7 @@ func _tick_timers(delta: float) -> void:
 			damage_ticks.remove_at(i)
 
 func _tick_breeding_regen(delta: float) -> void:
-	var regen_bonus := _team_breeding_bonus("regen")
+	var regen_bonus := _team_buff_bonus("regen")
 	if regen_bonus <= 0.0 or health <= 0.0 or health >= max_health:
 		return
 	heal(max_health * regen_bonus * delta)
@@ -1777,9 +1777,9 @@ func _stat_float(key: String, fallback: float) -> float:
 	var value := _numeric_stat(key, fallback)
 	match key:
 		"health":
-			value *= _team_breeding_multiplier("max_health")
+			value *= _team_buff_multiplier("max_health")
 		"speed", "ground_speed", "swim_speed", "flight_speed":
-			value *= _team_breeding_multiplier("move_speed")
+			value *= _team_buff_multiplier("move_speed")
 	return value
 
 func _numeric_stat(key: String, fallback: float) -> float:
@@ -1793,8 +1793,18 @@ func _team_breeding_bonus(effect: String) -> float:
 		return float(arena.get_team_breeding_effect(team, effect))
 	return 0.0
 
-func _team_breeding_multiplier(effect: String) -> float:
-	return 1.0 + _team_breeding_bonus(effect)
+func _team_boss_stock_bonus(effect: String) -> float:
+	if arena != null and arena.has_method("get_team_boss_stock_effect"):
+		return float(arena.get_team_boss_stock_effect(team, effect))
+	return 0.0
+
+# Combined team buff bonus: capped breeding channel + boss-stock channel. The two stay
+# separate stacks arena-side (BB-BOSS-4); only their final stat effect is summed here.
+func _team_buff_bonus(effect: String) -> float:
+	return _team_breeding_bonus(effect) + _team_boss_stock_bonus(effect)
+
+func _team_buff_multiplier(effect: String) -> float:
+	return 1.0 + _team_buff_bonus(effect)
 
 func _catalog() -> Node:
 	return Engine.get_main_loop().root.get_node("CreatureCatalog")

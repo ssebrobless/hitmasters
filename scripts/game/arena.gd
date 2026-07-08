@@ -35,6 +35,7 @@ const StockManagerScript := preload("res://scripts/game/stock_manager.gd")
 const FoodSourceScript := preload("res://scripts/game/food_source.gd")
 const WildlifeEncounterScript := preload("res://scripts/game/wildlife_encounter.gd")
 const ChampsosaurusBossScript := preload("res://scripts/game/bosses/champsosaurus_side_boss.gd")
+const BossCatalog := preload("res://scripts/game/bosses/boss_catalog.gd")
 const BreedingActorScript := preload("res://scripts/game/breeding_actor.gd")
 const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
 
@@ -59,6 +60,12 @@ const BOSS_WILDLIFE_HEAL_FRACTION := 0.12
 const BREEDING_STACK_VALUE := 0.03
 const BREEDING_TEAM_CAP := 6
 const BREEDING_FAMILY_CAP := 3
+# Boss-stock buff channel (BB-BOSS-4) -- separate from the capped breeding buffs above.
+const BOSS_STOCK_TEAM_CAP := 8
+const BOSS_STOCK_EFFECT_KEYS := ["move_speed", "max_health", "damage", "ability_haste", "regen", "swim_duration", "healing_received", "damage_reduction", "size", "hunger_depletion", "vision_range"]
+# Contested claim window on a downed side boss (BB-BOSS-4). Ownership via presence, not last-hit.
+const BOSS_CLAIM_DURATION := 5.0
+const BOSS_CLAIM_DECAY_MULT := 0.5
 const BREEDING_BUFF_FAMILIES := ["amphibian", "reptile", "bird", "mammal", "crawly"]
 const BREEDING_BUFF_EFFECT_BY_FAMILY := {
 	"amphibian": "regen",
@@ -110,6 +117,8 @@ var side_boss_activations := {BLUE: 0, RED: 0}
 var side_boss_index := {BLUE: 0, RED: 0}
 var animal_zone_tick_timer := 0.0
 var team_breeding_buffs: Dictionary = {}
+var team_boss_stock_buffs: Dictionary = {}
+var active_terrain_events: Array[Dictionary] = []
 var huts_lost := {0: 0, 1: 0}
 var hut_defend_hint_timer := 0.0
 var habitat_deposit_feedback_timer := 0.0
@@ -232,6 +241,7 @@ func _physics_process(delta: float) -> void:
 
 	elapsed += delta
 	_tick_animal_zones(delta)
+	_tick_boss_terrain_events(delta)
 	wave_timer -= delta
 	_tick_telegraphs(delta)
 	_tick_kill_feed(delta)
@@ -552,6 +562,7 @@ func get_boss_progress_state() -> Dictionary:
 
 func get_side_boss_state(team: int) -> Dictionary:
 	var idx := int(side_boss_index.get(team, 0))
+	var zone := _team_boss_zone(team)
 	return {
 		"team": team,
 		"meter": int(side_boss_meter.get(team, 0)),
@@ -559,7 +570,14 @@ func get_side_boss_state(team: int) -> Dictionary:
 		"activations": int(side_boss_activations.get(team, 0)),
 		"next_family": String(SIDE_BOSS_ORDER[idx % SIDE_BOSS_ORDER.size()]),
 		"active": _team_has_active_side_boss(team),
-		"objective_state": String(_team_boss_zone(team).get("objective_state", "dormant"))
+		"objective_state": String(zone.get("objective_state", "dormant")),
+		"family": String(zone.get("boss_family", "")),
+		"claim_progress": float(zone.get("claim_progress", 0.0)),
+		"claim_ratio": clampf(float(zone.get("claim_progress", 0.0)) / BOSS_CLAIM_DURATION, 0.0, 1.0),
+		"claim_team": int(zone.get("claim_team", -1)),
+		"claimed_team": int(zone.get("claimed_team", -1)),
+		"contested": bool(zone.get("contested", false)),
+		"control_team": int(zone.get("control_team", -1))
 	}
 
 func get_team_breeding_buff_summary(team: int) -> Dictionary:
@@ -602,6 +620,8 @@ func _setup_animal_zones() -> void:
 	side_boss_meter = {BLUE: 0, RED: 0}
 	side_boss_activations = {BLUE: 0, RED: 0}
 	side_boss_index = {BLUE: 0, RED: 0}
+	_reset_boss_stock_buffs()
+	active_terrain_events.clear()
 	animal_zone_tick_timer = 0.0
 	var terrain_zones: Array = terrain_map.get_animal_zones() if terrain_map.has_method("get_animal_zones") else []
 	for source_zone in terrain_zones:
@@ -627,6 +647,9 @@ func _setup_animal_zones() -> void:
 		state["contested"] = false
 		state["control_team"] = -1
 		state["last_control_team"] = -1
+		state["claim_progress"] = 0.0
+		state["claim_team"] = -1
+		state["claimed_team"] = -1
 		_spawn_wildlife_for_zone(state)
 		animal_zone_states.append(state)
 	_tick_animal_zones(ANIMAL_ZONE_TICK_SEC)
@@ -898,6 +921,9 @@ func _activate_side_boss_for_team(team: int) -> void:
 		zone["last_bred_count"] = bred_animal_count
 		zone["boss_family"] = family
 		zone["objective_state"] = "active"
+		zone["claim_progress"] = 0.0
+		zone["claim_team"] = -1
+		zone["claimed_team"] = -1
 		_spawn_wildlife_for_zone(zone)
 		animal_zone_states[i] = zone
 	add_kill_feed("%s boss stirs: %s" % [_team_name(team), family.capitalize()])
@@ -1033,7 +1059,9 @@ func _tick_animal_zones(delta: float) -> void:
 	for zone in animal_zone_states:
 		var blue_count := 0
 		var red_count := 0
-		if bool(zone.get("active", false)):
+		# Count presence for a live zone AND for a downed boss in its claim window, so the
+		# contest window (BB-BOSS-4) reuses the same control/contested computation.
+		if bool(zone.get("active", false)) or _is_boss_claim_phase(zone):
 			for actor in entities:
 				if not _actor_counts_for_animal_zone(actor, zone):
 					continue
@@ -1052,6 +1080,8 @@ func _tick_animal_zones(delta: float) -> void:
 		zone["control_team"] = control_team
 		if control_team >= 0:
 			zone["last_control_team"] = control_team
+		if _is_boss_claim_phase(zone):
+			_advance_boss_claim(zone, ANIMAL_ZONE_TICK_SEC)
 
 func _actor_counts_for_animal_zone(actor: Node, zone: Dictionary) -> bool:
 	if actor == null or not is_instance_valid(actor):
@@ -1071,6 +1101,160 @@ func _point_in_animal_zone(point: Vector2, zone: Dictionary) -> bool:
 		return false
 	var normalized := Vector2((point.x - center.x) / radius.x, (point.y - center.y) / radius.y)
 	return normalized.length_squared() <= 1.0
+
+# --- Boss claim / steal contest window (BB-BOSS-4) -------------------------------
+func _is_boss_claim_phase(zone: Dictionary) -> bool:
+	if not bool(zone.get("boss", false)):
+		return false
+	var state := String(zone.get("objective_state", ""))
+	return state == "claimable" or state == "contesting"
+
+func _zone_owner_team(zone: Dictionary) -> int:
+	match String(zone.get("side", "")):
+		"blue":
+			return BLUE
+		"red":
+			return RED
+	return -1
+
+func _enemy_team(team: int) -> int:
+	return RED if team == BLUE else BLUE
+
+func _advance_boss_claim(zone: Dictionary, step: float) -> void:
+	# Contested -> nobody makes progress; a single controlling team accrues; an empty
+	# point decays back toward claimable. Ownership is by held presence, never last-hit.
+	var control_team := int(zone.get("control_team", -1))
+	var contested := bool(zone.get("contested", false))
+	var progress := float(zone.get("claim_progress", 0.0))
+	var claim_team := int(zone.get("claim_team", -1))
+	if contested:
+		zone["objective_state"] = "contesting"
+		return
+	if control_team < 0:
+		progress = maxf(progress - step * BOSS_CLAIM_DECAY_MULT, 0.0)
+		if progress <= 0.0:
+			claim_team = -1
+		zone["claim_progress"] = progress
+		zone["claim_team"] = claim_team
+		zone["objective_state"] = "claimable"
+		return
+	zone["objective_state"] = "claimable"
+	if claim_team != control_team:
+		# A fresh team seized the point: progress restarts under them (no carry-over).
+		claim_team = control_team
+		progress = 0.0
+	progress += step
+	zone["claim_team"] = claim_team
+	if progress >= BOSS_CLAIM_DURATION:
+		_resolve_boss_claim(zone, control_team)
+	else:
+		zone["claim_progress"] = progress
+
+func _resolve_boss_claim(zone: Dictionary, team: int) -> void:
+	var family := String(zone.get("boss_family", ""))
+	var is_owner := team == _zone_owner_team(zone)
+	zone["objective_state"] = "claimed" if is_owner else "stolen"
+	zone["claim_progress"] = BOSS_CLAIM_DURATION
+	zone["claim_team"] = team
+	zone["claimed_team"] = team
+	_grant_boss_reward(team, family, is_owner)
+	add_kill_feed("%s %s the %s boss" % [_team_name(team), "claimed" if is_owner else "stole", family.capitalize()])
+
+func _grant_boss_reward(team: int, family: String, is_owner: bool) -> void:
+	_add_boss_stock_stack(team, family)
+	if is_owner:
+		_spawn_boss_terrain_event(_enemy_team(team), family)
+
+# --- Boss-stock buff channel (separate from the capped breeding buffs) ------------
+func _reset_boss_stock_buffs() -> void:
+	team_boss_stock_buffs = {
+		BLUE: {},
+		RED: {}
+	}
+
+func _team_boss_stock_map(team: int) -> Dictionary:
+	if not team_boss_stock_buffs.has(team):
+		team_boss_stock_buffs[team] = {}
+	return team_boss_stock_buffs[team]
+
+func _team_boss_stock_count(team: int) -> int:
+	var total := 0
+	for family in _team_boss_stock_map(team):
+		total += int(_team_boss_stock_map(team)[family])
+	return total
+
+func _add_boss_stock_stack(team: int, family: String) -> void:
+	if not (team == BLUE or team == RED):
+		return
+	if BossCatalog.family_buff(family).is_empty():
+		return
+	if _team_boss_stock_count(team) >= BOSS_STOCK_TEAM_CAP:
+		return
+	var stacks := _team_boss_stock_map(team)
+	stacks[family] = int(stacks.get(family, 0)) + 1
+	team_boss_stock_buffs[team] = stacks
+	_refresh_team_breeding_buffs(team)
+
+func _team_boss_stock_effects(team: int) -> Dictionary:
+	var effects := {}
+	var stacks := _team_boss_stock_map(team)
+	for family in stacks:
+		var count := int(stacks[family])
+		if count <= 0:
+			continue
+		for effect in BossCatalog.family_buff(family):
+			effects[effect] = float(effects.get(effect, 0.0)) + float(count) * float(BossCatalog.family_buff(family)[effect])
+	return effects
+
+func get_team_boss_stock_effect(team: int, effect: String) -> float:
+	return float(_team_boss_stock_effects(team).get(effect, 0.0))
+
+func get_team_boss_stock_summary(team: int) -> Dictionary:
+	return {
+		"team": team,
+		"total_stacks": _team_boss_stock_count(team),
+		"family_counts": _team_boss_stock_map(team).duplicate(true),
+		"effects": _team_boss_stock_effects(team)
+	}
+
+# --- Timed enemy-side terrain disruption events (owner-claim only) ----------------
+func _spawn_boss_terrain_event(target_team: int, family: String) -> void:
+	var spec := BossCatalog.family_terrain_event(family)
+	if spec.is_empty() or not (target_team == BLUE or target_team == RED):
+		return
+	active_terrain_events.append({
+		"kind": String(spec.get("kind", "terrain_event")),
+		"label": String(spec.get("label", "Terrain Event")),
+		"family": family,
+		"team": target_team,
+		"position": _boss_terrain_event_position(target_team),
+		"radius": float(spec.get("radius", 120.0)),
+		"duration": float(spec.get("duration", 12.0)),
+		"remaining": float(spec.get("duration", 12.0))
+	})
+	add_kill_feed("%s hits %s side" % [String(spec.get("label", "Terrain event")), _team_name(target_team)])
+
+func _boss_terrain_event_position(target_team: int) -> Vector2:
+	var zone := _team_boss_zone(target_team)
+	if not zone.is_empty():
+		return zone.get("center", Vector2.ZERO)
+	if cores.has(target_team) and is_instance_valid(cores[target_team]):
+		return cores[target_team].global_position
+	return Vector2.ZERO
+
+func _tick_boss_terrain_events(delta: float) -> void:
+	if active_terrain_events.is_empty():
+		return
+	for i in range(active_terrain_events.size() - 1, -1, -1):
+		var event: Dictionary = active_terrain_events[i]
+		event["remaining"] = float(event.get("remaining", 0.0)) - delta
+		if float(event["remaining"]) <= 0.0:
+			active_terrain_events.remove_at(i)
+		else:
+			active_terrain_events[i] = event
+
+func get_active_terrain_events() -> Array[Dictionary]:
+	return active_terrain_events.duplicate(true)
 
 func _build_trio_hud_row(slot: Dictionary) -> Dictionary:
 	var actor: Node = slot.get("actor", null)
@@ -1773,6 +1957,28 @@ func damage_enemies_in_radius(source_team: int, center: Vector2, radius: float, 
 			var core_damage: float = final_damage * get_core_damage_multiplier(source_team)
 			core.take_damage(core_damage, source_team, source_actor)
 			record_core_damage(source_team, core_damage, source_actor)
+
+## Creature-only area damage: hits scored creatures of other teams but never cores,
+## huts, dams, or breeding actors. Used by the neutral side boss (team -1) so its bite
+## threatens fighters without collaterally damaging structures/cores (BB-BOSS-4, review #2).
+func damage_creatures_in_radius(source_team: int, center: Vector2, radius: float, damage: float, source_actor: Node = null, source_ability := "Area") -> void:
+	var final_damage: float = _outgoing_damage(source_actor, damage)
+	for entity: Node in entities:
+		if not _valid_target(entity) or entity.team == source_team:
+			continue
+		if not entity.has_method("is_scored_actor") or not entity.is_scored_actor():
+			continue
+		if cover_blocks_point(center, entity.global_position, minf(radius, 18.0)):
+			continue
+		var hit_info: Dictionary = HitShapeScript.circle_hit(center, radius, entity)
+		if bool(hit_info.hit):
+			if entity.has_method("take_damage_event"):
+				var event := DamageEventScript.new()
+				event.setup(final_damage, DamageEventScript.DELIVERY_AREA, DamageEventScript.PLANE_GROUND, source_actor, source_ability)
+				event.set_hit(hit_info.point, hit_info.normal, String(hit_info.get("region", "hull")), float(hit_info.get("region_mult", 1.0)))
+				entity.take_damage_event(event)
+			else:
+				entity.take_damage(final_damage, source_team, source_actor)
 
 func _outgoing_damage(source_actor: Node, amount: float) -> float:
 	if source_actor != null and is_instance_valid(source_actor) and source_actor.has_method("modify_outgoing_damage"):
