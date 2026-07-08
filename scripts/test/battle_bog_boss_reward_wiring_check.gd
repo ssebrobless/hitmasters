@@ -1,7 +1,7 @@
 extends SceneTree
 ## BB-BOSS-5 follow-up: the boss rewards that were recorded-but-inert now bite in combat.
 ## Covers the habitat-stock stat buffs (damage_reduction, healing_received, hunger_depletion,
-## size, vision_range), plus center rewards Sky Ambush, Tidal Venom, Spore Ward, and Swarm Growth.
+## size, vision_range), plus center rewards Sky Ambush, Iron Hide, Tidal Venom, Spore Ward, and Swarm Growth.
 
 const ARENA_SCENE := "res://scenes/Arena.tscn"
 const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
@@ -89,7 +89,24 @@ func _run() -> void:
 	if normal > empowered - 5.0:
 		failures.append("second consecutive hit should not be empowered; got %.1f" % normal)
 
-	# 7) Tidal Venom (Champsosaurus center reward): landed hits apply a capped DOT.
+	# 7) Iron Hide (American Mastodon center reward): after 4s out of combat, regen resumes until damaged/full.
+	arena._grant_center_reward(0, "american_mastodon")
+	player.health = player.max_health - 40.0
+	player.undamaged_timer = 3.9
+	player._tick_iron_hide_regen(1.0)
+	var pre_ramp_health := float(player.health)
+	if pre_ramp_health > float(player.max_health) - 39.9:
+		failures.append("Iron Hide should not regen before the 4s damage-free window; health=%.2f" % pre_ramp_health)
+	player.undamaged_timer = 4.1
+	player._tick_iron_hide_regen(1.0)
+	var ramped_health := float(player.health)
+	if not (ramped_health > pre_ramp_health + 0.1):
+		failures.append("Iron Hide should regen after 4s without damage; %.2f -> %.2f" % [pre_ramp_health, ramped_health])
+	player.take_damage_event(enemy.make_damage_event(5.0, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "iron_hide_reset"))
+	if not (float(player.undamaged_timer) <= 0.001):
+		failures.append("Iron Hide should reset its no-damage window on real health damage; timer=%.3f" % float(player.undamaged_timer))
+
+	# 8) Tidal Venom (Champsosaurus center reward): landed hits apply a capped DOT.
 	arena._grant_center_reward(0, "champsosaurus")
 	enemy.damage_ticks.clear()
 	enemy.health = enemy.max_health
@@ -104,7 +121,7 @@ func _run() -> void:
 	if _dot_count(enemy, "Tidal Venom") > 1:
 		failures.append("Tidal Venom DOT ticks should not recursively add stacks; ticks=%s" % str(enemy.damage_ticks))
 
-	# 8) Spore Ward (Platyhystrix center reward): periodic shield absorbs damage and slows the breaker.
+	# 9) Spore Ward (Platyhystrix center reward): periodic shield absorbs damage and slows the breaker.
 	arena._grant_center_reward(0, "platyhystrix")
 	player.spore_ward_timer = 0.0
 	player.spore_ward_absorb = 0.0
@@ -124,7 +141,7 @@ func _run() -> void:
 	if not (enemy.get_modifier_value("move_speed_mult", 1.0) < 1.0):
 		failures.append("Spore Ward breaker should be slowed; modifiers=%s" % str(enemy.modifiers))
 
-	# 9) Swarm Growth (Arthropleura center reward): scored kills grow team damage + body size, capped.
+	# 10) Swarm Growth (Arthropleura center reward): scored kills grow team damage + body size, capped.
 	arena._grant_center_reward(0, "arthropleura")
 	var growth_base_radius := float(player.body_radius)
 	var growth_base_damage: float = player.modify_outgoing_damage(100.0)

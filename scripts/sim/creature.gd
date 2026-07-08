@@ -57,6 +57,8 @@ const SPORE_WARD_SOURCE := "Spore Ward"
 const SPORE_WARD_PERIOD_SEC := 8.0
 const SPORE_WARD_SLOW_DURATION_SEC := 2.0
 const SPORE_WARD_SLOW_MULT := 0.75
+const IRON_HIDE_OUT_OF_COMBAT_SEC := 4.0
+const IRON_HIDE_BASE_REGEN_FRACTION_PER_SEC := 0.025
 const DISABLED_PHYSICS_LAYER := 0
 const DISABLED_PHYSICS_MASK := 0
 const RENDER_TIMER_BUCKETS := 8.0
@@ -423,12 +425,12 @@ func take_damage_event(event: Resource) -> void:
 	break_stealth()
 	var before_health := health
 	var amount: float = _modified_incoming_damage(event)
-	if amount > 0.0:
-		undamaged_timer = 0.0  # taking damage resets the Sky Ambush window
 	var counter_hit := counter_hit_window_timer > 0.0 and amount > 0.0
 	if counter_hit:
 		amount *= COUNTER_HIT_MULT
 	amount = _apply_spore_ward_absorb(event, amount)
+	if amount > 0.0:
+		undamaged_timer = 0.0  # actual health damage resets Sky Ambush and Iron Hide windows
 	if health - amount <= 0.0 and kit != null and kit.has_method("intercept_fatal_damage"):
 		if kit.intercept_fatal_damage(self, event, amount):
 			return
@@ -1399,6 +1401,7 @@ func _tick_timers(delta: float) -> void:
 	q_timer = maxf(q_timer - ability_delta, 0.0)
 	e_timer = maxf(e_timer - ability_delta, 0.0)
 	_tick_breeding_regen(delta)
+	_tick_iron_hide_regen(delta)
 	_tick_spore_ward(delta)
 	var previous_dash_timer := dash_timer
 	var previous_dash_velocity := dash_velocity
@@ -1448,6 +1451,14 @@ func _tick_breeding_regen(delta: float) -> void:
 	if regen_bonus <= 0.0 or health <= 0.0 or health >= max_health:
 		return
 	heal(max_health * regen_bonus * delta)
+
+func _tick_iron_hide_regen(delta: float) -> void:
+	var reward := _team_combat_reward("american_mastodon")
+	if reward <= 0.0 or health <= 0.0 or health >= max_health:
+		return
+	if undamaged_timer < IRON_HIDE_OUT_OF_COMBAT_SEC:
+		return
+	heal(max_health * IRON_HIDE_BASE_REGEN_FRACTION_PER_SEC * reward * delta)
 
 func _tick_spore_ward(delta: float) -> void:
 	var reward := _team_combat_reward("platyhystrix")
