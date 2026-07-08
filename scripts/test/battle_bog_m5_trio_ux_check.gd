@@ -99,14 +99,16 @@ func _check_hud_rows(arena: Node, failures: Array[String]) -> bool:
 	var own_rows: Array = data.get("own", [])
 	var enemy_rows: Array = data.get("enemy", [])
 	var objective: Dictionary = data.get("boss_objective", {})
+	var breeding: Dictionary = data.get("breeding", {})
 	var ok := bool(data.get("enabled", false)) and own_rows.size() == 3 and enemy_rows.size() == 3
 	ok = ok and _rows_have_shape(own_rows, true, failures)
 	ok = ok and _rows_have_shape(enemy_rows, false, failures)
 	ok = ok and _active_slot(own_rows) == 0
 	ok = ok and _enemy_has_no_active_slot(enemy_rows)
 	ok = ok and objective.has("side") and objective.has("center") and objective.has("combat_rewards")
+	ok = ok and breeding.has("active") and int(breeding.get("count", -1)) == 0
 	if not ok:
-		failures.append("trio HUD data expected enabled rows plus boss objective brief; objective=%s" % str(objective))
+		failures.append("trio HUD data expected enabled rows plus objective/breeding brief; objective=%s breeding=%s" % [str(objective), str(breeding)])
 	return ok
 
 func _check_switch_feedback(arena: Node, failures: Array[String]) -> bool:
@@ -140,11 +142,13 @@ func _check_deposit_prompt(arena: Node, failures: Array[String]) -> bool:
 	var ready: Dictionary = arena.get_deposit_prompt_state()
 	var accepted_result: bool = arena._try_manual_habitat_deposit(arena.player)
 	var accepted: Dictionary = arena.get_deposit_prompt_state()
+	var breeding: Dictionary = arena.get_breeding_queue_state(BLUE)
 	var ok := bool(needs_food.get("visible", false)) and String(needs_food.get("state", "")) == "needs_food" and bool(needs_food.get("in_home_habitat", false))
 	ok = ok and bool(ready.get("visible", false)) and String(ready.get("state", "")) == "ready" and bool(ready.get("in_home_habitat", false))
 	ok = ok and accepted_result and String(accepted.get("state", "")) == "accepted" and float(accepted.get("timer", 0.0)) > 0.0
+	ok = ok and bool(breeding.get("active", false)) and int(breeding.get("count", 0)) == 1 and float(breeding.get("next_remaining", 0.0)) > 40.0
 	if not ok:
-		failures.append("deposit prompt expected needs_food -> ready -> accepted states; needs_food=%s ready=%s accepted=%s result=%s" % [str(needs_food), str(ready), str(accepted), str(accepted_result)])
+		failures.append("deposit prompt expected needs_food -> ready -> accepted plus active breeding queue; needs_food=%s ready=%s accepted=%s breeding=%s result=%s" % [str(needs_food), str(ready), str(accepted), str(breeding), str(accepted_result)])
 	return ok
 
 func _check_dense_rail_removed(arena: Node, failures: Array[String]) -> bool:

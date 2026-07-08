@@ -392,6 +392,10 @@ code needing to interpret raw zone dictionaries. Covered by `battle_bog_boss_obj
 **[DONE 2026-07-08]** The 1v1 trio squad HUD now consumes that brief in a compact objective strip: side
 breed/fight/claim state, center boss countdown/active state, and the strongest current center reward are visible
 beside the deposit prompt. Covered by `battle_bog_m5_trio_ux_check.gd`.
+**[DONE 2026-07-08]** The trio HUD objective strip now also includes active breeding queue state (`BRn time` plus
+progress bar) from `get_breeding_queue_state(team)`, bridging deposit acceptance to breeding progress and boss meter
+in the forage -> hunger -> deposit -> breed -> boss loop. Covered by `battle_bog_m5_trio_ux_check.gd` plus M6
+breeding checks.
 **[DONE 2026-07-08]** The minimap objective layer now treats boss zones as public information events instead of
 blank boss ellipses: active side bosses surface fight labels, downed bosses surface claim labels/progress hooks,
 contested claims can draw hold arcs, and center bosses announce as center fight objectives. Dormant boss zones still

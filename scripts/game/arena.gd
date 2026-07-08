@@ -546,6 +546,7 @@ func get_squad_hud_data() -> Dictionary:
 		"enemy": get_trio_hud_rows(RED),
 		"own_buffs": get_team_breeding_buff_state(BLUE),
 		"enemy_buffs": get_team_breeding_buff_state(RED),
+		"breeding": get_breeding_queue_state(BLUE),
 		"boss_objective": get_boss_objective_brief(BLUE),
 		"switch_feedback": get_squad_switch_feedback_state(),
 		"deposit_prompt": get_deposit_prompt_state()
@@ -580,6 +581,35 @@ func get_deposit_prompt_state() -> Dictionary:
 		"timer": habitat_deposit_feedback_timer,
 		"in_home_habitat": in_home,
 		"near_home_habitat": near_home
+	}
+
+func get_breeding_queue_state(team: int) -> Dictionary:
+	if stock_manager == null or not stock_manager.has_method("get_breeding_cues"):
+		return {"active": false, "count": 0}
+	var cues: Array = stock_manager.get_breeding_cues(team)
+	var next_cue: Dictionary = {}
+	var next_remaining := INF
+	for cue_value in cues:
+		if typeof(cue_value) != TYPE_DICTIONARY:
+			continue
+		var cue: Dictionary = cue_value
+		var remaining := float(cue.get("remaining", StockManagerScript.BREEDING_DURATION_SEC))
+		if remaining < next_remaining:
+			next_remaining = remaining
+			next_cue = cue
+	if next_cue.is_empty():
+		return {"active": false, "count": 0}
+	var duration := maxf(float(next_cue.get("duration", StockManagerScript.BREEDING_DURATION_SEC)), 0.01)
+	var remaining := clampf(float(next_cue.get("remaining", duration)), 0.0, duration)
+	return {
+		"active": true,
+		"count": cues.size(),
+		"next_remaining": remaining,
+		"next_duration": duration,
+		"next_ratio": 1.0 - remaining / duration,
+		"next_creature_id": String(next_cue.get("creature_id", "")),
+		"next_family": String(next_cue.get("family", "")),
+		"next_slot_index": int(next_cue.get("slot_index", -1))
 	}
 
 func get_animal_zone_state(side := "") -> Array[Dictionary]:
