@@ -21,10 +21,10 @@ BB-BOSS-1  per-team meter + objective-state contract            [DONE 2026-07-07
    -> BB-BOSS-4  claim/steal + reward routing + timed terrain-event      [DONE 2026-07-07]
    -> BB-VIS-1   team vision API                 [DONE 2026-07-07] [HARD predecessor of BB-BOSS-5]
    -> BB-VIS-2/3  minimap fog + bot see-only-what-they-see   [DONE 2026-07-08]
-   -> BB-VIS-4    world-space enemy masking (deferred)
+   -> BB-VIS-4    world-space enemy masking                   [DONE 2026-07-08]
    -> BB-BOSS-5  Teratornis center boss                    [DONE 2026-07-08]
    -> BB-BOSS-6  shared boss framework + remaining 4 families            [DONE 2026-07-08]
-   (BB-VIS-4 may follow)
+   (BB-VIS-4 done; richer world ghosts/reveal presentation may follow)
    -> BB-BOSS-5  Teratornis center boss
    -> BB-BOSS-6  shared boss framework + remaining 4 families            [DONE 2026-07-08]
 ```
@@ -288,7 +288,14 @@ old split where minions LOS-gated via `get_closest_enemy` but bots did not -- bo
 New arena getter `get_last_known_point(team, entity)`. DELIBERATE: investigate is checked AFTER objective targeting
 (huts/core aren't fog-gated, so bots still push lanes and only investigate when no objective/visible target remains).
 Tests: `battle_bog_vision_minimap_check.gd`, `battle_bog_vision_bot_check.gd` (both `failures=0`); full suite 59 PASS.
-BB-VIS-4 (world-space `CanvasItem` dimming of off-vision enemies for the local player) still deferred.
+**[BB-VIS-4 DONE 2026-07-08]** World-space mobile enemy masking now uses the same local-team info layer as the
+minimap/bots. `arena.gd` exposes `get_world_view_team`, `get_world_entity_info_state`,
+`is_world_entity_rendered`, and `_apply_world_vision_masking`; `_physics_process` applies it after the vision tick.
+Enemy creatures and minions render only when `visible` or `revealed` to the local player's team. Heard,
+last-known, suspected, and hidden states no longer leak exact world sprites; own units, neutral bosses/wildlife,
+structures, objectives, projectiles, and combat telegraphs are left alone. Test
+`battle_bog_vision_world_masking_check.gd` covers visible/revealed enemies rendering, last-known/hidden enemies
+masking, minion masking, and own-player safety.
 
 ---
 

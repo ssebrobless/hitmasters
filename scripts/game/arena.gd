@@ -277,6 +277,7 @@ func _physics_process(delta: float) -> void:
 	_tick_animal_zones(delta)
 	_tick_boss_terrain_events(delta)
 	_tick_team_vision(delta)
+	_apply_world_vision_masking()
 	wave_timer -= delta
 	_tick_telegraphs(delta)
 	_tick_kill_feed(delta)
@@ -1984,6 +1985,49 @@ func get_visible_enemy_targets(actor: Node) -> Array[Node]:
 		if is_entity_visible_to_team(entity, team):
 			out.append(entity)
 	return out
+
+func get_world_view_team() -> int:
+	if player != null and is_instance_valid(player) and ("team" in player):
+		return int(player.get("team"))
+	return BLUE
+
+func get_world_entity_info_state(entity: Node) -> String:
+	if not _is_world_fog_gated_enemy(entity):
+		return INFO_VISIBLE
+	return get_entity_info_state(entity, get_world_view_team())
+
+func is_world_entity_rendered(entity: Node) -> bool:
+	var state := get_world_entity_info_state(entity)
+	return state == INFO_VISIBLE or state == INFO_REVEALED
+
+func _apply_world_vision_masking() -> void:
+	# BB-VIS-4: the local world view should not draw exact enemy mobile positions
+	# that are only heard/remembered/suspected. Combat, collision, and telegraphs
+	# still run on the real entities; this is a render-only truth downgrade.
+	for entity: Node in entities:
+		if not _is_world_fog_gated_enemy(entity):
+			continue
+		if not (entity is CanvasItem):
+			continue
+		var should_render := is_world_entity_rendered(entity)
+		if bool(entity.get("visible")) != should_render:
+			entity.set("visible", should_render)
+			if should_render and entity.has_method("queue_redraw"):
+				entity.queue_redraw()
+
+func _is_world_fog_gated_enemy(entity: Node) -> bool:
+	if entity == null or not is_instance_valid(entity) or not ("team" in entity):
+		return false
+	var team := int(entity.get("team"))
+	var view_team := get_world_view_team()
+	if team < 0 or team == view_team:
+		return false
+	if entity.has_method("is_alive") and not entity.is_alive():
+		return false
+	if entity.has_method("is_scored_actor") and entity.is_scored_actor():
+		return true
+	var script: Script = entity.get_script()
+	return script != null and String(script.resource_path).ends_with("/minion.gd")
 
 func get_last_known_point(team: int, entity: Node) -> Vector2:
 	# The stored last-seen position for a fog-gated enemy, or Vector2.INF if never seen.
