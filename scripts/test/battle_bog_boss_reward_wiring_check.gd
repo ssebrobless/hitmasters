@@ -1,7 +1,7 @@
 extends SceneTree
 ## BB-BOSS-5 follow-up: the boss rewards that were recorded-but-inert now bite in combat.
 ## Covers the habitat-stock stat buffs (damage_reduction, healing_received, hunger_depletion,
-## size, vision_range), plus center rewards Sky Ambush, Tidal Venom, and Swarm Growth.
+## size, vision_range), plus center rewards Sky Ambush, Tidal Venom, Spore Ward, and Swarm Growth.
 
 const ARENA_SCENE := "res://scenes/Arena.tscn"
 const DamageEventScript := preload("res://scripts/sim/damage_event.gd")
@@ -104,7 +104,27 @@ func _run() -> void:
 	if _dot_count(enemy, "Tidal Venom") > 1:
 		failures.append("Tidal Venom DOT ticks should not recursively add stacks; ticks=%s" % str(enemy.damage_ticks))
 
-	# 8) Swarm Growth (Arthropleura center reward): scored kills grow team damage + body size, capped.
+	# 8) Spore Ward (Platyhystrix center reward): periodic shield absorbs damage and slows the breaker.
+	arena._grant_center_reward(0, "platyhystrix")
+	player.spore_ward_timer = 0.0
+	player.spore_ward_absorb = 0.0
+	player.health = player.max_health
+	enemy.modifiers.clear()
+	player.tick_sim(0.05)
+	var ward_amount := float(player.spore_ward_absorb)
+	if not (ward_amount > player.max_health * 0.15):
+		failures.append("Spore Ward should refresh a shield from the center reward; absorb=%.2f max=%.2f" % [ward_amount, float(player.max_health)])
+	var ward_health := float(player.health)
+	player.take_damage_event(enemy.make_damage_event(ward_amount * 0.5, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "ward_probe"))
+	if float(player.health) < ward_health - 0.001:
+		failures.append("Spore Ward should absorb shield-sized damage before health loss; %.2f -> %.2f" % [ward_health, float(player.health)])
+	player.take_damage_event(enemy.make_damage_event(ward_amount + 50.0, DamageEventScript.DELIVERY_MELEE, DamageEventScript.PLANE_GROUND, "ward_break"))
+	if not (float(player.spore_ward_absorb) <= 0.001):
+		failures.append("Spore Ward should break when depleted; absorb=%.3f" % float(player.spore_ward_absorb))
+	if not (enemy.get_modifier_value("move_speed_mult", 1.0) < 1.0):
+		failures.append("Spore Ward breaker should be slowed; modifiers=%s" % str(enemy.modifiers))
+
+	# 9) Swarm Growth (Arthropleura center reward): scored kills grow team damage + body size, capped.
 	arena._grant_center_reward(0, "arthropleura")
 	var growth_base_radius := float(player.body_radius)
 	var growth_base_damage: float = player.modify_outgoing_damage(100.0)

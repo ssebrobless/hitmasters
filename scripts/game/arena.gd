@@ -2862,6 +2862,49 @@ func _spawn_vfx_for_event(event: Dictionary) -> void:
 				"duration": 0.5,
 				"remaining": 0.5
 			})
+		"shield_refreshed":
+			var shield_amount: float = float(event.get("amount", 0.0))
+			telegraphs.append({
+				"type": "circle",
+				"center": event.get("position", Vector2.ZERO),
+				"radius": 24.0,
+				"color": Color(0.58, 1.0, 0.72, 0.55),
+				"width": 2.5,
+				"filled": false,
+				"duration": 0.45,
+				"remaining": 0.45
+			})
+			telegraphs.append({
+				"type": "float_text",
+				"position": event.get("position", Vector2.ZERO),
+				"text": "+%d SHIELD" % int(ceil(shield_amount)),
+				"color": Color(0.58, 1.0, 0.72, 1.0),
+				"size": 13,
+				"duration": 0.55,
+				"remaining": 0.55
+			})
+		"shield_absorbed":
+			var absorbed: float = float(event.get("amount", 0.0))
+			telegraphs.append({
+				"type": "float_text",
+				"position": event.get("position", Vector2.ZERO),
+				"text": "-%d" % int(ceil(absorbed)),
+				"color": Color(0.68, 1.0, 0.8, 0.95),
+				"size": 12,
+				"duration": 0.42,
+				"remaining": 0.42
+			})
+		"shield_broken":
+			telegraphs.append({
+				"type": "circle",
+				"center": event.get("position", Vector2.ZERO),
+				"radius": 30.0,
+				"color": Color(0.82, 1.0, 0.48, 0.7),
+				"width": 4.0,
+				"filled": false,
+				"duration": 0.28,
+				"remaining": 0.28
+			})
 		"dash_started":
 			var dash_duration: float = float(event.get("duration", 0.12))
 			telegraphs.append({

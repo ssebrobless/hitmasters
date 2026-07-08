@@ -53,6 +53,10 @@ const ESCAPE_CURL_TELL_SEC := 0.24
 const PLUNGE_TELL_SEC := 0.20
 const AIR_ATTACK_STARTUP_TELL_SEC := 0.28
 const LOW_WINDOW_VISUAL_MAX_SEC := 0.7
+const SPORE_WARD_SOURCE := "Spore Ward"
+const SPORE_WARD_PERIOD_SEC := 8.0
+const SPORE_WARD_SLOW_DURATION_SEC := 2.0
+const SPORE_WARD_SLOW_MULT := 0.75
 const DISABLED_PHYSICS_LAYER := 0
 const DISABLED_PHYSICS_MASK := 0
 const RENDER_TIMER_BUCKETS := 8.0
@@ -129,6 +133,8 @@ var pass_obstacles_timer := 0.0
 var modifiers: Array[Dictionary] = []
 var healing_ticks: Array[Dictionary] = []
 var damage_ticks: Array[Dictionary] = []
+var spore_ward_timer := 0.0
+var spore_ward_absorb := 0.0
 var secondary_resource_label := ""
 var secondary_resource := 0.0
 var secondary_resource_max := 0.0
@@ -212,6 +218,8 @@ func apply_creature(next_creature_id: String) -> void:
 	modifiers.clear()
 	healing_ticks.clear()
 	damage_ticks.clear()
+	spore_ward_timer = 0.0
+	spore_ward_absorb = 0.0
 	secondary_resource_label = ""
 	secondary_resource = 0.0
 	secondary_resource_max = 0.0
@@ -420,6 +428,7 @@ func take_damage_event(event: Resource) -> void:
 	var counter_hit := counter_hit_window_timer > 0.0 and amount > 0.0
 	if counter_hit:
 		amount *= COUNTER_HIT_MULT
+	amount = _apply_spore_ward_absorb(event, amount)
 	if health - amount <= 0.0 and kit != null and kit.has_method("intercept_fatal_damage"):
 		if kit.intercept_fatal_damage(self, event, amount):
 			return
@@ -1333,6 +1342,8 @@ func _respawn() -> void:
 	modifiers.clear()
 	healing_ticks.clear()
 	damage_ticks.clear()
+	spore_ward_timer = 0.0
+	spore_ward_absorb = 0.0
 	if kit != null and kit.has_method("reset_for_respawn"):
 		kit.reset_for_respawn(self)
 	swim_time_remaining = swim_time_max
@@ -1388,6 +1399,7 @@ func _tick_timers(delta: float) -> void:
 	q_timer = maxf(q_timer - ability_delta, 0.0)
 	e_timer = maxf(e_timer - ability_delta, 0.0)
 	_tick_breeding_regen(delta)
+	_tick_spore_ward(delta)
 	var previous_dash_timer := dash_timer
 	var previous_dash_velocity := dash_velocity
 	dash_timer = maxf(dash_timer - delta, 0.0)
@@ -1436,6 +1448,54 @@ func _tick_breeding_regen(delta: float) -> void:
 	if regen_bonus <= 0.0 or health <= 0.0 or health >= max_health:
 		return
 	heal(max_health * regen_bonus * delta)
+
+func _tick_spore_ward(delta: float) -> void:
+	var reward := _team_combat_reward("platyhystrix")
+	if reward <= 0.0:
+		spore_ward_timer = 0.0
+		spore_ward_absorb = 0.0
+		return
+	spore_ward_timer = maxf(spore_ward_timer - delta, 0.0)
+	if spore_ward_timer > 0.0 or spore_ward_absorb > 0.0:
+		return
+	spore_ward_absorb = maxf(max_health * reward, 0.0)
+	spore_ward_timer = SPORE_WARD_PERIOD_SEC
+	emit_vfx_event("shield_refreshed", {
+		"target": self,
+		"source_ability": SPORE_WARD_SOURCE,
+		"amount": spore_ward_absorb,
+		"position": global_position
+	})
+
+func _apply_spore_ward_absorb(event: Resource, amount: float) -> float:
+	if amount <= 0.0 or spore_ward_absorb <= 0.0:
+		return amount
+	var absorbed := minf(amount, spore_ward_absorb)
+	spore_ward_absorb = maxf(spore_ward_absorb - absorbed, 0.0)
+	emit_vfx_event("shield_absorbed", {
+		"target": self,
+		"source": event.source_actor,
+		"source_ability": SPORE_WARD_SOURCE,
+		"amount": absorbed,
+		"remaining": spore_ward_absorb,
+		"position": global_position
+	})
+	if spore_ward_absorb <= 0.0:
+		_break_spore_ward(event.source_actor)
+	return amount - absorbed
+
+func _break_spore_ward(source_actor: Node) -> void:
+	emit_vfx_event("shield_broken", {
+		"target": self,
+		"source": source_actor,
+		"source_ability": SPORE_WARD_SOURCE,
+		"position": global_position
+	})
+	if source_actor == null or not is_instance_valid(source_actor) or source_actor == self:
+		return
+	if not source_actor.has_method("add_capped_modifier"):
+		return
+	source_actor.add_capped_modifier(SPORE_WARD_SOURCE, {"move_speed_mult": SPORE_WARD_SLOW_MULT}, SPORE_WARD_SLOW_DURATION_SEC, 1)
 
 func _tick_hunger(delta: float) -> void:
 	if hunger_satiated:
