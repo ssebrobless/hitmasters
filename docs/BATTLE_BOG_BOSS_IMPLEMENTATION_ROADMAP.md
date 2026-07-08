@@ -22,7 +22,9 @@ BB-BOSS-1  per-team meter + objective-state contract            [DONE 2026-07-07
    -> BB-VIS-1   team vision API                 [DONE 2026-07-07] [HARD predecessor of BB-BOSS-5]
    -> BB-VIS-2/3  minimap fog + bot see-only-what-they-see   [DONE 2026-07-08]
    -> BB-VIS-4    world-space enemy masking (deferred)
-   (may follow BB-BOSS-5)
+   -> BB-BOSS-5  Teratornis center boss                    [DONE 2026-07-08]
+   -> BB-BOSS-6  shared boss framework + remaining 4 families
+   (BB-VIS-4 may follow)
    -> BB-BOSS-5  Teratornis center boss
    -> BB-BOSS-6  shared boss framework + remaining 4 families
 ```
@@ -290,7 +292,25 @@ BB-VIS-4 (world-space `CanvasItem` dimming of off-vision enemies for the local p
 
 ---
 
-## BB-BOSS-5 — Teratornis center boss  (requires BB-VIS-1)
+## BB-BOSS-5 — Teratornis center boss  (requires BB-VIS-1)  [DONE 2026-07-08]
+
+**[DONE 2026-07-08]** New `scripts/game/bosses/teratornis_center_boss.gd` (neutral team -1, +50% size via
+SIZE_MULT 1.5, map-wide/no-leash; Grand Hunt Shadow: TEL reveals creatures of BOTH teams in a radius via
+`arena.reveal_entity_to_team` -> HIT `damage_creatures_in_radius` dive -> FX -> RECOVERY wings weakpoint x1.6).
+arena.gd: `_tick_center_boss_schedule()` (after `elapsed += delta`) fires at `CENTER_BOSS_TIMES = [600, 1200]` with
+`center_boss_fired` guards, one-at-a-time via `_center_boss_zone_index()`; `_roll_center_boss_family()` uses the
+match-seeded `match_rng`; `_spawn_center_boss(family)` synthesizes a neutral `center` boss zone (unique id
+`center:Boss:N`) appended to `animal_zone_states` and spawns the actor through the existing
+`_spawn_wildlife_for_zone` (new `center_boss` branch) so defeat reuses `on_wildlife_defeated` -> the BB-BOSS-4 claim
+window. `_resolve_boss_claim` branches: a `center_boss` zone has no owner -> always `claimed`, routes to
+`_grant_center_reward` (stack 1->2, same family upgrades once, cap `CENTER_BOSS_REWARD_MAX_STACK=2`) and fires NO
+directed disruption. boss_catalog.gd `CENTER_REWARDS` + `center_reward`/`center_reward_value`. Getters
+`get_center_boss_state`, `get_team_combat_reward_state`. Dev: `debug_spawn_center_boss()` + F10 key + `--bb-center-boss`
+flag. Tests: `battle_bog_boss_center_schedule_check.gd` (`failures=0`) + `bb_center_boss_live_smoke.gd`
+(RESULT=PASS: grammar runs, reveal fires, defeat->claim). Full suite 60 PASS. NOTE: the combat-reward ABILITIES
+themselves (DOT/shield/ambush burst/etc.) are recorded+stacked but not yet wired into combat (deferred, like the
+exotic boss-stock keys); the center actor is Teratornis-shaped for all rolled families until BB-BOSS-6 adds per-family
+center actors.
 
 **Goal:** scheduled neutral map-wide objective proving reveal / anti-comfort play.
 

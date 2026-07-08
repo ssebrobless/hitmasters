@@ -35,6 +35,7 @@ const StockManagerScript := preload("res://scripts/game/stock_manager.gd")
 const FoodSourceScript := preload("res://scripts/game/food_source.gd")
 const WildlifeEncounterScript := preload("res://scripts/game/wildlife_encounter.gd")
 const ChampsosaurusBossScript := preload("res://scripts/game/bosses/champsosaurus_side_boss.gd")
+const TeratornisCenterBossScript := preload("res://scripts/game/bosses/teratornis_center_boss.gd")
 const BossCatalog := preload("res://scripts/game/bosses/boss_catalog.gd")
 const BreedingActorScript := preload("res://scripts/game/breeding_actor.gd")
 const VisualGrammar := preload("res://scripts/visual/visual_grammar.gd")
@@ -87,6 +88,10 @@ const BOSS_STOCK_EFFECT_KEYS := ["move_speed", "max_health", "damage", "ability_
 # Contested claim window on a downed side boss (BB-BOSS-4). Ownership via presence, not last-hit.
 const BOSS_CLAIM_DURATION := 5.0
 const BOSS_CLAIM_DECAY_MULT := 0.5
+# Center big bosses (BB-BOSS-5): scheduled neutral map-wide objectives at 10:00 / 20:00 elapsed.
+const CENTER_BOSS_TIMES := [600.0, 1200.0]
+const CENTER_BOSS_RADIUS := Vector2(150.0, 130.0)
+const CENTER_BOSS_REWARD_MAX_STACK := 2
 const BREEDING_BUFF_FAMILIES := ["amphibian", "reptile", "bird", "mammal", "crawly"]
 const BREEDING_BUFF_EFFECT_BY_FAMILY := {
 	"amphibian": "regen",
@@ -143,6 +148,9 @@ var active_terrain_events: Array[Dictionary] = []
 var team_vision := {BLUE: {}, RED: {}}    # entity_id -> {last_point, last_seen, ever}
 var team_reveals := {BLUE: {}, RED: {}}   # entity_id -> remaining reveal seconds
 var vision_tick_timer := 0.0
+var center_boss_fired := [false, false]   # per CENTER_BOSS_TIMES entry
+var center_boss_spawn_count := 0          # unique-id counter (a claimed zone can outlive a new spawn)
+var team_combat_rewards: Dictionary = {}  # team -> {family: stack(1..2)}
 var huts_lost := {0: 0, 1: 0}
 var hut_defend_hint_timer := 0.0
 var habitat_deposit_feedback_timer := 0.0
@@ -264,6 +272,7 @@ func _physics_process(delta: float) -> void:
 		PerfStats.add("bot_frames", int(Time.get_ticks_usec() - perf_bots_start))
 
 	elapsed += delta
+	_tick_center_boss_schedule()
 	_tick_animal_zones(delta)
 	_tick_boss_terrain_events(delta)
 	_tick_team_vision(delta)
@@ -441,6 +450,8 @@ func _spawn_match() -> void:
 	_setup_animal_zones()
 	if GameConfig.wake_boss:
 		_debug_wake_all_bosses.call_deferred()
+	if GameConfig.center_boss:
+		debug_spawn_center_boss.call_deferred()
 
 	var blue_core = CoreScript.new()
 	add_child(blue_core)
@@ -647,6 +658,9 @@ func _setup_animal_zones() -> void:
 	side_boss_index = {BLUE: 0, RED: 0}
 	_reset_boss_stock_buffs()
 	active_terrain_events.clear()
+	center_boss_fired = [false, false]
+	center_boss_spawn_count = 0
+	team_combat_rewards = {BLUE: {}, RED: {}}
 	animal_zone_tick_timer = 0.0
 	var terrain_zones: Array = terrain_map.get_animal_zones() if terrain_map.has_method("get_animal_zones") else []
 	for source_zone in terrain_zones:
@@ -859,6 +873,14 @@ func _debug_wake_all_bosses() -> void:
 	debug_wake_boss(BLUE)
 	debug_wake_boss(RED)
 
+func debug_spawn_center_boss() -> void:
+	# Dev affordance: spawn the center big boss now (skips the 10:00 wait). Reachable via
+	# --bb-center-boss or the F10 key. No-op while one is already live.
+	if _center_boss_zone_index() >= 0:
+		return
+	_spawn_center_boss(_roll_center_boss_family())
+	add_kill_feed("[dev] summoned center boss")
+
 func _record_bred_animal(team: int, _actor: Node = null) -> void:
 	bred_animal_count += 1
 	if not (team == BLUE or team == RED):
@@ -965,7 +987,9 @@ func _spawn_wildlife_for_zone(zone: Dictionary) -> void:
 		var species_id := String(occupants[i])
 		var spawn_pos := _animal_zone_spawn_position(zone, i, occupants.size())
 		var occupant: Node
-		if bool(zone.get("boss", false)) and String(zone.get("boss_family", "")) == "champsosaurus":
+		if bool(zone.get("center_boss", false)):
+			occupant = TeratornisCenterBossScript.new()
+		elif bool(zone.get("boss", false)) and String(zone.get("boss_family", "")) == "champsosaurus":
 			occupant = ChampsosaurusBossScript.new()
 		else:
 			occupant = WildlifeEncounterScript.new()
@@ -1177,11 +1201,17 @@ func _advance_boss_claim(zone: Dictionary, step: float) -> void:
 
 func _resolve_boss_claim(zone: Dictionary, team: int) -> void:
 	var family := String(zone.get("boss_family", ""))
-	var is_owner := team == _zone_owner_team(zone)
-	zone["objective_state"] = "claimed" if is_owner else "stolen"
 	zone["claim_progress"] = BOSS_CLAIM_DURATION
 	zone["claim_team"] = team
 	zone["claimed_team"] = team
+	if bool(zone.get("center_boss", false)):
+		# Center bosses have no owner: whoever holds the point claims a combat reward, and
+		# they grant NO directed disruption (the map-wide fight already hit both teams).
+		zone["objective_state"] = "claimed"
+		_grant_center_reward(team, family)
+		return
+	var is_owner := team == _zone_owner_team(zone)
+	zone["objective_state"] = "claimed" if is_owner else "stolen"
 	_grant_boss_reward(team, family, is_owner)
 	add_kill_feed("%s %s the %s boss" % [_team_name(team), "claimed" if is_owner else "stole", family.capitalize()])
 
@@ -1189,6 +1219,105 @@ func _grant_boss_reward(team: int, family: String, is_owner: bool) -> void:
 	_add_boss_stock_stack(team, family)
 	if is_owner:
 		_spawn_boss_terrain_event(_enemy_team(team), family)
+
+# --- Center big boss: scheduled neutral map-wide objective (BB-BOSS-5) ------------
+func _tick_center_boss_schedule() -> void:
+	if _center_boss_zone_index() >= 0:
+		return  # a center boss is already live; one at a time
+	for i in CENTER_BOSS_TIMES.size():
+		if bool(center_boss_fired[i]):
+			continue
+		if elapsed >= float(CENTER_BOSS_TIMES[i]):
+			center_boss_fired[i] = true
+			_spawn_center_boss(_roll_center_boss_family())
+			return
+
+func _roll_center_boss_family() -> String:
+	# Deterministic: the match-seeded RNG picks one of the five families (BUILD_PLAN rule 4).
+	var idx := match_rng.randi_range(0, SIDE_BOSS_ORDER.size() - 1)
+	return String(SIDE_BOSS_ORDER[idx])
+
+func _spawn_center_boss(family: String) -> void:
+	center_boss_spawn_count += 1
+	var zone := {
+		"id": "center:Boss:%d" % center_boss_spawn_count,
+		"side": "center",
+		"group": "Boss",
+		"boss": true,
+		"center_boss": true,
+		"boss_family": family,
+		"center": Vector2.ZERO,
+		"radius": CENTER_BOSS_RADIUS,
+		"active": true,
+		"objective_state": "active",
+		"activation_count": 1,
+		"occupants": ["center_boss_1"],
+		"spawned_count": 1,
+		"alive_occupants": [],
+		"alive_count": 0,
+		"defeated_count": 0,
+		"blue_defeats": 0,
+		"red_defeats": 0,
+		"last_defeat_team": -1,
+		"cleared_team": -1,
+		"wildlife_count": 0,
+		"blue_count": 0,
+		"red_count": 0,
+		"contested": false,
+		"control_team": -1,
+		"last_control_team": -1,
+		"claim_progress": 0.0,
+		"claim_team": -1,
+		"claimed_team": -1
+	}
+	animal_zone_states.append(zone)
+	_spawn_wildlife_for_zone(animal_zone_states[animal_zone_states.size() - 1])
+	add_kill_feed("Center boss descends: %s (map-wide)" % family.capitalize())
+
+func _center_boss_zone_index() -> int:
+	for i in animal_zone_states.size():
+		var zone: Dictionary = animal_zone_states[i]
+		if bool(zone.get("center_boss", false)) and String(zone.get("objective_state", "")) in ["active", "claimable", "contesting"]:
+			return i
+	return -1
+
+func _grant_center_reward(team: int, family: String) -> void:
+	if not (team == BLUE or team == RED) or BossCatalog.center_reward(family).is_empty():
+		return
+	var rewards: Dictionary = team_combat_rewards.get(team, {})
+	# Same family claimed again upgrades the stack once (1 -> 2), capped.
+	rewards[family] = mini(int(rewards.get(family, 0)) + 1, CENTER_BOSS_REWARD_MAX_STACK)
+	team_combat_rewards[team] = rewards
+	var label := String(BossCatalog.center_reward(family).get("label", family.capitalize()))
+	add_kill_feed("%s claims center reward: %s (x%d)" % [_team_name(team), label, int(rewards[family])])
+
+func get_center_boss_state() -> Dictionary:
+	var idx := _center_boss_zone_index()
+	if idx < 0:
+		return {"active": false, "family": "", "objective_state": "dormant"}
+	var zone: Dictionary = animal_zone_states[idx]
+	return {
+		"active": true,
+		"family": String(zone.get("boss_family", "")),
+		"objective_state": String(zone.get("objective_state", "")),
+		"size_mult": TeratornisCenterBossScript.SIZE_MULT,
+		"claim_ratio": clampf(float(zone.get("claim_progress", 0.0)) / BOSS_CLAIM_DURATION, 0.0, 1.0),
+		"contested": bool(zone.get("contested", false)),
+		"control_team": int(zone.get("control_team", -1))
+	}
+
+func get_team_combat_reward_state(team: int) -> Dictionary:
+	var rewards: Dictionary = team_combat_rewards.get(team, {})
+	var states := {}
+	for family in rewards:
+		var stack := int(rewards[family])
+		states[family] = {
+			"family": family,
+			"label": String(BossCatalog.center_reward(family).get("label", family.capitalize())),
+			"stack": stack,
+			"value": BossCatalog.center_reward_value(family, stack)
+		}
+	return states
 
 # --- Boss-stock buff channel (separate from the capped breeding buffs) ------------
 func _reset_boss_stock_buffs() -> void:
@@ -3710,6 +3839,9 @@ var quit_confirm_timer := 0.0
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode == KEY_F9:
 		debug_wake_boss(BLUE)
+		return
+	if event is InputEventKey and event.pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode == KEY_F10:
+		debug_spawn_center_boss()
 		return
 	if match_over and event.is_action_pressed("ui_accept"):
 		get_tree().reload_current_scene()

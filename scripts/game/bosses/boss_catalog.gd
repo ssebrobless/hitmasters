@@ -29,8 +29,30 @@ const FAMILY_TERRAIN_EVENTS := {
 	"teratornis": {"kind": "wind_shear", "label": "Wind Shear", "duration": 12.0, "radius": 120.0}
 }
 
+# Center big-boss rewards (BB-BOSS-5): team COMBAT abilities transcribed from BOSS_DESIGN.
+# A team's first claim of a family grants stack 1 (`first`); claiming the SAME family again at
+# the second center timing upgrades to stack 2 (`second`). Center bosses grant NO directed
+# enemy-side disruption -- their map-wide fight already disrupts both teams. The ability wiring
+# lands later; BB-BOSS-5 records/stacks the reward and exposes its value.
+const CENTER_REWARDS := {
+	"champsosaurus": {"label": "Tidal Venom", "effect": "empowered_dot", "first": 0.045, "second": 0.075},
+	"platyhystrix": {"label": "Spore Ward", "effect": "periodic_shield_slow", "first": 0.20, "second": 0.40},
+	"american_mastodon": {"label": "Iron Hide", "effect": "regen_ramp", "first": 0.30, "second": 0.50},
+	"arthropleura": {"label": "Swarm Growth", "effect": "kill_growth", "first": 0.015, "second": 0.0185},
+	"teratornis": {"label": "Sky Ambush", "effect": "ambush_burst", "first": 0.30, "second": 0.45}
+}
+
 static func family_buff(family: String) -> Dictionary:
 	return FAMILY_BUFFS.get(family, {})
 
 static func family_terrain_event(family: String) -> Dictionary:
 	return FAMILY_TERRAIN_EVENTS.get(family, {})
+
+static func center_reward(family: String) -> Dictionary:
+	return CENTER_REWARDS.get(family, {})
+
+static func center_reward_value(family: String, stack: int) -> float:
+	var reward := center_reward(family)
+	if reward.is_empty():
+		return 0.0
+	return float(reward.get("second", 0.0)) if stack >= 2 else float(reward.get("first", 0.0))

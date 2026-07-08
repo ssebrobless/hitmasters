@@ -9,6 +9,7 @@ var selected_squad_ids: Array[String] = ["snapping_turtle", "chorus_frog", "mink
 var blue_draft_bans: Array[String] = []
 var red_draft_bans: Array[String] = []
 var wake_boss := false
+var center_boss := false
 
 func _ready() -> void:
 	var perf_requested := false
@@ -21,6 +22,8 @@ func _ready() -> void:
 			perf_requested = true
 		elif argument == "--bb-wake-boss":
 			wake_boss = true
+		elif argument == "--bb-center-boss":
+			center_boss = true
 	if perf_requested:
 		add_child(preload("res://scripts/game/perf_harness.gd").new())
 
