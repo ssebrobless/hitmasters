@@ -349,10 +349,13 @@ reward **Sky Ambush**: a per-creature `undamaged_timer` (ticked in `tick_sim`, r
 `modify_outgoing_damage` empowers the next hit by the reward value once the timer passes `AMBUSH_UNDAMAGED_SEC`
 (8s), then resets the window. New arena getters `get_team_combat_reward_value`, `get_team_vision_range`; creature
 `_team_combat_reward`. Test `battle_bog_boss_reward_wiring_check.gd` (`failures=0`); full suite 61 PASS; both boss
-live smokes PASS. STILL DEFERRED (need net-new subsystems, land in/after BB-BOSS-6): Champsosaurus `empowered_dot`
-(needs an on-hit-landed hook), Platyhystrix `periodic_shield_slow` (shield-absorb + slow-on-break), American Mastodon
-`regen_ramp` (no base out-of-combat regen exists), Arthropleura `kill_growth` (teamwide stacking kill counter + cap);
-Champsosaurus `swim_duration` (no swim-stamina system).
+live smokes PASS. **[DONE 2026-07-08]** Champsosaurus center reward `empowered_dot` is now wired as **Tidal Venom**:
+`Creature.take_damage_event` calls source `on_damage_dealt` after a positive landed hit, and `Creature.on_damage_dealt`
+uses the existing DOT system to apply a capped 3s venom tick for teams with the Champsosaurus center reward. DOT ticks
+do not recursively apply more venom. Covered in `battle_bog_boss_reward_wiring_check.gd`. STILL DEFERRED (need
+net-new subsystems, land after the on-hit hook): Platyhystrix `periodic_shield_slow` (shield-absorb + slow-on-break),
+American Mastodon `regen_ramp` (no base out-of-combat regen exists), Arthropleura `kill_growth` (teamwide stacking
+kill counter + cap); Champsosaurus `swim_duration` (no swim-stamina system).
 
 ---
 
@@ -376,8 +379,7 @@ the shared size multiplier instead of the Teratornis-specific constant. `champso
 bosses. Existing Champsosaurus attack/leash checks, center schedule check, side and center live smokes pass; full
 suite is 62 PASS / 0 FAIL. The Teratornis center live smoke now forces `teratornis` explicitly because generic
 center debug spawn can correctly roll any family after BB-BOSS-6. Still deferred from the reward follow-up:
-Champsosaurus `empowered_dot`, Platyhystrix shield/slow, Mastodon regen ramp, Arthropleura kill growth, and
-swim-stamina-specific duration wiring.
+Platyhystrix shield/slow, Mastodon regen ramp, Arthropleura kill growth, and swim-stamina-specific duration wiring.
 
 ---
 

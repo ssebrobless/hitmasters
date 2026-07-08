@@ -170,6 +170,8 @@ var low_window_timer := 0.0
 var counter_hit_window_timer := 0.0
 var undamaged_timer := 0.0  # seconds since last took damage (Teratornis Sky Ambush window)
 const AMBUSH_UNDAMAGED_SEC := 8.0
+const TIDAL_VENOM_DURATION_SEC := 3.0
+const TIDAL_VENOM_SOURCE := "Tidal Venom"
 var respawn_timer := 0.0
 var respawn_duration := 5.0
 var hunger := HUNGER_MAX
@@ -463,6 +465,8 @@ func take_damage_event(event: Resource) -> void:
 			"region_mult": event.region_mult,
 			"source_ability": event.source_ability
 		})
+		if amount > 0.0 and event.source_actor != null and is_instance_valid(event.source_actor) and event.source_actor.has_method("on_damage_dealt"):
+			event.source_actor.on_damage_dealt(self, event, amount)
 	if health <= 0.0:
 		if event.source_actor != null and is_instance_valid(event.source_actor) and event.source_actor.has_method("on_kill"):
 			event.source_actor.on_kill(self)
@@ -1146,6 +1150,18 @@ func modify_outgoing_damage(amount: float) -> float:
 			result *= 1.0 + burst
 			undamaged_timer = 0.0
 	return result
+
+func on_damage_dealt(target: Node, event: Resource, amount: float) -> void:
+	if target == null or not is_instance_valid(target) or amount <= 0.0:
+		return
+	if not target.has_method("apply_dot"):
+		return
+	if String(event.source_ability) == TIDAL_VENOM_SOURCE:
+		return
+	var venom := _team_combat_reward("champsosaurus")
+	if venom <= 0.0:
+		return
+	target.apply_dot(self, TIDAL_VENOM_SOURCE, amount * venom, TIDAL_VENOM_DURATION_SEC, 1)
 
 func _team_combat_reward(family: String) -> float:
 	if arena != null and arena.has_method("get_team_combat_reward_value"):
