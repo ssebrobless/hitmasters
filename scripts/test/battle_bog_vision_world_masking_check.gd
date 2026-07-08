@@ -44,23 +44,46 @@ func _run() -> void:
 	arena._apply_world_vision_masking()
 	if not bool(enemy.visible) or not arena.is_world_entity_rendered(enemy):
 		failures.append("visible enemy creature should render in world; state=%s visible=%s" % [arena.get_world_entity_info_state(enemy), str(enemy.visible)])
+	if not _marker_for(arena, enemy, "visible").is_empty():
+		failures.append("directly visible enemy should not need a degraded info marker")
 
 	arena._tick_team_vision(0.2)
+	var seen_point: Vector2 = enemy.global_position
 	enemy.global_position = origin + Vector2(5000.0, 0.0)
 	arena._apply_world_vision_masking()
 	if bool(enemy.visible) or arena.is_world_entity_rendered(enemy):
 		failures.append("last-known enemy creature should not render exact world sprite; state=%s visible=%s" % [arena.get_world_entity_info_state(enemy), str(enemy.visible)])
+	var last_marker := _marker_for(arena, enemy, "last_known")
+	if last_marker.is_empty() or (last_marker.get("point", Vector2.INF) as Vector2).distance_to(seen_point) > 1.0:
+		failures.append("last-known enemy should expose a stale world info marker at %s; marker=%s" % [str(seen_point), str(last_marker)])
 
 	arena.reveal_entity_to_team(enemy, blue, 5.0)
 	arena._apply_world_vision_masking()
 	if not bool(enemy.visible) or not arena.is_world_entity_rendered(enemy):
 		failures.append("revealed enemy creature should render again; state=%s visible=%s" % [arena.get_world_entity_info_state(enemy), str(enemy.visible)])
+	var reveal_marker := _marker_for(arena, enemy, "revealed")
+	if reveal_marker.is_empty() or (reveal_marker.get("point", Vector2.INF) as Vector2).distance_to(enemy.global_position) > 1.0:
+		failures.append("revealed enemy should expose an exact reveal marker; marker=%s enemy=%s" % [str(reveal_marker), str(enemy.global_position)])
 
 	arena._tick_team_vision(6.0)
 	arena.elapsed += 100.0
 	arena._apply_world_vision_masking()
 	if bool(enemy.visible):
 		failures.append("hidden enemy creature should stay masked after reveal expires; state=%s" % arena.get_world_entity_info_state(enemy))
+	if not _marker_for(arena, enemy, "hidden").is_empty():
+		failures.append("hidden enemy should not expose a world info marker")
+
+	arena.team_vision[blue].clear()
+	arena.team_reveals[blue].clear()
+	enemy.global_position = origin + Vector2(arena.get_team_vision_range(blue) + 40.0, 0.0)
+	arena._apply_world_vision_masking()
+	var heard_marker := _marker_for(arena, enemy, "heard")
+	if bool(enemy.visible) or arena.get_world_entity_info_state(enemy) != "heard":
+		failures.append("heard-only enemy should remain masked in world; state=%s visible=%s" % [arena.get_world_entity_info_state(enemy), str(enemy.visible)])
+	if heard_marker.is_empty():
+		failures.append("heard-only enemy should expose a coarse world info marker")
+	elif (heard_marker.get("point", Vector2.INF) as Vector2).distance_to(enemy.global_position) <= 1.0:
+		failures.append("heard-only world marker should be coarse, not exact; marker=%s enemy=%s" % [str(heard_marker), str(enemy.global_position)])
 
 	var minion := MinionScript.new()
 	arena.add_child(minion)
@@ -95,3 +118,14 @@ func _first_enemy_creature(arena: Node) -> Node:
 			continue
 		return entity
 	return null
+
+func _marker_for(arena: Node, entity: Node, state: String) -> Dictionary:
+	var id := entity.get_instance_id()
+	for marker: Dictionary in arena.get_world_info_markers(int(arena.player.get("team"))):
+		if int(marker.get("entity_id", -1)) != id:
+			continue
+		if state == "hidden" or state == "visible":
+			return marker
+		if String(marker.get("state", "")) == state:
+			return marker
+	return {}

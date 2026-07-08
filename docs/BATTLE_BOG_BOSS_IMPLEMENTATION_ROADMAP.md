@@ -305,6 +305,11 @@ heard/suspected targets. Minimap heard rings and bot investigate intents now con
 Firefly Spark and Leech attach/Sensory Crypt still apply their local reveal modifiers, but also call
 `reveal_entity_to_team` for the attacking team so fog, minimap, bots, and world masking agree on the revealed target.
 Covered by `battle_bog_wave3_firefly_check.gd`, `battle_bog_wave4_leech_check.gd`, and vision masking checks.
+**[BB-VIS FOLLOW-UP DONE 2026-07-08]** The main world view now has a lightweight information-marker layer for
+non-hidden fog states: revealed enemies get an exact reveal ring, last-known enemies get a stale-position ring, and
+heard/suspected enemies get coarse sound/rustle rings from `get_info_marker_point` without drawing exact sprites.
+The marker layer draws under combat telegraphs so attacks remain the strongest screen signal. Covered by
+`battle_bog_vision_world_masking_check.gd`.
 
 ---
 

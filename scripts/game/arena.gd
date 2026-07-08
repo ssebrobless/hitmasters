@@ -331,6 +331,7 @@ func _draw() -> void:
 	# Retired mid-objective holdover: Battle Bog's center belongs to
 	# contested water while huts and habitats carry the match contract.
 	_draw_animal_zones()
+	_draw_world_info_markers()
 	_draw_telegraphs()
 	if DEBUG_HURTBOX_OVERLAY:
 		_draw_hurtbox_debug_overlays()
@@ -2143,6 +2144,42 @@ func is_world_entity_rendered(entity: Node) -> bool:
 	var state := get_world_entity_info_state(entity)
 	return state == INFO_VISIBLE or state == INFO_REVEALED
 
+func get_world_info_markers(team := -1) -> Array[Dictionary]:
+	var view_team := int(team)
+	if view_team < 0:
+		view_team = get_world_view_team()
+	var markers: Array[Dictionary] = []
+	for entity: Node in entities:
+		if not _is_info_marker_candidate(entity, view_team):
+			continue
+		var state := get_entity_info_state(entity, view_team)
+		if state == INFO_VISIBLE or state == INFO_HIDDEN:
+			continue
+		var point := get_info_marker_point(view_team, entity)
+		if point == Vector2.INF:
+			continue
+		markers.append({
+			"state": state,
+			"point": point,
+			"team": int(entity.get("team")),
+			"entity_id": entity.get_instance_id(),
+			"exact": state == INFO_REVEALED or state == INFO_LAST_KNOWN
+		})
+	return markers
+
+func _is_info_marker_candidate(entity: Node, view_team: int) -> bool:
+	if entity == null or not is_instance_valid(entity) or not ("team" in entity):
+		return false
+	var team := int(entity.get("team"))
+	if team < 0 or team == view_team:
+		return false
+	if entity.has_method("is_alive") and not entity.is_alive():
+		return false
+	if entity.has_method("is_scored_actor") and entity.is_scored_actor():
+		return true
+	var script: Script = entity.get_script()
+	return script != null and String(script.resource_path).ends_with("/minion.gd")
+
 func _apply_world_vision_masking() -> void:
 	# BB-VIS-4: the local world view should not draw exact enemy mobile positions
 	# that are only heard/remembered/suspected. Combat, collision, and telegraphs
@@ -2888,6 +2925,57 @@ func _draw_telegraphs() -> void:
 					fill_color.a *= 0.18
 					draw_circle(center, radius, fill_color)
 				draw_arc(center, radius, 0.0, TAU, 48, color, width)
+
+func _draw_world_info_markers() -> void:
+	for marker: Dictionary in get_world_info_markers():
+		var state := String(marker.get("state", ""))
+		var point: Vector2 = marker.get("point", Vector2.ZERO)
+		var color := _world_info_marker_color(state)
+		var radius := _world_info_marker_radius(state)
+		draw_arc(point, radius, 0.0, TAU, 40, color, 2.0)
+		if state == INFO_HEARD or state == INFO_SUSPECTED:
+			draw_arc(point, radius + 8.0, PI * 0.12, PI * 1.88, 36, Color(color.r, color.g, color.b, color.a * 0.52), 1.2)
+		elif state == INFO_REVEALED:
+			draw_arc(point, radius + 5.0, 0.0, TAU, 36, Color(color.r, color.g, color.b, color.a * 0.7), 1.5)
+		var label := _world_info_marker_label(state)
+		if not label.is_empty():
+			draw_string(ThemeDB.fallback_font, point + Vector2(-18.0, -radius - 6.0), label, HORIZONTAL_ALIGNMENT_CENTER, 36.0, 9, color)
+
+func _world_info_marker_color(state: String) -> Color:
+	match state:
+		INFO_REVEALED:
+			return VisualGrammar.telegraph_color("aura", 0.52, false)
+		INFO_LAST_KNOWN:
+			return Color(0.78, 0.84, 0.78, 0.34)
+		INFO_HEARD:
+			return VisualGrammar.ecology_zone_color("water_outline", 0.34)
+		INFO_SUSPECTED:
+			return VisualGrammar.ecology_zone_color("contested", 0.32)
+	return Color(1.0, 1.0, 1.0, 0.0)
+
+func _world_info_marker_radius(state: String) -> float:
+	match state:
+		INFO_REVEALED:
+			return 24.0
+		INFO_LAST_KNOWN:
+			return 18.0
+		INFO_HEARD:
+			return 30.0
+		INFO_SUSPECTED:
+			return 34.0
+	return 0.0
+
+func _world_info_marker_label(state: String) -> String:
+	match state:
+		INFO_REVEALED:
+			return "REVEAL"
+		INFO_LAST_KNOWN:
+			return "LAST"
+		INFO_HEARD:
+			return "SOUND"
+		INFO_SUSPECTED:
+			return "RUSTLE"
+	return ""
 
 func _draw_hurtbox_debug_overlays() -> void:
 	for overlay: Dictionary in get_hurtbox_debug_overlays():
