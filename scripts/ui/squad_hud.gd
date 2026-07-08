@@ -141,9 +141,10 @@ func _draw_prompt_strip(data: Dictionary, rect: Rect2) -> void:
 			prompt_text = "HOME HABITAT NEAR"
 		_:
 			prompt_text = "STOCKS LIVE"
-	draw_string(ThemeDB.fallback_font, rect.position + Vector2(8.0, 18.0), prompt_text, HORIZONTAL_ALIGNMENT_LEFT, 150.0, 11, prompt_color)
-	_draw_buff_stack_strip(data.get("own_buffs", []), rect.position + Vector2(160.0, 7.0), true)
-	_draw_buff_stack_strip(data.get("enemy_buffs", []), rect.position + Vector2(230.0, 7.0), false)
+	draw_string(ThemeDB.fallback_font, rect.position + Vector2(8.0, 12.0), prompt_text, HORIZONTAL_ALIGNMENT_LEFT, 126.0, 10, prompt_color)
+	_draw_boss_objective_strip(data.get("boss_objective", {}), Rect2(rect.position + Vector2(136.0, 4.0), Vector2(228.0, 20.0)))
+	_draw_buff_stack_strip(data.get("own_buffs", []), rect.position + Vector2(8.0, 17.0), true)
+	_draw_buff_stack_strip(data.get("enemy_buffs", []), rect.position + Vector2(78.0, 17.0), false)
 
 	var feedback: Dictionary = data.get("switch_feedback", {})
 	var state := String(feedback.get("state", "idle"))
@@ -151,6 +152,97 @@ func _draw_prompt_strip(data: Dictionary, rect: Rect2) -> void:
 		var width := 54.0 * clampf(float(feedback.get("timer", 0.0)) / 0.85, 0.0, 1.0)
 		draw_rect(Rect2(rect.position + Vector2(304.0, 10.0), Vector2(54.0, 5.0)), Color(0.02, 0.025, 0.024, 0.92))
 		draw_rect(Rect2(rect.position + Vector2(304.0, 10.0), Vector2(width, 5.0)), Color(0.45, 0.78, 1.0, 0.9))
+
+func _draw_boss_objective_strip(objective: Dictionary, rect: Rect2) -> void:
+	if objective.is_empty():
+		return
+	var side: Dictionary = objective.get("side", {})
+	var center: Dictionary = objective.get("center", {})
+	var rewards: Dictionary = objective.get("combat_rewards", {})
+	var side_text := _side_objective_text(side)
+	var center_text := _center_objective_text(center)
+	var reward_text := _reward_objective_text(rewards)
+	var side_color := _objective_action_color(String(side.get("action", "breed")))
+	draw_rect(rect, Color(0.025, 0.035, 0.032, 0.82))
+	draw_rect(rect, Color(0.42, 0.55, 0.46, 0.42), false, 1.0)
+	var meter_ratio := clampf(float(side.get("meter_ratio", 0.0)), 0.0, 1.0)
+	var meter_rect := Rect2(rect.position + Vector2(6.0, 13.0), Vector2(54.0, 3.0))
+	draw_rect(meter_rect, Color(0.04, 0.045, 0.04, 0.9))
+	draw_rect(Rect2(meter_rect.position, Vector2(meter_rect.size.x * meter_ratio, meter_rect.size.y)), side_color)
+	draw_string(ThemeDB.fallback_font, rect.position + Vector2(6.0, 10.0), side_text, HORIZONTAL_ALIGNMENT_LEFT, 78.0, 8, side_color)
+	draw_string(ThemeDB.fallback_font, rect.position + Vector2(88.0, 10.0), center_text, HORIZONTAL_ALIGNMENT_LEFT, 72.0, 8, Color(0.78, 0.88, 1.0, 0.92))
+	draw_string(ThemeDB.fallback_font, rect.position + Vector2(164.0, 10.0), reward_text, HORIZONTAL_ALIGNMENT_LEFT, 58.0, 8, Color(0.9, 0.86, 0.58, 0.92))
+
+func _side_objective_text(side: Dictionary) -> String:
+	var action := String(side.get("action", "breed")).to_upper()
+	var family := _family_code(String(side.get("family", "")))
+	match action:
+		"BREED":
+			return "%d/%d %s" % [int(side.get("meter", 0)), int(side.get("interval", 5)), family]
+		"FIGHT":
+			return "FIGHT %s" % family
+		"CLAIM":
+			return "CLAIM %s" % family
+		"CONTEST":
+			return "HOLD %d%%" % int(round(float(side.get("claim_ratio", 0.0)) * 100.0))
+		_:
+			return action
+
+func _center_objective_text(center: Dictionary) -> String:
+	if bool(center.get("active", false)):
+		var family := _family_code(String(center.get("family", "")))
+		var state := String(center.get("state", "active")).to_upper()
+		if state == "CONTESTING":
+			return "CTR %d%%" % int(round(float(center.get("claim_ratio", 0.0)) * 100.0))
+		return "CTR %s" % family
+	var seconds := float(center.get("next_spawn_in", -1.0))
+	if seconds < 0.0:
+		return "CTR DONE"
+	return "CTR %s" % _compact_time(seconds)
+
+func _reward_objective_text(rewards: Dictionary) -> String:
+	if rewards.is_empty():
+		return "REW -"
+	var best_family := ""
+	var best_stack := 0
+	for family in rewards.keys():
+		var reward: Dictionary = rewards[family]
+		var stack := int(reward.get("stack", 0))
+		if stack > best_stack:
+			best_stack = stack
+			best_family = String(family)
+	return "REW %s%d" % [_family_code(best_family), best_stack]
+
+func _objective_action_color(action: String) -> Color:
+	match action:
+		"fight":
+			return Color(1.0, 0.62, 0.32, 0.95)
+		"claim", "contest":
+			return Color(0.55, 1.0, 0.62, 0.95)
+		"claimed":
+			return Color(0.62, 0.82, 1.0, 0.88)
+		_:
+			return Color(0.82, 0.88, 0.62, 0.9)
+
+func _family_code(family: String) -> String:
+	match family:
+		"champsosaurus":
+			return "CH"
+		"platyhystrix":
+			return "PL"
+		"american_mastodon":
+			return "MA"
+		"arthropleura":
+			return "AR"
+		"teratornis":
+			return "TE"
+		_:
+			return "--"
+
+func _compact_time(seconds: float) -> String:
+	if seconds >= 60.0:
+		return "%dm" % int(ceil(seconds / 60.0))
+	return "%ds" % int(ceil(maxf(seconds, 0.0)))
 
 func _draw_buff_stack_strip(buffs: Array, at: Vector2, own: bool) -> void:
 	var color := Color(0.55, 0.86, 1.0, 0.9) if own else Color(1.0, 0.55, 0.45, 0.88)

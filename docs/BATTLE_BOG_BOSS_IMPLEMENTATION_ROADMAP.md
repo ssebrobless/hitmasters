@@ -372,6 +372,9 @@ mechanical wiring; remaining work is tuning/readability rather than recorded-but
 for HUD/minimap/readability work. It returns side boss meter/family/action/claim lock, enemy-side equivalent,
 center boss active/countdown/claim state, current boss-stock summary, and current center combat rewards without UI
 code needing to interpret raw zone dictionaries. Covered by `battle_bog_boss_objective_state_check.gd`.
+**[DONE 2026-07-08]** The 1v1 trio squad HUD now consumes that brief in a compact objective strip: side
+breed/fight/claim state, center boss countdown/active state, and the strongest current center reward are visible
+beside the deposit prompt. Covered by `battle_bog_m5_trio_ux_check.gd`.
 
 ---
 

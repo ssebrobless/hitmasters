@@ -544,6 +544,7 @@ func get_squad_hud_data() -> Dictionary:
 		"enemy": get_trio_hud_rows(RED),
 		"own_buffs": get_team_breeding_buff_state(BLUE),
 		"enemy_buffs": get_team_breeding_buff_state(RED),
+		"boss_objective": get_boss_objective_brief(BLUE),
 		"switch_feedback": get_squad_switch_feedback_state(),
 		"deposit_prompt": get_deposit_prompt_state()
 	}

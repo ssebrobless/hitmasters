@@ -98,13 +98,15 @@ func _check_hud_rows(arena: Node, failures: Array[String]) -> bool:
 	var data: Dictionary = arena.get_squad_hud_data()
 	var own_rows: Array = data.get("own", [])
 	var enemy_rows: Array = data.get("enemy", [])
+	var objective: Dictionary = data.get("boss_objective", {})
 	var ok := bool(data.get("enabled", false)) and own_rows.size() == 3 and enemy_rows.size() == 3
 	ok = ok and _rows_have_shape(own_rows, true, failures)
 	ok = ok and _rows_have_shape(enemy_rows, false, failures)
 	ok = ok and _active_slot(own_rows) == 0
 	ok = ok and _enemy_has_no_active_slot(enemy_rows)
+	ok = ok and objective.has("side") and objective.has("center") and objective.has("combat_rewards")
 	if not ok:
-		failures.append("trio HUD data expected enabled own/enemy rows with blue slot 1 active.")
+		failures.append("trio HUD data expected enabled rows plus boss objective brief; objective=%s" % str(objective))
 	return ok
 
 func _check_switch_feedback(arena: Node, failures: Array[String]) -> bool:
