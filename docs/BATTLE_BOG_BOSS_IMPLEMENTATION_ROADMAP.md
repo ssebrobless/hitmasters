@@ -20,7 +20,9 @@ BB-BOSS-1  per-team meter + objective-state contract            [DONE 2026-07-07
    -> BB-BOSS-3  Champsosaurus side-boss actor (scripts/game/bosses/)    [DONE 2026-07-07]
    -> BB-BOSS-4  claim/steal + reward routing + timed terrain-event      [DONE 2026-07-07]
    -> BB-VIS-1   team vision API                 [DONE 2026-07-07] [HARD predecessor of BB-BOSS-5]
-   -> BB-VIS-2/3/4  minimap / bots / world+day-night   (may follow BB-BOSS-5)
+   -> BB-VIS-2/3  minimap fog + bot see-only-what-they-see   [DONE 2026-07-08]
+   -> BB-VIS-4    world-space enemy masking (deferred)
+   (may follow BB-BOSS-5)
    -> BB-BOSS-5  Teratornis center boss
    -> BB-BOSS-6  shared boss framework + remaining 4 families
 ```
@@ -272,6 +274,19 @@ BB-VIS-3); telegraphs are drawn unconditionally so fog never hides combat cues. 
 - **Bots:** gate all three `arena.entities` scans (bot_brain.gd L174/254/269) plus `_cached_intent_valid` (L86-94);
   add an INVESTIGATE intent for heard/last_known/suspected navigating to the stored last-known point (not live pos).
 - **World masking:** dim/hide off-vision enemy `CanvasItem`s for the local player.
+
+**[BB-VIS-2 + BB-VIS-3 DONE 2026-07-08]** Minimap: `view_team` (auto = player's team); enemy mobile units
+(creatures + minions) route through `_is_fog_gated_enemy` -> `_draw_fogged_enemy` (visible/revealed = live pip;
+last_known = faded ghost at `arena.get_last_known_point`; heard = ripple ring; suspected/hidden = nothing);
+huts/cores/food/zones/objectives + own units stay global. Bots: new `_can_perceive`/`_is_fog_gated_unit` gate all
+three `arena.entities` scans (`_target_candidates`, `_closest_enemy_near_point`, `_closest_live_enemy`) plus the
+cached-intent revalidation, so a target that slips into fog is dropped; new `_investigate_intent` (mode
+"investigate") walks to the stored last-known point for a lost (last_known) or heard enemy. This also unifies the
+old split where minions LOS-gated via `get_closest_enemy` but bots did not -- both now use the shared vision API.
+New arena getter `get_last_known_point(team, entity)`. DELIBERATE: investigate is checked AFTER objective targeting
+(huts/core aren't fog-gated, so bots still push lanes and only investigate when no objective/visible target remains).
+Tests: `battle_bog_vision_minimap_check.gd`, `battle_bog_vision_bot_check.gd` (both `failures=0`); full suite 59 PASS.
+BB-VIS-4 (world-space `CanvasItem` dimming of off-vision enemies for the local player) still deferred.
 
 ---
 

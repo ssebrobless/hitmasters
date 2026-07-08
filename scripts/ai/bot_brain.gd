@@ -89,6 +89,8 @@ func _cached_intent_valid(actor: Node, intent: Dictionary, age_frames: int) -> b
 	var target: Node = intent.get("target", null)
 	if target != null and not TargetFilter.is_live_damage_target(actor, target, {"require_damage_api": false}):
 		return false
+	if target != null and not _can_perceive(actor, target):
+		return false  # target slipped into fog -> re-choose (may become an investigate)
 	if String(intent.get("mode", "")) == "retreat" and _health_ratio(actor) > RETREAT_EXIT_HEALTH_RATIO:
 		return false
 	return true
@@ -118,7 +120,39 @@ func _choose_intent(actor: Node) -> Dictionary:
 	if not target_intent.is_empty():
 		return target_intent
 
+	var investigate := _investigate_intent(actor)
+	if not investigate.is_empty():
+		return investigate
+
 	return {"mode": "idle", "point": actor.global_position + Vector2.RIGHT}
+
+# No visible target: move toward the nearest last-known point for an enemy we lost sight of
+# (last_known) or currently only hear (heard). Navigates to the STORED point, not live pos.
+func _investigate_intent(actor: Node) -> Dictionary:
+	if actor.arena == null or not actor.arena.has_method("get_last_known_point"):
+		return {}
+	if not _has_property(actor.arena, "entities"):
+		return {}
+	var best_point := Vector2.INF
+	var best_distance := INF
+	for entity in actor.arena.entities:
+		if not _is_fog_gated_unit(actor, entity):
+			continue
+		if entity.has_method("is_alive") and not entity.is_alive():
+			continue
+		var state := String(actor.arena.get_entity_info_state(entity, actor.team))
+		if state != "last_known" and state != "heard":
+			continue
+		var last_point: Vector2 = actor.arena.get_last_known_point(actor.team, entity)
+		if last_point == Vector2.INF:
+			continue
+		var distance: float = actor.global_position.distance_to(last_point)
+		if distance < best_distance:
+			best_distance = distance
+			best_point = last_point
+	if best_point == Vector2.INF:
+		return {}
+	return {"mode": "investigate", "point": best_point}
 
 func _defense_intent(actor: Node) -> Dictionary:
 	if actor.arena.get("huts") == null:
@@ -173,6 +207,8 @@ func _target_candidates(actor: Node) -> Array[Node]:
 	if actor.arena.get("entities") != null:
 		for entity in actor.arena.entities:
 			if not TargetFilter.is_live_damage_target(actor, entity, {"require_damage_api": false}):
+				continue
+			if not _can_perceive(actor, entity):
 				continue
 			var distance: float = actor.global_position.distance_to(entity.global_position)
 			if not _is_hut(actor, entity) and distance > FIGHT_SCAN_RANGE:
@@ -241,6 +277,30 @@ func _is_core(actor: Node, target: Node) -> bool:
 		return false
 	return target == actor.arena.get_enemy_core(actor.team)
 
+# BB-VIS-3: bots only act on enemy mobile units their team can currently see. Structures
+# (huts/cores) and neutral objectives stay public; own units are never gated. Falls back to
+# legacy always-perceive when the arena has no vision system.
+func _can_perceive(actor: Node, target: Node) -> bool:
+	if target == null or not is_instance_valid(target):
+		return false
+	if actor == null or actor.arena == null or not actor.arena.has_method("is_entity_visible_to_team"):
+		return true
+	if not _is_fog_gated_unit(actor, target):
+		return true
+	return actor.arena.is_entity_visible_to_team(target, actor.team)
+
+func _is_fog_gated_unit(actor: Node, target: Node) -> bool:
+	if not _has_property(target, "team"):
+		return false
+	var t := int(target.get("team"))
+	if t < 0 or t == int(actor.team):
+		return false
+	if _is_hut(actor, target) or _is_core(actor, target):
+		return false
+	if target.has_method("is_scored_actor") and target.is_scored_actor():
+		return true
+	return _has_property(target, "kind")  # enemy minions
+
 func _is_combatant_target(target: Node) -> bool:
 	if target.has_method("is_scored_actor") and target.is_scored_actor():
 		return true
@@ -253,6 +313,8 @@ func _closest_enemy_near_point(actor: Node, point: Vector2, radius: float) -> No
 	var closest_distance: float = radius
 	for entity in actor.arena.entities:
 		if not TargetFilter.is_live_damage_target(actor, entity, {"require_damage_api": false}):
+			continue
+		if not _can_perceive(actor, entity):
 			continue
 		var distance: float = entity.global_position.distance_to(point)
 		if distance < closest_distance:
@@ -268,6 +330,8 @@ func _closest_live_enemy(actor: Node, max_distance: float) -> Node:
 	if _has_property(actor.arena, "entities"):
 		for entity in actor.arena.entities:
 			if not TargetFilter.is_live_damage_target(actor, entity, {"require_damage_api": false}):
+				continue
+			if not _can_perceive(actor, entity):
 				continue
 			var distance: float = actor.global_position.distance_to(entity.global_position)
 			if distance < closest_distance:

@@ -1838,6 +1838,15 @@ func get_visible_enemy_targets(actor: Node) -> Array[Node]:
 			out.append(entity)
 	return out
 
+func get_last_known_point(team: int, entity: Node) -> Vector2:
+	# The stored last-seen position for a fog-gated enemy, or Vector2.INF if never seen.
+	if entity == null or not is_instance_valid(entity):
+		return Vector2.INF
+	var record: Dictionary = team_vision.get(team, {}).get(entity.get_instance_id(), {})
+	if record.is_empty():
+		return Vector2.INF
+	return record.get("last_point", Vector2.INF)
+
 func _is_revealed(team: int, id: int) -> bool:
 	return float(team_reveals.get(team, {}).get(id, 0.0)) > 0.0
 

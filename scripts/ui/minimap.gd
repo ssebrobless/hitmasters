@@ -8,6 +8,7 @@ const MAP_WIDTH := 232.0
 var arena: Node = null
 var redraw_accumulator: float = 0.0
 var static_backdrop: Control = null
+var view_team: int = 0  # local player's team; enemy pips are fog-gated to this team (BB-VIS-2)
 
 func _ready() -> void:
 	_ensure_static_backdrop()
@@ -31,6 +32,8 @@ func _draw() -> void:
 		return
 	var map_scale: float = MAP_WIDTH / world.size.x
 	var map_size: Vector2 = world.size * map_scale
+	if arena.player != null and is_instance_valid(arena.player) and ("team" in arena.player):
+		view_team = int(arena.player.team)
 	_draw_animal_zone_overlays(world, map_scale)
 	_draw_food_overlays(world, map_scale)
 
@@ -58,6 +61,9 @@ func _draw() -> void:
 		if not _is_visible_entity(entity):
 			continue
 		if _squad_index(entity) >= 0:
+			continue
+		if _is_fog_gated_enemy(entity):
+			_draw_fogged_enemy(entity, world, map_scale)
 			continue
 		var point: Vector2 = (entity.global_position - world.position) * map_scale
 		_draw_entity_icon(entity, point)
@@ -209,6 +215,36 @@ func _draw_minimap_ellipse(center: Vector2, radius: Vector2, fill: Color, outlin
 		draw_colored_polygon(points, fill)
 	for i: int in steps:
 		draw_line(points[i], points[(i + 1) % steps], outline, width)
+
+# An enemy mobile unit (creature or minion) whose position must be fog-gated to view_team.
+# Structures (huts/cores), neutral wildlife/objectives, and own units are NOT gated (#36).
+func _is_fog_gated_enemy(entity: Node) -> bool:
+	if arena == null or not arena.has_method("is_entity_visible_to_team"):
+		return false
+	if not ("team" in entity):
+		return false
+	var team := int(entity.get("team"))
+	if team < 0 or team == view_team:
+		return false
+	if entity.has_method("is_scored_actor") and entity.is_scored_actor():
+		return true
+	return _script_name(entity) == "minion.gd"
+
+func _draw_fogged_enemy(entity: Node, world: Rect2, map_scale: float) -> void:
+	var state := String(arena.get_entity_info_state(entity, view_team))
+	if state == "visible" or state == "revealed":
+		_draw_entity_icon(entity, (entity.global_position - world.position) * map_scale)
+		return
+	# Out of direct sight: surface a coarse ghost / ripple from the last-known point only.
+	var last_point: Vector2 = arena.get_last_known_point(view_team, entity)
+	if last_point == Vector2.INF:
+		return  # never seen: no marker (suspected/hidden reveal nothing)
+	var point: Vector2 = (last_point - world.position) * map_scale
+	var color: Color = VisualGrammar.team_color(_node_team(entity))
+	if state == "last_known":
+		VisualGrammar.draw_minimap_symbol(self, point, VisualGrammar.ICON_ACTOR, 3.2, VisualGrammar.with_alpha(color, 0.4), Color(1.0, 1.0, 1.0, 0.14))
+	elif state == "heard":
+		draw_arc(point, 3.4, 0.0, TAU, 18, VisualGrammar.with_alpha(color, 0.5), 1.0)
 
 func _draw_entity_icon(entity: Node, point: Vector2) -> void:
 	var team: int = _node_team(entity)
