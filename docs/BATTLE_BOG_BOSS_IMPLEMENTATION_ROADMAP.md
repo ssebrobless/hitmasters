@@ -19,7 +19,7 @@ BB-BOSS-1  per-team meter + objective-state contract            [DONE 2026-07-07
    -> BB-BOSS-2  objective lifecycle state machine + public broadcasts   [DONE 2026-07-07]
    -> BB-BOSS-3  Champsosaurus side-boss actor (scripts/game/bosses/)    [DONE 2026-07-07]
    -> BB-BOSS-4  claim/steal + reward routing + timed terrain-event      [DONE 2026-07-07]
-   -> BB-VIS-1   team vision API                 [HARD predecessor of BB-BOSS-5]
+   -> BB-VIS-1   team vision API                 [DONE 2026-07-07] [HARD predecessor of BB-BOSS-5]
    -> BB-VIS-2/3/4  minimap / bots / world+day-night   (may follow BB-BOSS-5)
    -> BB-BOSS-5  Teratornis center boss
    -> BB-BOSS-6  shared boss framework + remaining 4 families
@@ -246,6 +246,20 @@ checks (all `failures=0`); full suite 55 PASS; live smoke PASS.
 `get_closest_enemy` while bots don't — decide whether to unify.
 
 **DoD:** API returns correct six-state info per team; reveal hook works; day phases modulate vision; telegraphs stay visible.
+
+**[DONE 2026-07-07]** All in arena.gd (the optional vision_state.gd module was not needed). `get_day_state` gained
+`phase` (dawn/day/dusk/night), `vision_range` (220/170/120/200 px), `vision_multiplier`; `get_day_phase`,
+`get_vision_range_for_phase`, `_vision_ghost_fade` (3/5/6s) added; the ecology `day==1`/`length==120.0` contract is
+preserved. Six-state model (Decision #35): `get_entity_info_state(entity, team)` returns
+visible/revealed/heard/last_known/suspected/hidden with precedence own-team->live-sight->reveal->hearing->ghost
+memory->own-territory suspicion->hidden; `is_entity_visible_to_team` = visible|revealed. `_sensory_state_for` uses
+per-phase sight range + LOS (stealthed entities are never seen, only heard) and a cover-agnostic hearing band
+(sight+120). `reveal_entity_to_team(entity, team, duration)` (timed, for Teratornis/Sky Scare);
+`get_visible_enemy_targets(actor)` for unified target queries. `_tick_team_vision` (wired in `_physics_process`)
+decays reveals each frame and refreshes last-known records on a 0.1s throttle; `team_vision`/`team_reveals` reset in
+`_reset_match_telemetry`. SCOPE: API only -- minions/bots are NOT yet rewired to consume it (that unification is
+BB-VIS-3); telegraphs are drawn unconditionally so fog never hides combat cues. Tests: `battle_bog_vision_world_check.gd`,
+`battle_bog_day_night_vision_check.gd` (both `failures=0`); full suite 57 PASS.
 
 ---
 

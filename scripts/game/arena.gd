@@ -49,6 +49,27 @@ const SQUAD_FOLLOW_RADIUS := 5.0 * SimConstants.UNIT_PX
 const SQUAD_DANGER_HEALTH_RATIO := 0.28
 const SQUAD_DANGER_RANGE := 360.0
 const DAY_LENGTH_SEC := 120.0
+# Team vision (BB-VIS-1). Day-phase sight range (world px); hearing extends past sight but
+# is cover-agnostic; ghost fade = how long a last-known position lingers after sight breaks.
+const DAY_PHASE_DAWN_END := 0.10   # fraction of the day cycle
+const DAY_PHASE_DAY_END := 0.55
+const DAY_PHASE_DUSK_END := 0.70
+const VISION_RANGE_DAY := 220.0
+const VISION_RANGE_DUSK := 170.0
+const VISION_RANGE_NIGHT := 120.0
+const VISION_RANGE_DAWN := 200.0
+const VISION_HEARING_BONUS := 120.0
+const VISION_GHOST_FADE_DAY := 3.0
+const VISION_GHOST_FADE_DUSK := 5.0
+const VISION_GHOST_FADE_NIGHT := 6.0
+const VISION_TICK_SEC := 0.1
+# Six info-states (Decision #35).
+const INFO_VISIBLE := "visible"
+const INFO_REVEALED := "revealed"
+const INFO_HEARD := "heard"
+const INFO_LAST_KNOWN := "last_known"
+const INFO_SUSPECTED := "suspected"
+const INFO_HIDDEN := "hidden"
 const FOOD_EAT_RADIUS_PAD := 8.0
 const BOSS_BREED_INTERVAL := 5
 const SIDE_BOSS_ORDER := ["champsosaurus", "platyhystrix", "american_mastodon", "arthropleura", "teratornis"]
@@ -119,6 +140,9 @@ var animal_zone_tick_timer := 0.0
 var team_breeding_buffs: Dictionary = {}
 var team_boss_stock_buffs: Dictionary = {}
 var active_terrain_events: Array[Dictionary] = []
+var team_vision := {BLUE: {}, RED: {}}    # entity_id -> {last_point, last_seen, ever}
+var team_reveals := {BLUE: {}, RED: {}}   # entity_id -> remaining reveal seconds
+var vision_tick_timer := 0.0
 var huts_lost := {0: 0, 1: 0}
 var hut_defend_hint_timer := 0.0
 var habitat_deposit_feedback_timer := 0.0
@@ -242,6 +266,7 @@ func _physics_process(delta: float) -> void:
 	elapsed += delta
 	_tick_animal_zones(delta)
 	_tick_boss_terrain_events(delta)
+	_tick_team_vision(delta)
 	wave_timer -= delta
 	_tick_telegraphs(delta)
 	_tick_kill_feed(delta)
@@ -1716,13 +1741,171 @@ func record_food_consumed(actor: Node, food_kind: String, hunger_gain: float) ->
 		add_kill_feed("%s topped off on %s" % [actor_name, food_label])
 
 func get_day_state() -> Dictionary:
+	var phase := get_day_phase()
+	var vision_range := get_vision_range_for_phase(phase)
 	return {
 		"day": day_index,
 		"elapsed": day_timer,
 		"remaining": maxf(DAY_LENGTH_SEC - day_timer, 0.0),
 		"length": DAY_LENGTH_SEC,
-		"food_sources": food_sources.size()
+		"food_sources": food_sources.size(),
+		"phase": phase,
+		"vision_range": vision_range,
+		"vision_multiplier": vision_range / VISION_RANGE_DAY
 	}
+
+func get_day_phase() -> String:
+	var f := day_timer / DAY_LENGTH_SEC
+	if f < DAY_PHASE_DAWN_END:
+		return "dawn"
+	if f < DAY_PHASE_DAY_END:
+		return "day"
+	if f < DAY_PHASE_DUSK_END:
+		return "dusk"
+	return "night"
+
+func get_vision_range_for_phase(phase := "") -> float:
+	match (phase if not phase.is_empty() else get_day_phase()):
+		"day":
+			return VISION_RANGE_DAY
+		"dusk":
+			return VISION_RANGE_DUSK
+		"night":
+			return VISION_RANGE_NIGHT
+		"dawn":
+			return VISION_RANGE_DAWN
+	return VISION_RANGE_DAY
+
+func _vision_ghost_fade() -> float:
+	match get_day_phase():
+		"dusk":
+			return VISION_GHOST_FADE_DUSK
+		"night":
+			return VISION_GHOST_FADE_NIGHT
+	return VISION_GHOST_FADE_DAY
+
+# --- Team vision API (BB-VIS-1) --------------------------------------------------
+# Shared per-team information layer. Six info-states per Decision #35. Fog gates POSITION
+# and IDENTITY only -- never combat telegraphs (those are drawn unconditionally).
+func is_entity_visible_to_team(entity: Node, team: int) -> bool:
+	var state := get_entity_info_state(entity, team)
+	return state == INFO_VISIBLE or state == INFO_REVEALED
+
+func get_entity_info_state(entity: Node, team: int) -> String:
+	if entity == null or not is_instance_valid(entity):
+		return INFO_HIDDEN
+	if entity.has_method("is_alive") and not entity.is_alive():
+		return INFO_HIDDEN
+	if ("team" in entity) and int(entity.get("team")) == team:
+		return INFO_VISIBLE  # a team always sees its own members
+	var id := entity.get_instance_id()
+	var sensed := _sensory_state_for(entity, team)
+	if sensed == INFO_VISIBLE:
+		return INFO_VISIBLE
+	if _is_revealed(team, id):
+		return INFO_REVEALED  # forced reveal (Teratornis / Sky Scare) gives exact position
+	if sensed == INFO_HEARD:
+		return INFO_HEARD
+	var record: Dictionary = team_vision.get(team, {}).get(id, {})
+	if not record.is_empty() and (elapsed - float(record.get("last_seen", -9999.0))) <= _vision_ghost_fade():
+		return INFO_LAST_KNOWN
+	if _point_in_team_territory(entity.global_position, team):
+		return INFO_SUSPECTED  # an unseen intruder on our own turf
+	return INFO_HIDDEN
+
+func reveal_entity_to_team(entity: Node, team: int, duration: float) -> void:
+	if entity == null or not is_instance_valid(entity) or not (team == BLUE or team == RED):
+		return
+	var reveals: Dictionary = team_reveals[team]
+	var id := entity.get_instance_id()
+	reveals[id] = maxf(float(reveals.get(id, 0.0)), duration)
+
+func get_visible_enemy_targets(actor: Node) -> Array[Node]:
+	var out: Array[Node] = []
+	if actor == null or not is_instance_valid(actor) or not ("team" in actor):
+		return out
+	var team := int(actor.get("team"))
+	for entity: Node in entities:
+		if entity == null or not is_instance_valid(entity) or not ("team" in entity):
+			continue
+		if int(entity.get("team")) == team:
+			continue
+		if not entity.has_method("is_scored_actor") or not entity.is_scored_actor():
+			continue
+		if entity.has_method("is_alive") and not entity.is_alive():
+			continue
+		if is_entity_visible_to_team(entity, team):
+			out.append(entity)
+	return out
+
+func _is_revealed(team: int, id: int) -> bool:
+	return float(team_reveals.get(team, {}).get(id, 0.0)) > 0.0
+
+func _point_in_team_territory(point: Vector2, team: int) -> bool:
+	# The arena is symmetric about x = 0: blue owns the left half, red the right.
+	if team == BLUE:
+		return point.x < 0.0
+	if team == RED:
+		return point.x > 0.0
+	return false
+
+func _team_vision_members(team: int) -> Array[Node]:
+	var out: Array[Node] = []
+	for entity: Node in entities:
+		if entity == null or not is_instance_valid(entity) or not ("team" in entity):
+			continue
+		if int(entity.get("team")) != team:
+			continue
+		if not entity.has_method("is_scored_actor") or not entity.is_scored_actor():
+			continue
+		if entity.has_method("is_alive") and not entity.is_alive():
+			continue
+		out.append(entity)
+	return out
+
+func _sensory_state_for(entity: Node, team: int) -> String:
+	# Live sight/hearing only (no memory): INFO_VISIBLE | INFO_HEARD | INFO_HIDDEN.
+	var vision_range := get_vision_range_for_phase()
+	var hearing_range := vision_range + VISION_HEARING_BONUS
+	var stealthed: bool = entity.has_method("is_stealthed") and entity.is_stealthed()
+	var pos: Vector2 = entity.global_position
+	var best := INFO_HIDDEN
+	for member in _team_vision_members(team):
+		var d: float = member.global_position.distance_to(pos)
+		if d <= vision_range and not stealthed and has_line_of_sight(member.global_position, pos, 4.0):
+			return INFO_VISIBLE
+		if d <= hearing_range:
+			best = INFO_HEARD
+	return best
+
+func _tick_team_vision(delta: float) -> void:
+	# Reveal timers decay every frame (cheap); last-known records refresh on a throttle.
+	for team in [BLUE, RED]:
+		var reveals: Dictionary = team_reveals[team]
+		for id in reveals.keys():
+			var remaining := float(reveals[id]) - delta
+			if remaining <= 0.0:
+				reveals.erase(id)
+			else:
+				reveals[id] = remaining
+	vision_tick_timer -= delta
+	if vision_tick_timer > 0.0:
+		return
+	vision_tick_timer = VISION_TICK_SEC
+	for team in [BLUE, RED]:
+		var enemy := RED if team == BLUE else BLUE
+		for entity in _team_vision_members(enemy):
+			if _sensory_state_for(entity, team) == INFO_VISIBLE:
+				team_vision[team][entity.get_instance_id()] = {
+					"last_point": entity.global_position,
+					"last_seen": elapsed,
+					"ever": true
+				}
+
+func _reset_team_vision() -> void:
+	team_vision = {BLUE: {}, RED: {}}
+	team_reveals = {BLUE: {}, RED: {}}
+	vision_tick_timer = 0.0
 
 func get_lane_destination(attacking_team: int, lane_anchor: Vector2) -> Vector2:
 	# March to the nearest surviving enemy hut on this lane; if none remain,
@@ -2913,6 +3096,7 @@ func _get_actor_key(actor: Node) -> String:
 func _reset_match_telemetry() -> void:
 	actor_stats.clear()
 	match_summary_log_path = ""
+	_reset_team_vision()
 	team_stats = {
 		BLUE: _new_team_stats(),
 		RED: _new_team_stats()
