@@ -6,6 +6,8 @@ config_version=5
 [application]
 
 config/name="Hitmasters"
+config/icon="res://assets/app/battlebog-app-icon.png"
+config/windows_native_icon="res://assets/app/battlebog-app-icon.ico"
 config/features=PackedStringArray("4.6")
 run/main_scene="res://scenes/MainMenu.tscn"
 
