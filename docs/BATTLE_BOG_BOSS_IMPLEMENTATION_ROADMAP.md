@@ -392,6 +392,9 @@ Arthropleura center reward `kill_growth` is now wired as
 (8 stacks), and the resulting bonus increases team outgoing damage plus body radius. Covered in
 `battle_bog_boss_reward_wiring_check.gd`. All transcribed boss stock and center reward consume-sites now have first
 mechanical wiring; remaining work is tuning/readability rather than recorded-but-inert rewards.
+**[DONE 2026-07-08]** Swarm Growth now has interaction-based anti-snowball loss: a scored death sheds two
+kill-growth stacks, refreshes team stat presentation, and emits a visible `reward_decay` objective event. Covered by
+`battle_bog_boss_reward_wiring_check.gd`.
 
 **[DONE 2026-07-08]** Added a compact player-facing objective summary accessor, `get_boss_objective_brief(team)`,
 for HUD/minimap/readability work. It returns side boss meter/family/action/claim lock, enemy-side equivalent,

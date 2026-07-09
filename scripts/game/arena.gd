@@ -96,6 +96,7 @@ const CENTER_BOSS_TIMES := [600.0, 1200.0]
 const CENTER_BOSS_RADIUS := Vector2(150.0, 130.0)
 const CENTER_BOSS_REWARD_MAX_STACK := 2
 const CENTER_KILL_GROWTH_MAX_STACKS := 8
+const CENTER_KILL_GROWTH_DEATH_LOSS := 2
 const BREEDING_BUFF_FAMILIES := ["amphibian", "reptile", "bird", "mammal", "crawly"]
 const BREEDING_BUFF_EFFECT_BY_FAMILY := {
 	"amphibian": "regen",
@@ -1572,6 +1573,28 @@ func get_team_kill_growth_bonus(team: int) -> float:
 		return 0.0
 	return float(team_kill_growth_stacks.get(team, 0)) * reward_value
 
+func _shed_team_kill_growth_on_death(victim: Node) -> void:
+	if victim == null or not ("team" in victim):
+		return
+	var team := int(victim.get("team"))
+	if not (team == BLUE or team == RED):
+		return
+	if get_team_combat_reward_value(team, "arthropleura") <= 0.0:
+		return
+	var before := int(team_kill_growth_stacks.get(team, 0))
+	if before <= 0:
+		return
+	var after := maxi(before - CENTER_KILL_GROWTH_DEATH_LOSS, 0)
+	team_kill_growth_stacks[team] = after
+	_refresh_team_breeding_buffs(team)
+	add_objective_feed(
+		"%s Swarm Growth shed %d stack%s" % [_team_name(team), before - after, "" if before - after == 1 else "s"],
+		"reward_decay",
+		team,
+		"arthropleura",
+		"center"
+	)
+
 func get_team_vision_range(team: int) -> float:
 	# Phase sight range extended by the team's Teratornis habitat-stock vision_range buff.
 	return get_vision_range_for_phase() * (1.0 + get_team_boss_stock_effect(team, "vision_range"))
@@ -2826,6 +2849,7 @@ func record_death(victim: Node, killer: Node = null) -> void:
 		add_kill_feed("%s eliminated %s" % [killer.get_actor_name(), victim.get_actor_name()])
 	else:
 		add_kill_feed("%s was eliminated" % victim.get_actor_name())
+	_shed_team_kill_growth_on_death(victim)
 	_consume_stock_for_death(victim)
 
 func _consume_stock_for_death(victim: Node) -> void:

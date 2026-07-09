@@ -180,6 +180,12 @@ func _run() -> void:
 	growth_state = arena.get_team_combat_reward_state(0).get("arthropleura", {})
 	if int(growth_state.get("growth_stacks", 0)) != arena.CENTER_KILL_GROWTH_MAX_STACKS:
 		failures.append("Swarm Growth should cap at %d stacks; state=%s" % [arena.CENTER_KILL_GROWTH_MAX_STACKS, str(growth_state)])
+	arena.record_death(player, enemy)
+	growth_state = arena.get_team_combat_reward_state(0).get("arthropleura", {})
+	if int(growth_state.get("growth_stacks", 0)) != arena.CENTER_KILL_GROWTH_MAX_STACKS - arena.CENTER_KILL_GROWTH_DEATH_LOSS:
+		failures.append("Swarm Growth should shed %d stacks on scored death; state=%s" % [arena.CENTER_KILL_GROWTH_DEATH_LOSS, str(growth_state)])
+	if not _has_objective_event(arena, "reward_decay", "Swarm Growth shed"):
+		failures.append("Swarm Growth death loss should emit visible objective decay event; feed=%s" % str(arena.kill_feed))
 
 	print("boss_reward_wiring failures=%d" % failures.size())
 	for failure in failures:
@@ -206,6 +212,16 @@ func _first_enemy(arena: Node) -> Node:
 			continue
 		return entity
 	return null
+
+func _has_objective_event(arena: Node, action: String, fragment: String) -> bool:
+	for entry: Dictionary in arena.kill_feed:
+		if String(entry.get("kind", "")) != "objective":
+			continue
+		if String(entry.get("action", "")) != action:
+			continue
+		if String(entry.get("message", "")).contains(fragment):
+			return true
+	return false
 
 func _first_team_creature(arena: Node, team: int, creature_id: String) -> Node:
 	for entity: Node in arena.entities:
