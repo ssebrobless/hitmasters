@@ -52,11 +52,25 @@ func _run() -> void:
 			failures.append("terrain event should start with time remaining; got %f" % float(event.get("remaining", 0.0)))
 		if String(event.get("kind", "")) != "flood_scar":
 			failures.append("champsosaurus event should be flood_scar; kind=%s" % String(event.get("kind", "")))
+		var visuals: Array = arena.get_terrain_event_visuals()
+		if visuals.size() != 1:
+			failures.append("terrain event should expose one world visual overlay; visuals=%s" % str(visuals))
+		else:
+			var visual: Dictionary = visuals[0]
+			var visual_ok := String(visual.get("kind", "")) == "flood_scar" \
+				and String(visual.get("label", "")) == "Flood Scar" \
+				and int(visual.get("team", -1)) == 1 \
+				and float(visual.get("ratio", 0.0)) > 0.9 \
+				and float(visual.get("radius", 0.0)) >= 100.0
+			if not visual_ok:
+				failures.append("terrain event visual should carry kind/label/team/ratio/radius; visual=%s" % str(visual))
 
 	# The event expires after its window (timed overlay, not a permanent mutation).
 	arena._tick_boss_terrain_events(999.0)
 	if not arena.get_active_terrain_events().is_empty():
 		failures.append("terrain event should expire after its duration; got %s" % str(arena.get_active_terrain_events()))
+	if not arena.get_terrain_event_visuals().is_empty():
+		failures.append("expired terrain event should have no visual overlays; visuals=%s" % str(arena.get_terrain_event_visuals()))
 
 	print("boss_terrain_event failures=%d" % failures.size())
 	for failure in failures:

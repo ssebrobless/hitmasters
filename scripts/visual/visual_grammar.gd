@@ -167,6 +167,22 @@ static func ecology_zone_color(kind: String, alpha := 1.0) -> Color:
 	color.a = alpha
 	return color
 
+static func terrain_event_color(kind: String, alpha := 1.0) -> Color:
+	var color := BOG_REED
+	match kind:
+		"flood_scar":
+			color = WATER_FOAM
+		"toxic_bloom":
+			color = BOG_MOSS.lightened(0.2)
+		"trampled_ground":
+			color = BOG_MUD.lightened(0.18)
+		"leaf_litter":
+			color = BOG_REED.lightened(0.1)
+		"wind_shear":
+			color = Color(0.62, 0.66, 0.62)
+	color.a = alpha
+	return color
+
 static func with_alpha(color: Color, alpha: float) -> Color:
 	var output := color
 	output.a *= alpha

@@ -333,6 +333,7 @@ func _draw() -> void:
 	# Retired mid-objective holdover: Battle Bog's center belongs to
 	# contested water while huts and habitats carry the match contract.
 	_draw_animal_zones()
+	_draw_terrain_event_overlays()
 	_draw_world_info_markers()
 	_draw_telegraphs()
 	if DEBUG_HURTBOX_OVERLAY:
@@ -1665,6 +1666,25 @@ func _tick_boss_terrain_events(delta: float) -> void:
 
 func get_active_terrain_events() -> Array[Dictionary]:
 	return active_terrain_events.duplicate(true)
+
+func get_terrain_event_visuals() -> Array[Dictionary]:
+	var visuals: Array[Dictionary] = []
+	for event: Dictionary in active_terrain_events:
+		var duration := maxf(float(event.get("duration", 0.01)), 0.01)
+		var remaining := clampf(float(event.get("remaining", 0.0)), 0.0, duration)
+		var kind := String(event.get("kind", "terrain_event"))
+		visuals.append({
+			"kind": kind,
+			"label": String(event.get("label", "Terrain Event")),
+			"family": String(event.get("family", "")),
+			"team": int(event.get("team", -1)),
+			"position": event.get("position", Vector2.ZERO),
+			"radius": float(event.get("radius", 120.0)),
+			"duration": duration,
+			"remaining": remaining,
+			"ratio": remaining / duration
+		})
+	return visuals
 
 func _build_trio_hud_row(slot: Dictionary) -> Dictionary:
 	var actor: Node = slot.get("actor", null)
@@ -3152,6 +3172,37 @@ func _draw_world_info_markers() -> void:
 		var label := _world_info_marker_label(state)
 		if not label.is_empty():
 			draw_string(ThemeDB.fallback_font, point + Vector2(-18.0, -radius - 6.0), label, HORIZONTAL_ALIGNMENT_CENTER, 36.0, 9, color)
+
+func _draw_terrain_event_overlays() -> void:
+	for event: Dictionary in get_terrain_event_visuals():
+		var point: Vector2 = event.get("position", Vector2.ZERO)
+		var radius := float(event.get("radius", 0.0))
+		var ratio := clampf(float(event.get("ratio", 0.0)), 0.0, 1.0)
+		if radius <= 0.0 or ratio <= 0.0:
+			continue
+		var kind := String(event.get("kind", "terrain_event"))
+		var color := VisualGrammar.terrain_event_color(kind, 0.26 * ratio)
+		var edge := VisualGrammar.terrain_event_color(kind, 0.56 * ratio)
+		draw_circle(point, radius, color)
+		draw_arc(point, radius, 0.0, TAU, 56, edge, 2.2)
+		draw_arc(point, radius * 0.68, PI * 0.12, PI * 1.88, 42, Color(edge.r, edge.g, edge.b, edge.a * 0.72), 1.2)
+		var label := _terrain_event_label(kind)
+		if not label.is_empty():
+			draw_string(ThemeDB.fallback_font, point + Vector2(-30.0, -radius - 7.0), label, HORIZONTAL_ALIGNMENT_CENTER, 60.0, 9, edge)
+
+func _terrain_event_label(kind: String) -> String:
+	match kind:
+		"flood_scar":
+			return "FLOOD"
+		"toxic_bloom":
+			return "TOXIN"
+		"trampled_ground":
+			return "TRAMPLE"
+		"leaf_litter":
+			return "LITTER"
+		"wind_shear":
+			return "WIND"
+	return ""
 
 func _world_info_marker_color(state: String) -> Color:
 	match state:

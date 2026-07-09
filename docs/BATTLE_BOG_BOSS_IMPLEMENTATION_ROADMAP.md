@@ -420,6 +420,10 @@ claim phases. Covered by `battle_bog_boss_objective_state_check.gd` and `battle_
 outcomes: claim start (`Blue/Red claiming`), contest pause, interruption/decay, then the existing claimed/stolen or
 center reward result. Notices are transition-keyed so they do not spam every claim tick. Covered by
 `battle_bog_boss_claim_steal_check.gd` and `battle_bog_boss_objective_state_check.gd`.
+**[DONE 2026-07-08]** Boss terrain disruption events now expose `get_terrain_event_visuals()` and draw a subdued
+world residue layer under info markers/telegraphs, using `VisualGrammar.terrain_event_color()` so Flood Scar,
+Toxic Bloom, Trampled Ground, Leaf Litter, and Wind Shear read as terrain state rather than attack TEL/HIT cues.
+Covered by `battle_bog_boss_terrain_event_check.gd` and scene boot smoke.
 
 ---
 
