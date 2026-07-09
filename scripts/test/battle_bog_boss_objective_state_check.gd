@@ -140,6 +140,12 @@ func _check_objective_brief(arena: Node, failures: Array[String]) -> void:
 	center = brief.get("center", {})
 	if String(center.get("action", "")) != "claim" or String(center.get("claim_route", "")) != "center_combat_reward" or absf(float(center.get("claim_ratio", 0.0)) - 0.5) > 0.01:
 		failures.append("center brief should expose downed claim progress/reward route; center=%s" % str(center))
+	real_center["claim_team"] = -1
+	real_center["claim_progress"] = 0.0
+	real_center["control_team"] = 0
+	arena._advance_boss_claim(real_center, 1.0)
+	if not _has_objective_event(arena, "claim", "Blue claiming"):
+		failures.append("center claim start should emit a public claiming objective event; feed=%s" % str(arena.kill_feed))
 	real_center["objective_state"] = "contesting"
 	real_center["contested"] = true
 	brief = arena.get_boss_objective_brief(0)

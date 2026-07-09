@@ -42,6 +42,8 @@ func _run() -> void:
 		failures.append("both-team presence should read contesting; state=%s" % String(zone.get("objective_state", "")))
 	if not is_equal_approx(float(zone.get("claim_progress", 0.0)), frozen_progress):
 		failures.append("contested claim must not accrue progress; %f -> %f" % [frozen_progress, float(zone.get("claim_progress", 0.0))])
+	if not _has_objective_event(arena, "contest", "claim paused"):
+		failures.append("contested claim should emit a public paused objective event; feed=%s" % str(arena.kill_feed))
 
 	# A partial red hold, then blue seizes the point: progress restarts under blue.
 	zone["contested"] = false
@@ -49,13 +51,21 @@ func _run() -> void:
 	arena._advance_boss_claim(zone, 2.0)  # red holds 2s
 	if int(zone.get("claim_team", -1)) != 1 or float(zone.get("claim_progress", 0.0)) <= 0.0:
 		failures.append("red partial hold should own progress; claim_team=%d progress=%f" % [int(zone.get("claim_team", -1)), float(zone.get("claim_progress", 0.0))])
+	if not _has_objective_event(arena, "claim", "Red claiming"):
+		failures.append("red claim start should emit a public claiming objective event; feed=%s" % str(arena.kill_feed))
 	var steal_brief: Dictionary = arena.get_boss_objective_brief(0).get("side", {})
 	if String(steal_brief.get("claim_route", "")) != "steal_stock_only" or String(steal_brief.get("action", "")) != "claim":
 		failures.append("enemy partial hold should brief as stock-only steal route; side=%s" % str(steal_brief))
+	zone["control_team"] = -1
+	arena._advance_boss_claim(zone, 1.0)  # nobody holds -> interrupted/decay
+	if not _has_objective_event(arena, "interrupted", "claim interrupted"):
+		failures.append("empty claim point should emit interrupted objective event; feed=%s" % str(arena.kill_feed))
 	zone["control_team"] = 0
 	arena._advance_boss_claim(zone, 1.0)  # blue seizes -> restart at this step
 	if int(zone.get("claim_team", -1)) != 0 or float(zone.get("claim_progress", 0.0)) > 1.01:
 		failures.append("blue seizing should restart progress (no carry-over); claim_team=%d progress=%f" % [int(zone.get("claim_team", -1)), float(zone.get("claim_progress", 0.0))])
+	if not _has_objective_event(arena, "claim", "Blue claiming"):
+		failures.append("blue claim start should emit a public claiming objective event; feed=%s" % str(arena.kill_feed))
 	var owner_brief: Dictionary = arena.get_boss_objective_brief(0).get("side", {})
 	if String(owner_brief.get("claim_route", "")) != "owner_stock_disrupt":
 		failures.append("owner partial hold should brief as stock-plus-disruption route; side=%s" % str(owner_brief))

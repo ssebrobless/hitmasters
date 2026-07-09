@@ -1106,6 +1106,7 @@ func _activate_side_boss_for_team(team: int) -> void:
 		zone["claim_progress"] = 0.0
 		zone["claim_team"] = -1
 		zone["claimed_team"] = -1
+		zone["last_claim_notice"] = ""
 		_spawn_wildlife_for_zone(zone)
 		animal_zone_states[i] = zone
 	add_objective_feed(
@@ -1332,8 +1333,11 @@ func _advance_boss_claim(zone: Dictionary, step: float) -> void:
 	var claim_team := int(zone.get("claim_team", -1))
 	if contested:
 		zone["objective_state"] = "contesting"
+		_emit_boss_claim_phase_feed(zone, "contest", -1)
 		return
 	if control_team < 0:
+		if progress > 0.0 or claim_team >= 0:
+			_emit_boss_claim_phase_feed(zone, "interrupted", claim_team)
 		progress = maxf(progress - step * BOSS_CLAIM_DECAY_MULT, 0.0)
 		if progress <= 0.0:
 			claim_team = -1
@@ -1344,6 +1348,7 @@ func _advance_boss_claim(zone: Dictionary, step: float) -> void:
 	zone["objective_state"] = "claimable"
 	if claim_team != control_team:
 		# A fresh team seized the point: progress restarts under them (no carry-over).
+		_emit_boss_claim_phase_feed(zone, "claim", control_team)
 		claim_team = control_team
 		progress = 0.0
 	progress += step
@@ -1352,6 +1357,44 @@ func _advance_boss_claim(zone: Dictionary, step: float) -> void:
 		_resolve_boss_claim(zone, control_team)
 	else:
 		zone["claim_progress"] = progress
+
+func _emit_boss_claim_phase_feed(zone: Dictionary, action: String, team: int) -> void:
+	var notice_key := "%s:%d" % [action, team]
+	if String(zone.get("last_claim_notice", "")) == notice_key:
+		return
+	zone["last_claim_notice"] = notice_key
+	var family := String(zone.get("boss_family", "boss"))
+	var zone_id := String(zone.get("id", ""))
+	match action:
+		"claim":
+			var route := "stock steal"
+			if bool(zone.get("center_boss", false)):
+				route = "center reward"
+			elif team == _zone_owner_team(zone):
+				route = "stock + disruption"
+			add_objective_feed(
+				"%s claiming %s boss - %s" % [_team_name(team), family.capitalize(), route],
+				"claim",
+				team,
+				family,
+				zone_id
+			)
+		"contest":
+			add_objective_feed(
+				"%s boss contested - claim paused" % family.capitalize(),
+				"contest",
+				-1,
+				family,
+				zone_id
+			)
+		"interrupted":
+			add_objective_feed(
+				"%s boss claim interrupted" % family.capitalize(),
+				"interrupted",
+				team,
+				family,
+				zone_id
+			)
 
 func _resolve_boss_claim(zone: Dictionary, team: int) -> void:
 	var family := String(zone.get("boss_family", ""))
@@ -1428,7 +1471,8 @@ func _spawn_center_boss(family: String) -> void:
 		"last_control_team": -1,
 		"claim_progress": 0.0,
 		"claim_team": -1,
-		"claimed_team": -1
+		"claimed_team": -1,
+		"last_claim_notice": ""
 	}
 	animal_zone_states.append(zone)
 	_spawn_wildlife_for_zone(animal_zone_states[animal_zone_states.size() - 1])

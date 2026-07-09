@@ -416,6 +416,10 @@ Covered by `battle_bog_boss_objective_state_check.gd` and `battle_bog_boss_claim
 states (`fight -> claim -> contest -> claimed`) and expose claim reward routes (`owner_stock_disrupt`,
 `steal_stock_only`, `center_combat_reward`). The trio HUD uses compact claim-progress labels for side and center
 claim phases. Covered by `battle_bog_boss_objective_state_check.gd` and `battle_bog_boss_claim_steal_check.gd`.
+**[DONE 2026-07-08]** Claim phases now broadcast readable objective-feed transitions instead of only final
+outcomes: claim start (`Blue/Red claiming`), contest pause, interruption/decay, then the existing claimed/stolen or
+center reward result. Notices are transition-keyed so they do not spam every claim tick. Covered by
+`battle_bog_boss_claim_steal_check.gd` and `battle_bog_boss_objective_state_check.gd`.
 
 ---
 
