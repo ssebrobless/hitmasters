@@ -3,6 +3,7 @@ extends SceneTree
 ## ENEMY side, and expires after its window (a timed overlay, never a permanent mutation).
 
 const ARENA_SCENE := "res://scenes/Arena.tscn"
+const MinimapScript := preload("res://scripts/ui/minimap.gd")
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -64,6 +65,9 @@ func _run() -> void:
 				and float(visual.get("radius", 0.0)) >= 100.0
 			if not visual_ok:
 				failures.append("terrain event visual should carry kind/label/team/ratio/radius; visual=%s" % str(visual))
+			var minimap_state: Dictionary = MinimapScript.terrain_event_minimap_state(visual)
+			if not bool(minimap_state.get("visible", false)) or String(minimap_state.get("label", "")) != "FL" or int(minimap_state.get("team", -1)) != 1:
+				failures.append("terrain event should expose compact minimap state; minimap=%s visual=%s" % [str(minimap_state), str(visual)])
 
 	# The event expires after its window (timed overlay, not a permanent mutation).
 	arena._tick_boss_terrain_events(999.0)

@@ -36,6 +36,7 @@ func _draw() -> void:
 	if arena.player != null and is_instance_valid(arena.player) and ("team" in arena.player):
 		view_team = int(arena.player.team)
 	_draw_animal_zone_overlays(world, map_scale)
+	_draw_terrain_event_overlays(world, map_scale)
 	_draw_food_overlays(world, map_scale)
 
 	for hut: Node in arena.huts:
@@ -156,6 +157,22 @@ func _draw_food_overlays(world: Rect2, map_scale: float) -> void:
 		elif kind == "critter":
 			draw_circle(point, 1.5, VisualGrammar.harvestable_color("critter_belly", 0.78 * alpha_mult))
 
+func _draw_terrain_event_overlays(world: Rect2, map_scale: float) -> void:
+	if arena == null or not arena.has_method("get_terrain_event_visuals"):
+		return
+	for event: Dictionary in arena.get_terrain_event_visuals():
+		var state := terrain_event_minimap_state(event)
+		if not bool(state.get("visible", false)):
+			continue
+		var center: Vector2 = (event.get("position", Vector2.ZERO) - world.position) * map_scale
+		var radius_value := float(state.get("radius", 0.0)) * map_scale
+		var radius := Vector2(radius_value, radius_value)
+		var kind := String(state.get("kind", "terrain_event"))
+		var ratio := float(state.get("ratio", 0.0))
+		var color := VisualGrammar.terrain_event_color(kind, 0.55 * ratio)
+		_draw_minimap_ellipse(center, radius, VisualGrammar.terrain_event_color(kind, 0.055 * ratio), color, 1.1)
+		draw_string(ThemeDB.fallback_font, center + Vector2(-16.0, -3.2), String(state.get("label", "")), HORIZONTAL_ALIGNMENT_CENTER, 32.0, 7, Color(color.r, color.g, color.b, minf(color.a + 0.18, 0.82)))
+
 func _minimap_zone_color(zone: Dictionary, active: bool, boss: bool, contested: bool) -> Color:
 	if contested:
 		return VisualGrammar.ecology_zone_color("contested", 0.78)
@@ -207,6 +224,34 @@ static func animal_zone_minimap_state(zone: Dictionary) -> Dictionary:
 		"contested": bool(zone.get("contested", false)),
 		"control_team": int(zone.get("control_team", -1))
 	}
+
+static func terrain_event_minimap_state(event: Dictionary) -> Dictionary:
+	var duration := maxf(float(event.get("duration", 0.01)), 0.01)
+	var ratio := clampf(float(event.get("remaining", duration)) / duration, 0.0, 1.0)
+	var radius := float(event.get("radius", 0.0))
+	var kind := String(event.get("kind", "terrain_event"))
+	return {
+		"visible": ratio > 0.0 and radius > 0.0,
+		"kind": kind,
+		"label": _terrain_event_minimap_label(kind),
+		"radius": radius,
+		"ratio": ratio,
+		"team": int(event.get("team", -1))
+	}
+
+static func _terrain_event_minimap_label(kind: String) -> String:
+	match kind:
+		"flood_scar":
+			return "FL"
+		"toxic_bloom":
+			return "TX"
+		"trampled_ground":
+			return "TR"
+		"leaf_litter":
+			return "LL"
+		"wind_shear":
+			return "WD"
+	return "EV"
 
 static func boss_family_minimap_code(family: String) -> String:
 	match family:

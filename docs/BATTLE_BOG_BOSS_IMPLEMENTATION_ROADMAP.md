@@ -424,6 +424,9 @@ center reward result. Notices are transition-keyed so they do not spam every cla
 world residue layer under info markers/telegraphs, using `VisualGrammar.terrain_event_color()` so Flood Scar,
 Toxic Bloom, Trampled Ground, Leaf Litter, and Wind Shear read as terrain state rather than attack TEL/HIT cues.
 Covered by `battle_bog_boss_terrain_event_check.gd` and scene boot smoke.
+**[DONE 2026-07-08]** The minimap now also draws active terrain-event residues as compact, subdued ellipses with
+two-letter event labels, completing the world/minimap visualization hook for boss terrain disruption. Covered by
+`battle_bog_boss_terrain_event_check.gd` and scene boot smoke.
 
 ---
 
